@@ -110,5 +110,52 @@
           * `player` (`Player`): 目标玩家。
           * `soundString` (`String`): 格式为 `"SoundName-Volume-Pitch"` 的字符串，例如 `"UI_BUTTON_CLICK-1.0-1.0"`。
 
+  * #### `playSoundFromStringInRadius(Location center, String soundString, double radius)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 在指定位置一定半径内，根据字符串定义播放音效。
+      * **参数说明:**
+          * `center` (`Location`): 中心位置。
+          * `soundString` (`String`): `"SoundName-Volume-Pitch"` 格式的字符串。
+          * `radius` (`double`): 半径（方块数）。
+
+  * #### `playSound(String worldName, double x, double y, double z, String key)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 通过世界名称和坐标在指定位置播放预定义音效。
+      * **参数说明:**
+          * `worldName` (`String`): 世界名称。
+          * `x`, `y`, `z` (`double`): 坐标。
+          * `key` (`String`): 音效键。
+
+  * #### `playSoundInRadius(String worldName, double x, double y, double z, String key, double radius)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 通过世界名称和坐标，在半径范围内播放预定义音效。
+      * **参数说明:**
+          * `worldName` (`String`): 世界名称。
+          * `x`, `y`, `z` (`double`): 坐标。
+          * `key` (`String`): 音效键。
+          * `radius` (`double`): 半径（方块数）。
+
+  * #### `playSoundFromString(String worldName, double x, double y, double z, String soundString)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 通过世界名称和坐标，根据字符串定义播放音效。
+      * **参数说明:**
+          * `worldName` (`String`): 世界名称。
+          * `x`, `y`, `z` (`double`): 坐标。
+          * `soundString` (`String`): `"SoundName-Volume-Pitch"` 格式的字符串。
+
+  * #### `playSoundFromStringInRadius(String worldName, double x, double y, double z, String soundString, double radius)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 通过世界名称和坐标，在半径范围内根据字符串定义播放音效。
+      * **参数说明:**
+          * `worldName` (`String`): 世界名称。
+          * `x`, `y`, `z` (`double`): 坐标。
+          * `soundString` (`String`): `"SoundName-Volume-Pitch"` 格式的字符串。
+          * `radius` (`double`): 半径（方块数）。
+
 -----
 
