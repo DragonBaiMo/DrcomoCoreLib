@@ -92,9 +92,9 @@
           * `path` (`String`): YAML 中的路径，例如 `"database.host"`。
           * `def` (`String`): 默认值。
 
-  * #### `getInt`, `getBoolean`, `getDouble`, `getStringList`
+  * #### `getInt`, `getBoolean`, `getDouble`, `getLong`, `getStringList`
 
-      * **功能描述:** 与 `getString` 类似，分别用于读取整数、布尔值、双精度浮点数和字符串列表，都支持写入默认值。
+      * **功能描述:** 与 `getString` 类似，分别用于读取整数、布尔值、双精度浮点数、长整数和字符串列表，都支持写入默认值。
 
   * #### `setValue(String fileName, String path, Object value)`
 

@@ -200,6 +200,85 @@ public class SoundManager {
         }
     }
 
+    /**
+     * 根据世界名称和坐标，在指定位置播放音效。
+     *
+     * @param worldName 世界名称
+     * @param x         X 坐标
+     * @param y         Y 坐标
+     * @param z         Z 坐标
+     * @param key       音效键
+     */
+    public void playSound(String worldName, double x, double y, double z, String key) {
+        World world = plugin.getServer().getWorld(worldName);
+        if (world == null) {
+            logger.warn("找不到世界: " + worldName);
+            return;
+        }
+        playSoundAtLocation(new Location(world, x, y, z), key);
+    }
+
+    /**
+     * 根据世界名称和坐标，在半径范围内播放音效。
+     *
+     * @param worldName 世界名称
+     * @param x         X 坐标
+     * @param y         Y 坐标
+     * @param z         Z 坐标
+     * @param key       音效键
+     * @param radius    半径（方块数）
+     */
+    public void playSoundInRadius(String worldName, double x, double y, double z, String key, double radius) {
+        World world = plugin.getServer().getWorld(worldName);
+        if (world == null) {
+            logger.warn("找不到世界: " + worldName);
+            return;
+        }
+        playSoundInRadius(new Location(world, x, y, z), key, radius);
+    }
+
+    /**
+     * 根据世界名称和坐标，直接根据字符串定义播放音效。
+     *
+     * @param worldName   世界名称
+     * @param x           X 坐标
+     * @param y           Y 坐标
+     * @param z           Z 坐标
+     * @param soundString 音效字符串，格式 "name-volume-pitch"
+     */
+    public void playSoundFromString(String worldName, double x, double y, double z, String soundString) {
+        World world = plugin.getServer().getWorld(worldName);
+        if (world == null) {
+            logger.warn("找不到世界: " + worldName);
+            return;
+        }
+        SoundEffectData data = parseSoundString(soundString);
+        if (data != null) {
+            playToWorld(new Location(world, x, y, z), data);
+        } else if (warnOnMissingKeys) {
+            logger.warn("音效字符串格式无效: " + soundString);
+        }
+    }
+
+    /**
+     * 根据世界名称和坐标，在半径范围内播放字符串定义的音效。
+     *
+     * @param worldName   世界名称
+     * @param x           X 坐标
+     * @param y           Y 坐标
+     * @param z           Z 坐标
+     * @param soundString 音效字符串，格式 "name-volume-pitch"
+     * @param radius      半径（方块数）
+     */
+    public void playSoundFromStringInRadius(String worldName, double x, double y, double z, String soundString, double radius) {
+        World world = plugin.getServer().getWorld(worldName);
+        if (world == null) {
+            logger.warn("找不到世界: " + worldName);
+            return;
+        }
+        playSoundFromStringInRadius(new Location(world, x, y, z), soundString, radius);
+    }
+
     // ===== 私有辅助方法 =====
 
     /**

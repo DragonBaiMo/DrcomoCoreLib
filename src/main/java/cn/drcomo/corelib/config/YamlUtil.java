@@ -202,6 +202,15 @@ public class YamlUtil {
     }
 
     /**
+     * 从配置获取长整数，若无则写入默认并保存
+     */
+    public long getLong(String fileName, String path, long def) {
+        YamlConfiguration cfg = getConfig(fileName);
+        setDefaultIfAbsent(cfg, fileName, path, def);
+        return cfg.getLong(path, def);
+    }
+
+    /**
      * 从配置获取字符串列表，若无则写入默认并保存
      */
     public List<String> getStringList(String fileName, String path, List<String> def) {
