@@ -13,7 +13,18 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 音效管理类，用于加载、缓存和播放音效。
+ * 音效管理类，用于加载、缓存和播放音效。<br/>
+ * 支持以下几类音效标识：
+ * <ul>
+ *     <li>Bukkit {@link Sound} 枚举常量，例如 <code>ENTITY_PLAYER_LEVELUP</code></li>
+ *     <li>原版或自定义命名空间音效，例如 <code>minecraft:ambient.crimson_forest.loop</code>
+ *     或 <code>glacia_sounds:samus.ice_beam</code></li>
+ * </ul>
+ * 同时，音效字符串可附带音量与音调信息，完整格式为
+ * <pre>
+ * name-volume-pitch
+ * </pre>
+ * 其中 <code>volume</code> 与 <code>pitch</code> 为可选项，缺失时将使用默认值 1.0。
  */
 public class SoundManager {
 
@@ -319,25 +330,51 @@ public class SoundManager {
     }
 
     /**
-     * 解析 "name-volume-pitch" 格式的音效字符串
+     * 解析音效字符串，支持以下格式：
+     * <pre>
+     * name                 -> 使用默认音量 1.0 与音调 1.0
+     * name-volume          -> 指定音量，音调默认为 1.0
+     * name-volume-pitch    -> 同时指定音量与音调
+     * </pre>
+     * 其中 name 可以是 Bukkit 枚举常量（不含冒号及点），亦可为带命名空间的自定义音效名。<br/>
+     * 当 name 同时满足枚举常量规则且存在于 {@link Sound} 中时，将优先转换为枚举播放；否则按原始字符串播放。
+     *
+     * @param soundString 音效字符串
+     * @return 解析后的 {@link SoundEffectData}，若格式非法则返回 {@code null}
      */
     private SoundEffectData parseSoundString(String soundString) {
         try {
             String[] parts = soundString.split("-");
-            if (parts.length != 3) {
+            if (parts.length < 1 || parts.length > 3) {
                 logger.warn("音效字符串格式无效: " + soundString);
                 return null;
             }
-            String name = parts[0];
-            float volume = Float.parseFloat(parts[1]) * volumeMultiplier;
-            float pitch = Float.parseFloat(parts[2]);
 
-            Sound enumSound = null;
-            try {
-                enumSound = Sound.valueOf(name.toUpperCase());
-            } catch (IllegalArgumentException ignored) {
-                // 非枚举项，保留原名播放
+            // 基础字段解析
+            String name = parts[0];
+            float volume = 1.0f;
+            float pitch = 1.0f;
+
+            if (parts.length >= 2) {
+                volume = Float.parseFloat(parts[1]);
             }
+            if (parts.length == 3) {
+                pitch = Float.parseFloat(parts[2]);
+            }
+
+            // 应用全局音量倍率
+            volume *= volumeMultiplier;
+
+            // 尝试将无命名空间且无小数点的名称解析为枚举
+            Sound enumSound = null;
+            if (!name.contains(":") && !name.contains(".")) {
+                try {
+                    enumSound = Sound.valueOf(name.toUpperCase());
+                } catch (IllegalArgumentException ignored) {
+                    // 非枚举常量，保持字符串播放
+                }
+            }
+
             return new SoundEffectData(enumSound, name, volume, pitch);
         } catch (Exception e) {
             logger.error("解析音效字符串时发生异常: " + soundString, e);

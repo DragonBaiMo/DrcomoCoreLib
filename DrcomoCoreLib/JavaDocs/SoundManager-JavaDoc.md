@@ -4,10 +4,11 @@
 
   * **完整路径:** `cn.drcomo.corelib.sound.SoundManager`
   * **核心职责:** 一个健壮的音效管理类，用于从指定的 YAML 配置文件中加载、缓存和播放音效。它允许开发者将音效的定义（音效名称、音量、音调）与代码逻辑分离，并通过一个简单的键来触发播放，同时支持全局音量控制。
+  > 自 v1.1 起，已支持带命名空间的自定义音效（如 `glacia_sounds:samus.ice_beam`）
 
 **2. 如何实例化 (Initialization)**
 
-  * **核心思想:** `SoundManager` 的设计遵循“依赖注入”和“配置优先”的原则。实例化时，需要提供 `Plugin`, `YamlUtil`, `DebugUtil` 等核心依赖，并且明确指定用于存储音效配置的 `*.yml` 文件名，以及全局音量调节参数。
+  * **核心思想:** `SoundManager` 的设计遵循"依赖注入"和"配置优先"的原则。实例化时，需要提供 `Plugin`, `YamlUtil`, `DebugUtil` 等核心依赖，并且明确指定用于存储音效配置的 `*.yml` 文件名，以及全局音量调节参数。
   * **构造函数:** `public SoundManager(Plugin plugin, YamlUtil yamlUtil, DebugUtil logger, String configName, float volumeMultiplier, boolean warnOnMissingKeys)`
   * **代码示例:**
     ```java
@@ -31,7 +32,10 @@
     // 在你的插件数据文件夹里，需要有一个 'sounds.yml' 文件，内容格式如下：
     // level_up: 'ENTITY_PLAYER_LEVELUP-1.0-1.2'
     // craft_success: 'BLOCK_ANVIL_USE-0.8-1.5'
-    // format: 'SoundName-Volume-Pitch'
+    // ice_beam: 'glacia_sounds:samus.ice_beam'          # 仅名称，默认音量/音调皆为 1.0
+    // crimson_loop: 'minecraft:ambient.crimson_forest.loop-0.5' # 指定音量，音调默认为 1.0
+    // amethyst_chime: 'minecraft:block.amethyst_block.chime-0.1-2' # 指定音量与音调
+    // 格式: 'Name[-Volume][-Pitch]'，Volume 与 Pitch 可选
 
     // 最重要的一步：实例化后，必须调用 loadSounds() 来加载配置
     soundManager.loadSounds();
@@ -108,7 +112,7 @@
       * **功能描述:** 直接根据一个音效定义字符串，为玩家播放音效，而无需预先在配置文件中定义。
       * **参数说明:**
           * `player` (`Player`): 目标玩家。
-          * `soundString` (`String`): 格式为 `"SoundName-Volume-Pitch"` 的字符串，例如 `"UI_BUTTON_CLICK-1.0-1.0"`。
+          * `soundString` (`String`): 格式为 `"Name[-Volume][-Pitch]"` 的字符串，例如 `"UI_BUTTON_CLICK-1.0-1.0"`、`"minecraft:block.amethyst_block.chime-0.1-2"`。
 
   * #### `playSoundFromStringInRadius(Location center, String soundString, double radius)`
 
@@ -116,7 +120,7 @@
       * **功能描述:** 在指定位置一定半径内，根据字符串定义播放音效。
       * **参数说明:**
           * `center` (`Location`): 中心位置。
-          * `soundString` (`String`): `"SoundName-Volume-Pitch"` 格式的字符串。
+          * `soundString` (`String`): `"Name[-Volume][-Pitch]"` 格式的字符串。
           * `radius` (`double`): 半径（方块数）。
 
   * #### `playSound(String worldName, double x, double y, double z, String key)`
@@ -145,7 +149,7 @@
       * **参数说明:**
           * `worldName` (`String`): 世界名称。
           * `x`, `y`, `z` (`double`): 坐标。
-          * `soundString` (`String`): `"SoundName-Volume-Pitch"` 格式的字符串。
+          * `soundString` (`String`): `"Name[-Volume][-Pitch]"` 格式的字符串。
 
   * #### `playSoundFromStringInRadius(String worldName, double x, double y, double z, String soundString, double radius)`
 
@@ -154,7 +158,7 @@
       * **参数说明:**
           * `worldName` (`String`): 世界名称。
           * `x`, `y`, `z` (`double`): 坐标。
-          * `soundString` (`String`): `"SoundName-Volume-Pitch"` 格式的字符串。
+          * `soundString` (`String`): `"Name[-Volume][-Pitch]"` 格式的字符串。
           * `radius` (`double`): 半径（方块数）。
 
 -----

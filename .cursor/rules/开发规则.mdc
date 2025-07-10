@@ -1,0 +1,8 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+在开始任务前，请优先阅读 README.md 文件，全面理解插件的功能与使用场景。
+在修改现有类时，须同步更新相应的 Javadoc 注释，确保文档与代码保持一致；新增类无需添加对应的 Javadoc 注释。
