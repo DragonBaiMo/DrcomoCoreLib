@@ -41,10 +41,53 @@ public record ClickContext(
     }
 
     /**
+     * 是否为左键点击。
+     */
+    public boolean isLeftClick() {
+        return clickType.isLeftClick();
+    }
+
+    /**
+     * 是否为右键点击。
+     */
+    public boolean isRightClick() {
+        return clickType.isRightClick();
+    }
+
+    /**
+     * 是否为中键点击。
+     */
+    public boolean isMiddleClick() {
+        return clickType == ClickType.MIDDLE;
+    }
+
+    /**
+
      * 是否使用数字键。
      */
     public boolean isNumberKey() {
         return clickType == ClickType.NUMBER_KEY;
+    }
+
+    /**
+     * 是否按下丢弃键。
+     */
+    public boolean isDrop() {
+        return clickType == ClickType.DROP;
+    }
+
+    /**
+     * 是否为 Ctrl+丢弃。
+     */
+    public boolean isControlDrop() {
+        return clickType == ClickType.CONTROL_DROP;
+    }
+
+    /**
+     * 是否为与副手交换。
+     */
+    public boolean isSwapOffhand() {
+        return clickType == ClickType.SWAP_OFFHAND;
     }
 
     /**

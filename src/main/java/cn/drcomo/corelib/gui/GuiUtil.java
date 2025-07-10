@@ -31,9 +31,21 @@ public final class GuiUtil {
      * @return true 表示危险
      */
     public static boolean isDangerousClick(ClickType click) {
+
+        if (click == null) {
+            return true;
+        }
+        return click.isShiftClick()
+                || click.isKeyboardClick()
+                || click.isCreativeAction()
+                || click == ClickType.DOUBLE_CLICK
+                || click == ClickType.SWAP_OFFHAND
+                || click == ClickType.UNKNOWN;
+
         if (click == null) return true;
         return click.isShiftClick() || click.isKeyboardClick()
                 || click.isCreativeAction() || click == ClickType.DOUBLE_CLICK;
+
     }
 
     /**
