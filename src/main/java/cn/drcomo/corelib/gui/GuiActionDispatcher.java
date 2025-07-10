@@ -3,6 +3,7 @@ package cn.drcomo.corelib.gui;
 import cn.drcomo.corelib.gui.interfaces.ClickAction;
 import cn.drcomo.corelib.gui.interfaces.SlotPredicate;
 import cn.drcomo.corelib.util.DebugUtil;
+import cn.drcomo.corelib.gui.GuiManager;
 import org.bukkit.event.inventory.InventoryClickEvent;
 
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ public class GuiActionDispatcher {
 
     private final DebugUtil debug;
     private final GUISessionManager sessions;
+    private final GuiManager guiManager;
     private final Map<String, ActionRegistry> registries = new ConcurrentHashMap<>();
 
     /**
@@ -24,10 +26,12 @@ public class GuiActionDispatcher {
      *
      * @param debug    日志工具
      * @param sessions 会话管理器
+     * @param guiManager GUI管理器
      */
-    public GuiActionDispatcher(DebugUtil debug, GUISessionManager sessions) {
+    public GuiActionDispatcher(DebugUtil debug, GUISessionManager sessions, GuiManager guiManager) {
         this.debug = debug;
         this.sessions = sessions;
+        this.guiManager = guiManager;
     }
 
     /**
@@ -64,7 +68,7 @@ public class GuiActionDispatcher {
             if (!sessions.validateSessionInventory(ctx.player(), event.getInventory())) {
                 return;
             }
-            GuiUtil.clearCursor(ctx.player(), event);
+            guiManager.clearCursor(ctx.player(), event);
             event.setCancelled(true);
             if (ctx.isDangerous()) {
                 return;

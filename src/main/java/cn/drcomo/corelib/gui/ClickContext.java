@@ -94,6 +94,14 @@ public record ClickContext(
      * 是否属于危险点击。
      */
     public boolean isDangerous() {
-        return GuiUtil.isDangerousClick(clickType);
+        if (clickType == null) {
+            return true;
+        }
+        return clickType.isShiftClick()
+                || clickType.isKeyboardClick()
+                || clickType.isCreativeAction()
+                || clickType == ClickType.DOUBLE_CLICK
+                || clickType == ClickType.SWAP_OFFHAND
+                || clickType == ClickType.UNKNOWN;
     }
 }

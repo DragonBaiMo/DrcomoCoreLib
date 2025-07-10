@@ -1,8 +1,12 @@
 ---
-description:
-globs:
+description: DrcomoCoreLib 项目的核心开发与协作准则
+globs: ["src/**/*.java"]
 alwaysApply: true
 ---
+**开发前必读**
 
-在开始任务前，请优先阅读 README.md 文件，全面理解插件的功能与使用场景。
-在修改现有类时，须同步更新相应的 Javadoc 注释，确保文档与代码保持一致；新增类无需添加对应的 Javadoc 注释。
+在进行任何代码修改或新增前，请务必完整阅读项目根目录下的 `README.md` 文件。该文件详细阐述了本项目的核心设计哲学与架构原则，是所有代码贡献的最高指导方针。
+
+**代码与文档同步**
+
+所有对公开（`public`）API 的修改，都必须在 `DromoCoreLib/JavaDocs` 同步更新其对应的 Javadoc 注释。确保代码的行为、参数、返回值与文档描述完全一致。新增的公开类与方法，同样需要提供清晰的 Javadoc。

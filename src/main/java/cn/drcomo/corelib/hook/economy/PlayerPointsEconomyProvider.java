@@ -4,14 +4,11 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
-import cn.drcomo.corelib.hook.EconomyProvider; // 或者你自定义的接口包
+import cn.drcomo.corelib.hook.EconomyProvider; 
 
 import cn.drcomo.corelib.util.DebugUtil;
-import cn.drcomo.corelib.util.DebugUtil.LogLevel;
 import org.black_ixx.playerpoints.PlayerPoints;
-import org.black_ixx.playerpoints.PlayerPointsAPI; // 新增导入：PlayerPointsAPI 类
-import cn.drcomo.corelib.hook.economy.EconomyResponse;
-
+import org.black_ixx.playerpoints.PlayerPointsAPI; 
 /**
  * PlayerPoints 经济提供者 —— 前置工具类（动态检测 PlayerPoints 插件）。
  */
@@ -25,12 +22,12 @@ public class PlayerPointsEconomyProvider implements EconomyProvider {
     /**
      * 构造函数：动态检测 PlayerPoints 插件与 API 接口。
      *
-     * @param plugin   你的主插件实例
-     * @param logLevel 日志级别
+     * @param plugin  你的主插件实例
+     * @param logger  已实例化的 DebugUtil，用于日志输出
      */
-    public PlayerPointsEconomyProvider(Plugin plugin, LogLevel logLevel) {
+    public PlayerPointsEconomyProvider(Plugin plugin, DebugUtil logger) {
         this.plugin = plugin;
-        this.logger = new DebugUtil(plugin, logLevel);
+        this.logger = logger;
 
         // 检测 PlayerPoints 插件是否启用
         if (!Bukkit.getPluginManager().isPluginEnabled("PlayerPoints")) {

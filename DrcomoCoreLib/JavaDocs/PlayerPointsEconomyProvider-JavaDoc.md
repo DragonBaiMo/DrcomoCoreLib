@@ -7,8 +7,8 @@
 
 **2. 如何实例化 (Initialization)**
 
-  * **核心思想:** 在确认服务器上已安装并启用了 `PlayerPoints` 插件后，实例化此类。它遵循依赖注入原则，需要传入调用方插件的实例和日志级别，以便在初始化和后续操作中提供清晰的上下文信息和日志记录。
-  * **构造函数:** `public PlayerPointsEconomyProvider(Plugin plugin, LogLevel logLevel)`
+  * **核心思想:** 在确认服务器上已安装并启用了 `PlayerPoints` 插件后，实例化此类。**务必通过依赖注入传入已初始化的 `DebugUtil`**，避免在类内部创建新实例。
+  * **构造函数:** `public PlayerPointsEconomyProvider(Plugin plugin, DebugUtil logger)`
   * **代码示例:**
     ```java
     // 在你的子插件 onEnable() 方法中:
@@ -21,7 +21,7 @@
         myLogger.info("检测到 PlayerPoints 插件，正在尝试挂钩...");
         myEconomyProvider = new PlayerPointsEconomyProvider(
             myPlugin,
-            myLogger.getLevel() // 传入与你的插件一致的日志级别
+            myLogger // 直接注入已有的 DebugUtil 实例
         );
         if (myEconomyProvider.isEnabled()) {
             myLogger.info("成功连接到 PlayerPoints API: " + myEconomyProvider.getName());

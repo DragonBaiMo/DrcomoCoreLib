@@ -7,8 +7,8 @@
 
 **2. 如何实例化 (Initialization)**
 
-  * **核心思想:** 在确认服务器上 `Vault` 插件及其经济服务均可用时，实例化此类。它同样需要注入调用方插件的实例和日志级别，以确保在动态检测和挂钩过程中的行为可追溯。
-  * **构造函数:** `public VaultEconomyProvider(Plugin plugin, LogLevel logLevel)`
+  * **核心思想:** 在确认服务器上 `Vault` 插件及其经济服务均可用时，实例化此类。**务必通过依赖注入传入已初始化的 `DebugUtil`**，避免在类内部创建新实例。
+  * **构造函数:** `public VaultEconomyProvider(Plugin plugin, DebugUtil logger)`
   * **代码示例:**
     ```java
     // 在你的子插件 onEnable() 方法中:
@@ -21,7 +21,7 @@
         myLogger.info("检测到 Vault 插件，正在尝试挂钩经济服务...");
         myEconomyProvider = new VaultEconomyProvider(
             myPlugin,
-            myLogger.getLevel()
+            myLogger
         );
         if (myEconomyProvider.isEnabled()) {
             myLogger.info("成功连接到 Vault 经济服务: " + myEconomyProvider.getName());

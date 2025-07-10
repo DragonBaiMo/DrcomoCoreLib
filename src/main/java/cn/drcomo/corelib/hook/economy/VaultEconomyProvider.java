@@ -6,10 +6,8 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
 import cn.drcomo.corelib.hook.EconomyProvider;
-import cn.drcomo.corelib.hook.economy.EconomyResponse;
 
 import cn.drcomo.corelib.util.DebugUtil;
-import cn.drcomo.corelib.util.DebugUtil.LogLevel;
 
 /**
  * Vault 经济提供者 —— 前置工具类（动态检测 Vault 与经济服务）。
@@ -23,12 +21,12 @@ public class VaultEconomyProvider implements EconomyProvider {
     /**
      * 构造函数：动态检测 Vault 插件与 Economy 服务注册情况。
      *
-     * @param plugin   你的主插件实例
-     * @param logLevel 日志级别
+     * @param plugin  你的主插件实例
+     * @param logger  已实例化的 DebugUtil，用于日志输出
      */
-    public VaultEconomyProvider(Plugin plugin, LogLevel logLevel) {
+    public VaultEconomyProvider(Plugin plugin, DebugUtil logger) {
         this.plugin = plugin;
-        this.logger = new DebugUtil(plugin, logLevel);
+        this.logger = logger;
 
         // 检测 Vault 插件是否启用
         if (!Bukkit.getPluginManager().isPluginEnabled("Vault")) {
