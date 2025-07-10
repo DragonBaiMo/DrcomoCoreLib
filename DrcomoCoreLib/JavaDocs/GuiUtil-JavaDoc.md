@@ -14,9 +14,13 @@
   * #### `isDangerousClick(ClickType click)`
 
       * **返回类型:** `boolean`
+
       * **功能描述:** 根据 `ClickType` 判断一次点击是否可能造成物品移动等危险操作，
         包括 Shift、键盘点击、创意模式相关操作以及 `DOUBLE_CLICK`、`SWAP_OFFHAND`、
         `UNKNOWN` 等类型。
+
+      * **功能描述:** 根据 `ClickType` 判断一次点击是否可能造成物品移动等危险操作。
+
       * **参数说明:**
           * `click` (`ClickType`): Bukkit 定义的点击类型。
 
