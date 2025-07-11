@@ -43,6 +43,10 @@
   - ✅ **必须注入**所有外部依赖。
   - ✅ **必须保持**模块功能的纯粹与独立。
 
+### **第四条：代码与文档同步 (Code and Documentation Synchronization)**
+
+所有对公开（`public`）API 的修改，都必须在 `DrcomoCoreLib/JavaDocs` 同步更新其对应的 Javadoc 注释。确保代码的行为、参数、返回值与文档描述完全一致。新增的公开类与方法，同样需要提供清晰的 Javadoc。
+
 **贡献代码，即是认同此约。**
 
 ## **第二章：子插件用户指南 (Sub-Plugin User Guide)**

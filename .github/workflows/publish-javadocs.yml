@@ -1,4 +1,4 @@
-name: Publish JavaDocs as HTML
+name: Publish JavaDocs as HTML with README
 
 on:
   push:
@@ -13,44 +13,52 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    # 1️⃣ 签出
+    # 1️⃣ 签出代码
     - uses: actions/checkout@v4
 
-    # 2️⃣ 安装 pandoc
+    # 2️⃣ 安装 Pandoc
     - name: Install Pandoc
       run: choco install pandoc -y
 
-    # 3️⃣ 渲染并复制
+    # 3️⃣ 构建 site
     - name: Build site
       shell: pwsh
       run: |
-        $srcRoot  = "DrcomoCoreLib/JavaDocs"     # ← 只写一次
-        $siteRoot = "site/JavaDocs"              # 目标同名目录
-        Remove-Item site -Recurse -Force -EA SilentlyContinue
-        New-Item $siteRoot -ItemType Directory -Force | Out-Null
+        $srcDocs  = "DrcomoCoreLib/JavaDocs"
+        $siteDocs = "site/JavaDocs"
 
-        # 渲染 MD ➜ HTML
-        Get-ChildItem -Path $srcRoot -Filter *.md -Recurse | ForEach-Object {
-          $rel = $_.FullName.Substring((Get-Item $srcRoot).FullName.Length + 1)
-          $out = Join-Path $siteRoot ($rel -replace '\.md$','.html')
-          New-Item -ItemType Directory -Force -Path (Split-Path $out) | Out-Null
-          pandoc $_.FullName -s -o $out --metadata title=$($_.BaseName)
+        # 清空旧站点
+        Remove-Item site -Recurse -Force -EA SilentlyContinue
+
+        # 重建 docs 子目录
+        New-Item -ItemType Directory -Path $siteDocs -Force | Out-Null
+
+        # 3.1 渲染所有子目录里的 .md → .html
+        Get-ChildItem -Path $srcDocs -Filter *.md -Recurse | ForEach-Object {
+          $rel     = $_.FullName.Substring((Get-Item $srcDocs).FullName.Length + 1)
+          $outHtml = Join-Path $siteDocs ($rel -replace '\.md$','.html')
+          New-Item -ItemType Directory -Force -Path (Split-Path $outHtml) | Out-Null
+          pandoc $_.FullName -s -o $outHtml --metadata title=$($_.BaseName)
         }
 
-        # 拷贝原始 MD（可选，不需要就删掉）
-        Copy-Item -Recurse $srcRoot\* $siteRoot/ -Force
+        # 3.2 复制原始 Markdown
+        Copy-Item -Recurse $srcDocs\* $siteDocs/ -Force
 
-        # 渲染根 index.md
+        # 3.3 渲染并移动根 index.md → README.md
         $indexSrc = "DrcomoCoreLib/index.md"
+        # 渲染为 HTML
         pandoc $indexSrc -s -o "site/index.html" --metadata title="DrcomoCoreLib JavaDocs"
-        Copy-Item $indexSrc site/index.md -Force
+        # 拷贝原 index.md 到 README.md
+        Copy-Item $indexSrc site/README.md -Force
+        # 删除 site/index.md，保留 README.md
+        Remove-Item site/index.md -Force
 
     # 4️⃣ 禁用 Jekyll
-    - name: Create .nojekyll
+    - name: Disable Jekyll
       shell: pwsh
       run: New-Item site/.nojekyll -ItemType File | Out-Null
 
-    # 5️⃣ 发布
+    # 5️⃣ 发布到 gh-pages
     - name: Deploy to gh-pages
       uses: peaceiris/actions-gh-pages@v4
       with:
