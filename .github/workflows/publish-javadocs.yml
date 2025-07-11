@@ -3,41 +3,39 @@ name: Publish JavaDocs
 # ───── 触发条件 ─────
 on:
   push:
-    branches: [ main ]        # main 分支任何提交都会触发
-  workflow_dispatch:          # 允许在网页 Actions → Run workflow 手动触发
+    branches: [ main ]
+  workflow_dispatch:
 
 # ───── 权限：允许推送 gh-pages ─────
 permissions:
   contents: write
 
-# ───── 作业定义 ─────
 jobs:
   deploy:
-    runs-on: windows-latest    # 遵从你的 Windows 偏好
+    runs-on: windows-latest
 
     steps:
-      # 1️⃣ 拉代码
+      # 1️⃣ 拉取源码
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2️⃣ （可选）如需自动生成 index.md，可在此调用脚本
-      # - name: Generate index.md
-      #   shell: pwsh
-      #   run: ./scripts/gen-index.ps1
-
-      # 3️⃣ 复制 JavaDocs 到发布目录
-      - name: Copy JavaDocs to publish dir
+      # 2️⃣ 清理旧的 site 目录，复制 JavaDocs 下所有 .md 到 site 根
+      - name: Copy JavaDocs to site/
         shell: pwsh
         run: |
           Remove-Item site -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Path site | Out-Null
           Copy-Item -Recurse "DrcomoCoreLib/JavaDocs\*" site/ -Force
 
-      # 4️⃣ 发布到 gh-pages（启用 Jekyll 渲染）
+      # 3️⃣ 创建 .nojekyll，禁用 Jekyll，让 .md 作为静态资源直接暴露
+      - name: Create .nojekyll
+        shell: pwsh
+        run: New-Item -Path site/.nojekyll -ItemType File | Out-Null
+
+      # 4️⃣ 发布到 gh-pages 分支
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./site
           force_orphan: true
-          enable_jekyll: true        # ← 关键！允许 GitHub 渲染 Markdown

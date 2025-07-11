@@ -1,3 +1,7 @@
+---
+title: DrcomoCoreLib JavaDocs
+---
+
 # DrcomoCoreLib 开发法典与用户指南
 
 ### **核心哲学：成为一个纯粹的“军火库”，而非“预制营房”**
