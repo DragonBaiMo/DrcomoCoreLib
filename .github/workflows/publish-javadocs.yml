@@ -6,7 +6,8 @@ on:
     branches: [ main ]                 # 监听 main
     paths:                             # 只在 JavaDocs 目录变动时触发
       - 'DrcomoCoreLib/JavaDocs/**'
-
+permissions:
+  contents: write              # ← 新增
 # ───── 作业定义 ─────
 jobs:
   deploy:
