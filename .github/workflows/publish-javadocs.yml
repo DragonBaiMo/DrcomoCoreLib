@@ -31,7 +31,8 @@ jobs:
         run: |
           Remove-Item site -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Path site | Out-Null
-          Copy-Item -Recurse "DrcomoCoreLib/JavaDocs\*" site/ -Force
+          Copy-Item -Recurse "DrcomoCoreLib/JavaDocs\*" site/JavaDocs/ -Force
+
 
       # 4️⃣ 发布到 gh-pages（启用 Jekyll 渲染）
       - name: Deploy to gh-pages

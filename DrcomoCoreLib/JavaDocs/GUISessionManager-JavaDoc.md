@@ -21,7 +21,7 @@
 **3. 公共API方法 (Public API Methods)**
 
   * #### `openSession(Player player, String sessionId, GUICreator creator)`
-
+ 
       * **返回类型:** `boolean`
       * **功能描述:** 创建并打开一个新的 GUI，会自动登记会话并在之后的验证中使用。
       * **参数说明:**

@@ -28,7 +28,7 @@ title: DrcomoCoreLib 开发法典与用户指南
 
 ### **第一条：三大基石（The Three Pillars）**
 
-这是构建 `DrcomoCoreLib` 可靠代码宇宙的三大定律，不可违背。
+这是构建 `DrcomoCoreLib` 可靠代码宇宙的三大定律，不可违背。 
 
 1.  **零硬编码原则 (The Zero Hardcoding Principle)**
 
