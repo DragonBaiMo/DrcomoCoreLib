@@ -50,11 +50,26 @@
   * #### `copyDefaults(String resourceFolder, String relativePath)`
 
       * **返回类型:** `void`
-      * **功能描述:** 从插件的 JAR 文件内部的资源文件夹中，复制所有的 `.yml` 文件到插件的数据文件夹下的指定目录中。此操作仅在目标文件不存在时执行。
+      * **功能描述:** 从插件 JAR 内指定的资源文件夹（包含其子目录）复制所有 `.yml` 文件到插件数据文件夹中的目标目录，并保留原有目录层级。仅当目标文件不存在时才会执行复制。
       * **参数说明:**
-          * `resourceFolder` (`String`): JAR 包内的源文件夹路径。
-          * `relativePath` (`String`): 插件数据文件夹内的目标文件夹路径。
+          * `resourceFolder` (`String`): JAR 包内的源文件夹路径（如 `"config"`，空字符串表示 JAR 根目录）。
+          * `relativePath` (`String`): 插件数据文件夹内的目标文件夹路径，可为空字符串表示插件根目录。
 
+  * #### `copyYamlFile(String resourcePath, String relativePath)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 复制插件 JAR 内指定的单个 `.yml` 文件到插件数据文件夹的目标目录，若目标文件已存在则跳过。
+      * **参数说明:**
+          * `resourcePath` (`String`): 资源文件在 JAR 内的完整路径，例如 `"config/example.yml"`。
+          * `relativePath` (`String`): 插件数据文件夹内的目标目录，相对插件根目录，空字符串表示根目录。
+
+  * #### `ensureFolderAndCopyDefaults(String resourceFolder, String relativePath)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 若插件数据文件夹内目标目录不存在（通常表示首次启动），则创建该目录，并从 JAR 内指定资源文件夹复制其全部文件及层级结构到该目录，实现一次性批量初始化。
+      * **参数说明:**
+          * `resourceFolder` (`String`): JAR 内资源文件夹路径，例如 `"templates"` 或 `"assets/lang"`。
+          * `relativePath` (`String`): 数据文件夹内目标目录，相对插件根目录，空字符串表示根目录。
   * #### `loadConfig(String fileName)`
 
       * **返回类型:** `void`

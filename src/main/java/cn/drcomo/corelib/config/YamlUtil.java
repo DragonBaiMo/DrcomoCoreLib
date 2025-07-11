@@ -32,8 +32,8 @@ public class YamlUtil {
     /**
      * 构造函数
      *
-     * @param plugin   插件实例
-     * @param logger   DebugUtil 实例，用于日志输出
+     * @param plugin 插件实例
+     * @param logger DebugUtil 实例，用于日志输出
      */
     public YamlUtil(Plugin plugin, DebugUtil logger) {
         this.plugin = plugin;
@@ -60,33 +60,54 @@ public class YamlUtil {
     }
 
     /**
-     * 从插件 JAR 的资源文件夹复制所有 .yml 到数据文件夹
+     * 从插件 JAR 内指定资源文件夹（含其子目录）复制所有 .yml 文件到数据文件夹下的目标目录，仅在目标文件不存在时才复制。
      *
-     * @param resourceFolder 资源文件夹路径（JAR 内）
-     * @param relativePath   目标相对路径（数据文件夹内）
+     * @param resourceFolder 资源文件夹相对于 JAR 根的路径，如 "config" 或 "" 表示根目录
+     * @param relativePath   数据文件夹内的目标相对路径，可为空字符串
      */
     public void copyDefaults(String resourceFolder, String relativePath) {
+        String folder = normalizeFolder(resourceFolder);
         ensureDirectory(relativePath);
-        try (JarFile jar = new JarFile(getJarFilePath())) {
-            Enumeration<JarEntry> entries = jar.entries();
-            while (entries.hasMoreElements()) {
-                JarEntry entry = entries.nextElement();
-                if (isYmlResource(entry, resourceFolder)) {
-                    String resourceName = entry.getName();
-                    String fileName = getFileNameFromResource(resourceName, resourceFolder);
-                    File dest = new File(plugin.getDataFolder(), relativePath + File.separator + fileName);
+        try {
+            traverseJar(folder, (entry, jar) -> {
+                if (entry.getName().endsWith(".yml") && !entry.isDirectory()) {
+                    String subPath = entry.getName().substring(folder.length());
+                    File dest = new File(plugin.getDataFolder(),
+                            relativePath + File.separator + subPath.replace("/", File.separator));
+                    ensureParentDir(dest);
                     if (!dest.exists()) {
-                        logger.debug("复制默认配置: " + resourceName + " -> " + dest.getPath());
-                        copyResourceToFile(resourceName, dest);
+                        logger.debug("复制默认配置: " + entry.getName() + " -> " + dest.getPath());
+                        copyResourceToFile(entry.getName(), dest);
                     } else {
                         logger.debug("跳过已存在文件: " + dest.getPath());
                     }
                 }
-            }
-        } catch (IOException e) {
-            logger.error("复制默认文件失败: " + resourceFolder, e);
+            });
         } catch (Exception e) {
-            logger.error("访问 JAR 失败: copyDefaults", e);
+            logger.error("复制默认文件失败: " + resourceFolder, e);
+        }
+    }
+
+    /**
+     * 复制插件 JAR 内指定的单个 yml 文件到数据文件夹的相对目录，若目标文件已存在则跳过。
+     *
+     * @param resourcePath 资源文件的完整路径（JAR 内），例如 "config/example.yml"
+     * @param relativePath 数据文件夹内的目标目录，相对插件根目录
+     */
+    public void copyYamlFile(String resourcePath, String relativePath) {
+        if (resourcePath == null || !resourcePath.endsWith(".yml")) {
+            logger.warn("资源路径无效或非 yml 文件: " + resourcePath);
+            return;
+        }
+        ensureDirectory(relativePath);
+        String fileName = new File(resourcePath).getName();
+        File dest = new File(plugin.getDataFolder(), relativePath + File.separator + fileName);
+        if (dest.exists()) {
+            logger.debug("跳过已有文件: " + dest.getPath());
+        } else {
+            logger.debug("复制单个配置: " + resourcePath + " -> " + dest.getPath());
+            ensureParentDir(dest);
+            copyResourceToFile(resourcePath, dest);
         }
     }
 
@@ -143,9 +164,8 @@ public class YamlUtil {
             logger.warn("无可保存配置: " + fileName);
             return;
         }
-        File file = getConfigFile(fileName);
         try {
-            cfg.save(file);
+            cfg.save(getConfigFile(fileName));
             logger.debug("Saved config: " + fileName);
         } catch (IOException e) {
             logger.error("保存配置失败: " + fileName, e);
@@ -165,63 +185,42 @@ public class YamlUtil {
         return configs.get(fileName);
     }
 
-    /**
-     * 从配置获取字符串，若无则写入默认并保存
-     */
     public String getString(String fileName, String path, String def) {
         YamlConfiguration cfg = getConfig(fileName);
         setDefaultIfAbsent(cfg, fileName, path, def);
         return cfg.getString(path, def);
     }
 
-    /**
-     * 从配置获取整数，若无则写入默认并保存
-     */
     public int getInt(String fileName, String path, int def) {
         YamlConfiguration cfg = getConfig(fileName);
         setDefaultIfAbsent(cfg, fileName, path, def);
         return cfg.getInt(path, def);
     }
 
-    /**
-     * 从配置获取布尔值，若无则写入默认并保存
-     */
     public boolean getBoolean(String fileName, String path, boolean def) {
         YamlConfiguration cfg = getConfig(fileName);
         setDefaultIfAbsent(cfg, fileName, path, def);
         return cfg.getBoolean(path, def);
     }
 
-    /**
-     * 从配置获取双精度值，若无则写入默认并保存
-     */
     public double getDouble(String fileName, String path, double def) {
         YamlConfiguration cfg = getConfig(fileName);
         setDefaultIfAbsent(cfg, fileName, path, def);
         return cfg.getDouble(path, def);
     }
 
-    /**
-     * 从配置获取长整数，若无则写入默认并保存
-     */
     public long getLong(String fileName, String path, long def) {
         YamlConfiguration cfg = getConfig(fileName);
         setDefaultIfAbsent(cfg, fileName, path, def);
         return cfg.getLong(path, def);
     }
 
-    /**
-     * 从配置获取字符串列表，若无则写入默认并保存
-     */
     public List<String> getStringList(String fileName, String path, List<String> def) {
         YamlConfiguration cfg = getConfig(fileName);
         setDefaultIfAbsent(cfg, fileName, path, def);
         return cfg.getStringList(path);
     }
 
-    /**
-     * 设置某路径的值并保存
-     */
     public void setValue(String fileName, String path, Object value) {
         YamlConfiguration cfg = getConfig(fileName);
         cfg.set(path, value);
@@ -229,18 +228,12 @@ public class YamlUtil {
         logger.debug("Set value: " + path + " = " + value + " in " + fileName);
     }
 
-    /**
-     * 检查配置是否包含某路径
-     */
     public boolean contains(String fileName, String path) {
         boolean exists = getConfig(fileName).contains(path);
         logger.debug("Contains check: " + path + " in " + fileName + " = " + exists);
         return exists;
     }
 
-    /**
-     * 获取指定路径下的所有键
-     */
     public Set<String> getKeys(String fileName, String path) {
         ConfigurationSection sec = getConfig(fileName).getConfigurationSection(path);
         Set<String> keys = (sec != null) ? sec.getKeys(false) : new HashSet<>();
@@ -248,27 +241,49 @@ public class YamlUtil {
         return keys;
     }
 
-    /**
-     * 获取指定路径的配置节
-     */
     public ConfigurationSection getSection(String fileName, String path) {
         ConfigurationSection sec = getConfig(fileName).getConfigurationSection(path);
         logger.debug("Section retrieved: " + path + " exists=" + (sec != null));
         return sec;
     }
 
+    /**
+     * 若目标目录不存在，则创建并从资源中一次性复制全部文件（含子目录、所有文件）。
+     *
+     * @param resourceFolder 资源文件夹相对于 JAR 根的路径，如 "templates" 或 "assets/lang"
+     * @param relativePath   数据文件夹内的目标目录，相对插件根目录
+     */
+    public void ensureFolderAndCopyDefaults(String resourceFolder, String relativePath) {
+        File targetDir = new File(plugin.getDataFolder(), relativePath);
+        if (targetDir.exists()) {
+            logger.debug("目标目录已存在，跳过初始化: " + targetDir.getPath());
+            return;
+        }
+        ensureDirectory(relativePath);
+        String folder = normalizeFolder(resourceFolder);
+        try {
+            traverseJar(folder, (entry, jar) -> {
+                if (!entry.isDirectory()) {
+                    String subPath = entry.getName().substring(folder.length());
+                    File dest = new File(targetDir, subPath.replace("/", File.separator));
+                    ensureParentDir(dest);
+                    if (!dest.exists()) {
+                        logger.debug("初始化复制: " + entry.getName() + " -> " + dest.getPath());
+                        copyResourceToFile(entry.getName(), dest);
+                    }
+                }
+            });
+        } catch (Exception e) {
+            logger.error("初始化复制文件夹失败: " + resourceFolder, e);
+        }
+    }
+
     // ---------------- private 辅助方法 ----------------
 
-    /**
-     * 生成配置文件对象
-     */
     private File getConfigFile(String fileName) {
         return new File(plugin.getDataFolder(), fileName + ".yml");
     }
 
-    /**
-     * 若配置不包含指定路径，则写入默认值并保存
-     */
     private void setDefaultIfAbsent(YamlConfiguration cfg, String fileName, String path, Object def) {
         if (!cfg.contains(path)) {
             cfg.set(path, def);
@@ -277,24 +292,35 @@ public class YamlUtil {
         }
     }
 
-    /**
-     * 判断 JarEntry 是否为指定资源文件夹下的 .yml 文件
-     */
-    private boolean isYmlResource(JarEntry entry, String folder) {
-        String name = entry.getName();
-        return name.startsWith(folder) && name.endsWith(".yml") && !entry.isDirectory();
+    private String normalizeFolder(String resourceFolder) {
+        if (resourceFolder == null || resourceFolder.isEmpty()) return "";
+        return resourceFolder.endsWith("/") ? resourceFolder : resourceFolder + "/";
     }
 
-    /**
-     * 从资源路径中提取文件名（包含前导斜杠）
-     */
-    private String getFileNameFromResource(String resourceName, String folder) {
-        return resourceName.substring(folder.length());
+    private void ensureParentDir(File dest) {
+        File parent = dest.getParentFile();
+        if (parent != null && !parent.exists() && parent.mkdirs()) {
+            logger.debug("创建父目录: " + parent.getPath());
+        }
     }
 
-    /**
-     * 将单个资源复制到指定目标文件
-     */
+    @FunctionalInterface
+    private interface JarEntryConsumer {
+        void accept(JarEntry entry, JarFile jar) throws IOException;
+    }
+
+    private void traverseJar(String folder, JarEntryConsumer consumer) throws Exception {
+        try (JarFile jar = new JarFile(getJarFilePath())) {
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                if (entry.getName().startsWith(folder)) {
+                    consumer.accept(entry, jar);
+                }
+            }
+        }
+    }
+
     private void copyResourceToFile(String resourcePath, File dest) {
         try (InputStream in = plugin.getResource(resourcePath)) {
             if (in != null) {
@@ -308,16 +334,13 @@ public class YamlUtil {
         }
     }
 
-    /**
-     * 获取当前插件的 JAR 文件路径
-     */
     private String getJarFilePath() throws Exception {
         return plugin.getClass()
-                .getProtectionDomain()
-                .getCodeSource()
-                .getLocation()
-                .toURI()
-                .getPath();
+                     .getProtectionDomain()
+                     .getCodeSource()
+                     .getLocation()
+                     .toURI()
+                     .getPath();
     }
 
 }
