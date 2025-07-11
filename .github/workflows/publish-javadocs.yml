@@ -1,4 +1,4 @@
-name: Publish JavaDocs
+name: Publish JavaDocs as HTML
 
 on:
   push:
@@ -13,55 +13,50 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      # 1️⃣ 拉代码
-      - uses: actions/checkout@v4
+    # 1️⃣ 签出源码
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      # 2️⃣ 安装 Pandoc（用于 md → html）
-      - name: Install Pandoc
-        run: choco install pandoc -y
+    # 2️⃣ 安装 Pandoc（用于 MD → HTML）
+    - name: Install Pandoc
+      run: choco install pandoc -y
 
-      # 3️⃣ 清理旧目录，准备 site
-      - name: Prepare site directory
-        shell: pwsh
-        run: |
-          Remove-Item site -Recurse -Force -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Path site | Out-Null
+    # 3️⃣ 渲染所有 MD 为 HTML，保留目录结构
+    - name: Convert Markdown to HTML
+      shell: pwsh
+      run: |
+        $srcRoot = "DrcomoCoreLib/DrcomoCoreLib"
+        $siteRoot = "site"
+        # 清理旧目录
+        Remove-Item $siteRoot -Recurse -Force -ErrorAction SilentlyContinue
+        # 遍历所有 .md 文件
+        Get-ChildItem -Path $srcRoot -Filter *.md -File -Recurse | ForEach-Object {
+          # 计算相对路径并构造输出 HTML 路径
+          $relative = $_.FullName.Substring((Get-Item $srcRoot).FullName.Length + 1)
+          $outPath = Join-Path $siteRoot ($relative -replace '\.md$','.html')
+          # 确保目录存在
+          New-Item -ItemType Directory -Force -Path (Split-Path $outPath) | Out-Null
+          # 调用 pandoc 渲染
+          pandoc $_.FullName -s -o $outPath --metadata title=$($_.BaseName)
+          Write-Host "Rendered $($_.Name) → $outPath"
+        }
 
-      # 4️⃣ 转换所有 JavaDocs 下的 md 为 html 并输出到 site 根
-      - name: Convert Markdown to HTML
-        shell: pwsh
-        run: |
-          Get-ChildItem DrcomoCoreLib/JavaDocs -Filter '*.md' -File | ForEach-Object {
-            $in = $_.FullName
-            $base = $_.BaseName
-            # 生成 HTML 路径：site/<basename>.html
-            $out = "site\$($base).html"
-            pandoc $in -s -o $out --metadata title="$base"
-          }
+    # 4️⃣ （可选）静态资源：把原始 MD 也暴露出来
+    - name: Copy raw Markdown
+      shell: pwsh
+      run: |
+        Copy-Item -Recurse "DrcomoCoreLib/DrcomoCoreLib\**\*.md" site/ -Destination site/raw/ -Force
 
-      # 5️⃣ （可选）生成首页 index.html
-      - name: Generate homepage
-        shell: pwsh
-        run: |
-          @"
-          <!DOCTYPE html>
-          <html>
-          <head><meta charset="utf-8"><title>DrcomoCoreLib JavaDocs</title></head>
-          <body>
-            <h1>DrcomoCoreLib JavaDocs</h1>
-            <ul>
-          "@ > site/index.html
-          Get-ChildItem site -Filter '*.html' -File | ForEach-Object {
-            $name = $_.BaseName
-            Add-Content site/index.html "<li><a href='$($_.Name)'>$name</a></li>"
-          }
-          Add-Content site/index.html "</ul></body></html>"
+    # 5️⃣ 禁用 Jekyll（确保 HTML 不被忽略）
+    - name: Create .nojekyll
+      shell: pwsh
+      run: New-Item -Path site/.nojekyll -ItemType File | Out-Null
 
-      # 6️⃣ 发布到 gh-pages
-      - name: Deploy to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: ./site
-          force_orphan: true
+    # 6️⃣ 发布到 gh-pages 分支
+    - name: Deploy to gh-pages
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_branch: gh-pages
+        publish_dir: ./site
+        force_orphan: true
