@@ -66,7 +66,7 @@
   * #### `ensureFolderAndCopyDefaults(String resourceFolder, String relativePath)`
 
       * **返回类型:** `void`
-      * **功能描述:** 若插件数据文件夹内目标目录不存在（通常表示首次启动），则创建该目录，并从 JAR 内指定资源文件夹复制其全部文件及层级结构到该目录，实现一次性批量初始化。
+      * **功能描述:** 若插件数据文件夹内目标目录不存在（通常用于**首次启动**），则创建该目录，并从 JAR 内指定资源文件夹复制其全部文件及层级结构到该目录，实现一次性批量初始化。
       * **参数说明:**
           * `resourceFolder` (`String`): JAR 内资源文件夹路径，例如 `"templates"` 或 `"assets/lang"`。
           * `relativePath` (`String`): 数据文件夹内目标目录，相对插件根目录，空字符串表示根目录。
