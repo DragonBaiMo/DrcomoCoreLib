@@ -43,6 +43,7 @@ jobs:
         # 渲染根 index.md
         $indexSrc = "DrcomoCoreLib/index.md"
         pandoc $indexSrc -s -o "site/index.html" --metadata title="DrcomoCoreLib JavaDocs"
+        Copy-Item $indexSrc site/index.md -Force
 
     # 4️⃣ 禁用 Jekyll
     - name: Create .nojekyll
