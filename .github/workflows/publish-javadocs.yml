@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write          # 允许推 gh-pages
 
 jobs:
   deploy:
@@ -14,45 +14,44 @@ jobs:
 
     steps:
     # 1️⃣ 签出源码
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    # 2️⃣ 安装 Pandoc（用于 MD → HTML）
+    # 2️⃣ 安装 pandoc（Markdown → HTML）
     - name: Install Pandoc
       run: choco install pandoc -y
 
-    # 3️⃣ 渲染所有 MD 为 HTML，保留目录结构
-    - name: Convert Markdown to HTML
+    # 3️⃣ 生成 site 目录，并保持 JavaDocs 层级
+    - name: Build site
       shell: pwsh
       run: |
-        $srcRoot = "DrcomoCoreLib/DrcomoCoreLib"
-        $siteRoot = "site"
-        # 清理旧目录
-        Remove-Item $siteRoot -Recurse -Force -ErrorAction SilentlyContinue
-        # 遍历所有 .md 文件
-        Get-ChildItem -Path $srcRoot -Filter *.md -File -Recurse | ForEach-Object {
-          # 计算相对路径并构造输出 HTML 路径
-          $relative = $_.FullName.Substring((Get-Item $srcRoot).FullName.Length + 1)
-          $outPath = Join-Path $siteRoot ($relative -replace '\.md$','.html')
-          # 确保目录存在
-          New-Item -ItemType Directory -Force -Path (Split-Path $outPath) | Out-Null
-          # 调用 pandoc 渲染
-          pandoc $_.FullName -s -o $outPath --metadata title=$($_.BaseName)
-          Write-Host "Rendered $($_.Name) → $outPath"
+        $srcRoot  = "DrcomoCoreLib/DrcomoCoreLib/JavaDocs"   # ← 根据你的真实路径
+        $siteRoot = "site/JavaDocs"                         # 目标保持同名目录
+        # 清理旧内容
+        Remove-Item site -Recurse -Force -EA SilentlyContinue
+        New-Item -ItemType Directory -Path $siteRoot -Force | Out-Null
+
+        # 遍历所有 .md
+        Get-ChildItem -Path $srcRoot -Filter *.md -Recurse | ForEach-Object {
+          $relPath = $_.FullName.Substring($srcRoot.Length + 1)
+          # 输出 HTML 路径（扩展名改 .html）
+          $outHtml = Join-Path $siteRoot ($relPath -replace '\.md$','.html')
+          New-Item -ItemType Directory -Path (Split-Path $outHtml) -Force | Out-Null
+          pandoc $_.FullName -s -o $outHtml --metadata title=$($_.BaseName)
         }
 
-    # 4️⃣ （可选）静态资源：把原始 MD 也暴露出来
-    - name: Copy raw Markdown
-      shell: pwsh
-      run: |
-        Copy-Item -Recurse "DrcomoCoreLib/DrcomoCoreLib\**\*.md" site/ -Destination site/raw/ -Force
+        # 复制原始 Markdown（如需原文件可保留）
+        Copy-Item -Recurse $srcRoot\* $siteRoot/ -Force
 
-    # 5️⃣ 禁用 Jekyll（确保 HTML 不被忽略）
+        # 把 index.md → index.html（放在站点根）
+        $indexSrc = "DrcomoCoreLib/DrcomoCoreLib/index.md"
+        pandoc $indexSrc -s -o "site/index.html" --metadata title="DrcomoCoreLib JavaDocs"
+
+    # 4️⃣ 禁用 Jekyll
     - name: Create .nojekyll
       shell: pwsh
       run: New-Item -Path site/.nojekyll -ItemType File | Out-Null
 
-    # 6️⃣ 发布到 gh-pages 分支
+    # 5️⃣ 发布到 gh-pages
     - name: Deploy to gh-pages
       uses: peaceiris/actions-gh-pages@v4
       with:
