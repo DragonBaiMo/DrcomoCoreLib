@@ -2,7 +2,7 @@
 
 **1. 概述 (Overview)**
 
-  * **完整路径:** `cn.drcomo.corelib.hook.economy.PlayerPointsEconomyProvider`
+  * **完整路径:** `cn.drcomo.corelib.hook.economy.provider.PlayerPointsEconomyProvider`
   * **核心职责:** 作为 `EconomyProvider` 接口的具体实现，专门用于对接 `PlayerPoints` 插件。它将所有标准的经济操作（查询余额、存/取款等）翻译成对 `PlayerPoints` API 的调用。
 
 **2. 如何实例化 (Initialization)**
@@ -84,6 +84,4 @@
       * **功能描述:** 将点券数量格式化为字符串，例如 "100 点数"。
       * **参数说明:**
           * `amount` (`double`): 要格式化的点券数量。
-
------
 

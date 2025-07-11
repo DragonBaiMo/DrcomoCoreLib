@@ -2,7 +2,7 @@
 
 **1. 概述 (Overview)**
 
-  * **完整路径:** `cn.drcomo.corelib.hook.economy.VaultEconomyProvider`
+  * **完整路径:** `cn.drcomo.corelib.hook.economy.provider.VaultEconomyProvider`
   * **核心职责:** 作为 `EconomyProvider` 接口的具体实现，用于桥接 `Vault` 插件。它使得上层应用可以通过一套标准接口与任何被 `Vault` 支持的经济插件（如 EssentialsX, CMI 等）进行交互。
 
 **2. 如何实例化 (Initialization)**
@@ -84,6 +84,4 @@
       * **功能描述:** 使用 `Vault` 底层经济插件提供的格式化方法，将金额转换为显示字符串。
       * **参数说明:**
           * `amount` (`double`): 要格式化的金额。
-
------
 

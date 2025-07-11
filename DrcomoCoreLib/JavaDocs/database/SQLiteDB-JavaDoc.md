@@ -79,5 +79,3 @@
 
       * **核心职责:** 在事务中执行自定义数据库操作。
       * **关键方法:** `void run(SQLiteDB db) throws SQLException`
-
------

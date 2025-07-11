@@ -105,5 +105,3 @@
           * `player` (`Player`): PAPI 占位符的上下文玩家。
           * `lines` (`List<String>`): 包含条件表达式的字符串列表。
 
------
-

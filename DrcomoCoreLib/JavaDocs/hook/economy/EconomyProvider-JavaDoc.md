@@ -2,7 +2,7 @@
 
 **1. 概述 (Overview)**
 
-  * **完整路径:** `cn.drcomo.corelib.hook.EconomyProvider`
+  * **完整路径:** `cn.drcomo.corelib.hook.economy.EconomyProvider`
   * **核心职责:** 定义了一个标准的经济服务提供者接口。它的目的是抽象不同经济插件（如 Vault, PlayerPoints）的操作，为上层应用提供一个统一的、与具体经济插件无关的交互方式。任何希望接入 DrcomoCoreLib 经济体系的插件，都需要提供此接口的实现。
 
 **2. 如何实例化 (Initialization)**
@@ -89,6 +89,4 @@
       * **功能描述:** 将一个数字金额格式化为对用户友好的显示字符串，通常会包含货币单位或特定的格式，例如 "$1,234.56" 或 "500 点券"。
       * **参数说明:**
           * `amount` (`double`): 要格式化的金额。
-
------
 

@@ -1,7 +1,6 @@
-package cn.drcomo.corelib.hook;
+package cn.drcomo.corelib.hook.economy;
 
 import org.bukkit.entity.Player;
-import cn.drcomo.corelib.hook.economy.EconomyResponse;
 
 /**
  * 经济服务提供者接口（前置工具）。<br>

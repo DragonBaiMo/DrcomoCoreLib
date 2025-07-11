@@ -1,10 +1,11 @@
-package cn.drcomo.corelib.hook.economy;
+package cn.drcomo.corelib.hook.economy.provider;
 
+import cn.drcomo.corelib.hook.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
-import cn.drcomo.corelib.hook.EconomyProvider; 
+import cn.drcomo.corelib.hook.economy.EconomyProvider;
 
 import cn.drcomo.corelib.util.DebugUtil;
 import org.black_ixx.playerpoints.PlayerPoints;

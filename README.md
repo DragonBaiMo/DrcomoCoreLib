@@ -6,8 +6,6 @@
 
 我们不创造功能，我们只**赋能创造**。
 
------
-
 ## **第一章：贡献者开发法典 (Contributor's Codex)**
 
 **本章是为所有 `DrcomoCoreLib` 的开发者和贡献者制定的最高准则。任何代码的提交都必须严格遵守以下原则。**
@@ -46,8 +44,6 @@
   - ✅ **必须保持**模块功能的纯粹与独立。
 
 **贡献代码，即是认同此约。**
-
------
 
 ## **第二章：子插件用户指南 (Sub-Plugin User Guide)**
 
@@ -109,8 +105,6 @@ public class MyAwesomePlugin extends JavaPlugin {
   * `PlaceholderAPIUtil`: PlaceholderAPI 占位符注册与解析工具。
   * `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
   * ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
-
------
 
 ### **优化点分析：**
 
