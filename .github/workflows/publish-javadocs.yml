@@ -6,52 +6,50 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write          # 允许推 gh-pages
+  contents: write
 
 jobs:
   deploy:
     runs-on: windows-latest
 
     steps:
-    # 1️⃣ 签出源码
+    # 1️⃣ 签出
     - uses: actions/checkout@v4
 
-    # 2️⃣ 安装 pandoc（Markdown → HTML）
+    # 2️⃣ 安装 pandoc
     - name: Install Pandoc
       run: choco install pandoc -y
 
-    # 3️⃣ 生成 site 目录，并保持 JavaDocs 层级
+    # 3️⃣ 渲染并复制
     - name: Build site
       shell: pwsh
       run: |
-        $srcRoot  = "DrcomoCoreLib/DrcomoCoreLib/JavaDocs"   # ← 根据你的真实路径
-        $siteRoot = "site/JavaDocs"                         # 目标保持同名目录
-        # 清理旧内容
+        $srcRoot  = "DrcomoCoreLib/JavaDocs"     # ← 只写一次
+        $siteRoot = "site/JavaDocs"              # 目标同名目录
         Remove-Item site -Recurse -Force -EA SilentlyContinue
-        New-Item -ItemType Directory -Path $siteRoot -Force | Out-Null
+        New-Item $siteRoot -ItemType Directory -Force | Out-Null
 
-        # 遍历所有 .md
+        # 渲染 MD ➜ HTML
         Get-ChildItem -Path $srcRoot -Filter *.md -Recurse | ForEach-Object {
-          $relPath = $_.FullName.Substring($srcRoot.Length + 1)
-          # 输出 HTML 路径（扩展名改 .html）
-          $outHtml = Join-Path $siteRoot ($relPath -replace '\.md$','.html')
-          New-Item -ItemType Directory -Path (Split-Path $outHtml) -Force | Out-Null
-          pandoc $_.FullName -s -o $outHtml --metadata title=$($_.BaseName)
+          $rel = $_.FullName.Substring((Get-Item $srcRoot).FullName.Length + 1)
+          $out = Join-Path $siteRoot ($rel -replace '\.md$','.html')
+          New-Item -ItemType Directory -Force -Path (Split-Path $out) | Out-Null
+          pandoc $_.FullName -s -o $out --metadata title=$($_.BaseName)
         }
 
-        # 复制原始 Markdown（如需原文件可保留）
+        # 拷贝原始 MD（可选，不需要就删掉）
         Copy-Item -Recurse $srcRoot\* $siteRoot/ -Force
 
-        # 把 index.md → index.html（放在站点根）
-        $indexSrc = "DrcomoCoreLib/DrcomoCoreLib/index.md"
+        # 渲染根 index.md
+        $indexSrc = "DrcomoCoreLib/index.md"
         pandoc $indexSrc -s -o "site/index.html" --metadata title="DrcomoCoreLib JavaDocs"
 
     # 4️⃣ 禁用 Jekyll
     - name: Create .nojekyll
       shell: pwsh
-      run: New-Item -Path site/.nojekyll -ItemType File | Out-Null
+      run: New-Item site/.nojekyll -ItemType File | Out-Null
 
-    # 5️⃣ 发布到 gh-pages
+    # 5️⃣ 发布
     - name: Deploy to gh-pages
       uses: peaceiris/actions-gh-pages@v4
       with:
