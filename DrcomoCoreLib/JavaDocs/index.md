@@ -1,18 +1,4 @@
----
-title: DrcomoCoreLib 开发法典与用户指南
----
-
-
 # DrcomoCoreLib 开发法典与用户指南
-
-> 本页由 IDE 自动生成 / 手动维护
-
-| 类/模块 | 文档 |
-|---------|------|
-| ClickAction | [查看](ClickAction-JavaDoc.md) |
-| ClickContext | [查看](ClickContext-JavaDoc.md) |
-| … | … |
-
 
 ### **核心哲学：成为一个纯粹的“军火库”，而非“预制营房”**
 
