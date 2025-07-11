@@ -8,6 +8,7 @@ import org.bukkit.plugin.Plugin;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * ======================================================================
@@ -15,16 +16,17 @@ import java.util.function.BiFunction;
  * ----------------------------------------------------------------------
  *  ◎ 职责
  *    1. 注册 PAPI 扩展；
- *    2. 暴露 {@link #register(String, BiFunction)} 供子插件注册自定义占位符；
+ *    2. 暴露 {@link #register(String, BiFunction)} 及 {@link #registerSpecial(String, Function)} 供子插件注册自定义占位符；
  *    3. 提供 {@link #parse(Player, String)} 递归解析工具；
- *    4. 提供 {@link #splitArgs(String)} 多参数拆分工具。<br><br>
+ *    4. 提供 {@link #parse(Player, String, Map)} 带自定义占位符预替换的解析工具；
+ *    5. 提供 {@link #splitArgs(String)} 多参数拆分工具。<br><br>
  *
  *  ◎ 使用方式<br>
  *    1. onEnable() 中调用 {@link #initialize(Plugin, String)};<br>
- *    2. 调用 {@link #register(String, BiFunction)} 注册占位符;<br>
+ *    2. 调用 {@link #register(String, BiFunction)} 或 {@link #registerSpecial(String, Function)} 注册占位符;<br>
  *       在 resolver 内部可通过 {@link #splitArgs(String)} 拆分多参数;<br>
- *    3. 在文本中使用 `%<identifier>_<key>_<arg1>_<arg2>…%`;<br>
- *    4. 解析时调用 {@link #parse(Player, String)}。<br>
+ *    3. 在文本中使用 `%<identifier>_<key>_<arg1>_<arg2>…%` 或先用 `{key}` 自定义占位符;<br>
+ *    4. 解析时调用 {@link #parse(Player, String)} 或 {@link #parse(Player, String, Map)}。<br>
  * ======================================================================
  */
 public class PlaceholderAPIUtil {
@@ -68,18 +70,6 @@ public class PlaceholderAPIUtil {
 
     /**
      * 注册一个占位符处理器。<br>
-     * 示例：
-     * <pre>{@code
-     * // 在子插件 onEnable() 中：
-     * PlaceholderAPIUtil.initialize(this, "myid");
-     * PlaceholderAPIUtil.register("coords", (player, rawArgs) -> {
-     *     // rawArgs 可能是 "100_64_-200"
-     *     String[] parts = PlaceholderAPIUtil.splitArgs(rawArgs);
-     *     // parts = ["100","64","-200"]
-     *     return String.format("X=%s Y=%s Z=%s", parts[0], parts[1], parts[2]);
-     * });
-     * // 然后在文本里用 %myid_coords_100_64_-200%
-     * }</pre>
      *
      * @param key      占位符主键（不含 % 与参数）
      * @param resolver (player, rawArgs) -> 返回结果；rawArgs 为 key 之后的所有内容
@@ -89,13 +79,44 @@ public class PlaceholderAPIUtil {
     }
 
     /**
+     * 注册无参数占位符的快捷方法。<br>
+     * 相当于 register(key, (player, rawArgs) -> resolver.apply(player))。
+     *
+     * @param key      占位符主键（不含 % 与参数）
+     * @param resolver player -> 返回结果
+     */
+    public void registerSpecial(String key, Function<Player, String> resolver) {
+        register(key, (player, rawArgs) -> resolver.apply(player));
+    }
+
+    /**
      * 解析文本中的 %identifier_key_args% 占位符（支持多重用 `{···}` 嵌套）。<br>
+     *
      * @param player 上下文玩家，可为 null
      * @param text   待解析文本
      * @return 解析后文本
      */
     public String parse(Player player, String text) {
         return parseRecursive(player, text);
+    }
+
+    /**
+     * 带自定义 "{key}" 占位符预替换的解析。<br>
+     * 先将 text 中所有 `{k}` 按 customPlaceholders 替换，再调用 {@link #parse(Player, String)} 做 PAPI 解析。
+     *
+     * @param player               上下文玩家，可为 null
+     * @param text                 待解析文本
+     * @param customPlaceholders   自定义占位符映射，key 对应 `{key}`
+     * @return 解析后文本
+     */
+    public String parse(Player player, String text, Map<String, String> customPlaceholders) {
+        if (text == null) return "";
+        // 先替换所有 {key}
+        for (Map.Entry<String, String> e : customPlaceholders.entrySet()) {
+            text = text.replace("{" + e.getKey() + "}", e.getValue());
+        }
+        // 再调用原有解析
+        return parse(player, text);
     }
 
     // === 私有工具 ===
@@ -144,6 +165,9 @@ public class PlaceholderAPIUtil {
                 ? args[0] + "-" + args[1]
                 : "不足参数";
         });
+
+        // 无参数示例：%identifier_prefix%
+        registerSpecial("prefix", player -> player.getName());
     }
     */
 }

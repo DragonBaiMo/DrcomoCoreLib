@@ -62,6 +62,42 @@
           * `key` (`String`): 占位符的键（`key`）。例如，对于占位符 `%myid_player_health%`，此处的 `key` 就是 `"player_health"`。
           * `resolver` (`BiFunction<Player, String, String>`): 一个处理函数，它接收一个 `Player` 对象和一个 `String` 类型的原始参数 `rawArgs`，并返回最终要显示的字符串。`rawArgs` 是占位符中 `key` 之后的所有内容。
 
+* #### `registerSpecial(String key, Function<Player,String> resolver)`
+
+    * **返回类型:** `void`  
+    * **功能描述:** 无参数占位符的快捷注册方法。等同于  
+      ```java
+      register(key, (player, rawArgs) -> resolver.apply(player));
+      ```  
+      适用于只依赖玩家上下文，不需要额外参数的占位符。  
+    * **参数说明:**
+        * `key` (`String`): 占位符主键（不含 `%`），例如 `"prefix"` 对应 `%identifier_prefix%`  
+        * `resolver` (`Function<Player,String>`): 接收 `Player` 返回要显示的字符串  
+    * **使用示例:**
+      ```java
+      // 注册一个 %myid_prefix% 占位符，直接返回玩家前缀
+      papiUtil.registerSpecial("prefix", player -> getPrefix(player));
+      ```
+      
+* #### `parse(Player player, String text, Map<String,String> customPlaceholders)`
+
+    * **返回类型:** `String`  
+    * **功能描述:** 在进行 PAPI 占位符解析前，先对所有 `{key}` 形式的自定义占位符做一次批量替换，然后再递归调用原有 `parse(Player,String)` 解析所有 `%identifier_key_args%`。  
+    * **参数说明:**
+        * `player` (`Player`): 占位符的上下文玩家，可为 `null`  
+        * `text` (`String`): 含有 `{}` 和/或 `%...%` 的待解析文本  
+        * `customPlaceholders` (`Map<String,String>`): 自定义占位符映射，键对应 `{key}` 中的 `key`，值为替换内容  
+    * **使用示例:**
+      ```java
+      Map<String,String> map = Map.of(
+          "username", player.getName(),
+          "score", String.valueOf(getScore(player))
+      );
+      String tpl = "玩家：{username}，分数：{score}，全局称号：%myid_title%";
+      String result = papiUtil.parse(player, tpl, map);
+      player.sendMessage(result);
+      ```
+
   * #### `parse(Player player, String text)`
 
       * **返回类型:** `String`
