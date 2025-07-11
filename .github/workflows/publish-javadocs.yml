@@ -19,8 +19,7 @@ jobs:
     # 2️⃣ 安装 Pandoc
     - name: Install Pandoc
       run: choco install pandoc -y
-
-    # 3️⃣ 构建 site
+    # 3️⃣ 构建站点，渲染文档
     - name: Build site
       shell: pwsh
       run: |
@@ -33,7 +32,7 @@ jobs:
         # 重建 docs 子目录
         New-Item -ItemType Directory -Path $siteDocs -Force | Out-Null
 
-        # 3.1 渲染所有子目录里的 .md → .html
+        # 渲染子目录 .md → .html
         Get-ChildItem -Path $srcDocs -Filter *.md -Recurse | ForEach-Object {
           $rel     = $_.FullName.Substring((Get-Item $srcDocs).FullName.Length + 1)
           $outHtml = Join-Path $siteDocs ($rel -replace '\.md$','.html')
@@ -41,17 +40,17 @@ jobs:
           pandoc $_.FullName -s -o $outHtml --metadata title=$($_.BaseName)
         }
 
-        # 3.2 复制原始 Markdown
+        # 复制原始 Markdown
         Copy-Item -Recurse $srcDocs\* $siteDocs/ -Force
 
-        # 3.3 渲染并移动根 index.md → README.md
-        $indexSrc = "DrcomoCoreLib/index.md"
-        # 渲染为 HTML
-        pandoc $indexSrc -s -o "site/index.html" --metadata title="DrcomoCoreLib JavaDocs"
-        # 拷贝原 index.md 到 README.md
-        Copy-Item $indexSrc site/README.md -Force
-        # 删除 site/index.md，保留 README.md
-        Remove-Item site/index.md -Force
+        # 根目录改用 README.md 代替 index.md
+        $readmeSrc = "DrcomoCoreLib/README.md"
+        # 如果需要渲染 README.md 为首页
+        pandoc $readmeSrc -s -o "site/index.html" --metadata title="DrcomoCoreLib JavaDocs"
+        # 把源 README.md 拷贝到站点根，作为首页源码
+        Copy-Item $readmeSrc site/README.md -Force
+
+        # **不再**尝试删除 index.md
 
     # 4️⃣ 禁用 Jekyll
     - name: Disable Jekyll
