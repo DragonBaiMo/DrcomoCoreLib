@@ -4,3 +4,4 @@ target
 .cursorignore
 .gitignore
 .git
+*py
