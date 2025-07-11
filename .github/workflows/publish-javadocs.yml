@@ -1,0 +1,37 @@
+name: Publish JavaDocs  # 随意修改显示名称
+
+# ───── 触发条件 ─────
+on:
+  push:
+    branches: [ main ]                 # 监听 main
+    paths:                             # 只在 JavaDocs 目录变动时触发
+      - 'DrcomoCoreLib/JavaDocs/**'
+
+# ───── 作业定义 ─────
+jobs:
+  deploy:
+    runs-on: windows-latest            # 避免用 Linux；遵循你 Windows 偏好
+
+    steps:
+      # 1⃣️ 拉取源码
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2⃣️ （可选）预处理 Markdown / 重写相对链接等
+      # - name: Optional preprocessing
+      #   run: pwsh ./scripts/rewrite-links.ps1
+
+      # 3⃣️ 复制目标目录到临时发布目录
+      - name: Copy JavaDocs to publish dir
+        run: |
+          Remove-Item site -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path site | Out-Null
+          Copy-Item -Recurse "DrcomoCoreLib/JavaDocs" site/
+
+      # 4⃣️ 发布到 GitHub Pages
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}  # 默认存在
+          publish_dir: ./site                        # 第 3 步生成的目录
+          force_orphan: true                         # 让 gh-pages 独立
