@@ -7,8 +7,8 @@
 
 **2. 如何实例化 (Initialization)**
 
-  * **核心思想:** 分发器需要外部提供 `DebugUtil` 与 `GUISessionManager` 实例，以遵循控制反转原则。
-  * **构造函数:** `public GuiActionDispatcher(DebugUtil debug, GUISessionManager sessions)`
+  * **核心思想:** 分发器需要外部提供 `DebugUtil`、`GUISessionManager` 与 `GuiManager` 实例，以遵循控制反转原则。
+  * **构造函数:** `public GuiActionDispatcher(DebugUtil debug, GUISessionManager sessions, GuiManager guiManager)`
 
 **3. 公共API方法 (Public API Methods)**
 
@@ -36,8 +36,13 @@
           * `ctx` (`ClickContext`): 点击上下文。
           * `event` (`InventoryClickEvent`): 原始事件。
 
+**4. 内部结构 (Internal Structure)**
+  * **ActionRegistry:**
+    - 内部静态类，维护每个会话的槽位与回调映射。
+    - 提供 `add(SlotPredicate, ClickAction)` 注册方法与 `dispatch(ClickContext)` 分发方法。
+    - 仅在分发器内部使用，对外透明。
 
-**4. 注意事项 (Cautions)**
+**5. 注意事项 (Cautions)**
   * **回调注册与注销：**
     - 注册回调时需确保 sessionId 唯一，避免覆盖其他会话的回调。
     - 注销时应彻底移除所有相关回调，防止内存泄漏或回调残留。
@@ -46,22 +51,23 @@
     - 分发器只负责事件分发，不应持有业务状态，所有业务逻辑应通过回调注入。
     - 回调实现应避免依赖分发器内部状态，保持解耦。
 
- * **回调异常处理与分发死链：**
-    - 回调执行时必须 try/catch，防止单个回调异常影响整个分发流程。
-    - 若回调链中存在死链（如未注册或已失效），应有日志提示并安全跳过。
+  * **回调异常处理与分发死链：**
+    - 回调执行时已内置 try/catch，防止单个回调异常影响整个分发流程。
+    - 若回调链中存在死链（如未注册或已失效），有日志提示并安全跳过。
 
-
-**4. 使用示例 (Usage Example)**
+**6. 使用示例 (Usage Example)**
 
 ```java
 public class MyListener implements Listener {
     private final GuiActionDispatcher dispatcher;
     private final GUISessionManager sessionMgr;
+    private final GuiManager guiManager;
 
     public MyListener(Plugin plugin) {
         DebugUtil logger = new DebugUtil(plugin, DebugUtil.LogLevel.INFO);
         this.sessionMgr = new GUISessionManager(plugin, logger, null);
-        this.dispatcher = new GuiActionDispatcher(logger, sessionMgr);
+        this.guiManager = new GuiManager(logger);
+        this.dispatcher = new GuiActionDispatcher(logger, sessionMgr, guiManager);
     }
 
     @EventHandler
