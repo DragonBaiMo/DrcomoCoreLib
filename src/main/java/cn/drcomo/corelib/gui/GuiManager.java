@@ -41,7 +41,10 @@ public class GuiManager {
                 || click.isCreativeAction()
                 || click == ClickType.DOUBLE_CLICK
                 || click == ClickType.SWAP_OFFHAND
-                || click == ClickType.UNKNOWN;
+                || click == ClickType.UNKNOWN
+                || click == ClickType.CONTROL_DROP
+                || click == ClickType.NUMBER_KEY
+                || click == ClickType.DROP;
     }
 
     /**
@@ -75,5 +78,31 @@ public class GuiManager {
         } catch (Exception e) {
             logger.error("play sound fail: " + sound, e);
         }
+    }
+
+    /**
+     * 判断此次点击是否发生在 GUI 顶部容器（自定义界面）区域 —— 基于 rawSlot 的方式。
+     * <p>原理：Bukkit 约定 rawSlot 小于顶部容器大小时即处于 GUI 区域。</p>
+     *
+     * @param event 事件对象
+     * @return true 表示点击发生在 GUI 区域
+     */
+    public boolean isGuiAreaByRawSlot(InventoryClickEvent event) {
+        if (event == null) return false;
+        return event.getRawSlot() < event.getInventory().getSize();
+    }
+
+    /**
+     * 判断此次点击是否发生在 GUI 顶部容器（自定义界面）区域 —— 基于 clickedInventory 引用比较方式。
+     * <p>原理：只有当 {@code event.getClickedInventory()} 与 {@code event.getInventory()} 指向相同实例时，
+     * 才视为玩家点击了自定义 GUI；若为玩家背包槽位，则两者不同。</p>
+     *
+     * @param event 事件对象
+     * @return true 表示点击发生在 GUI 区域
+     */
+    public boolean isGuiAreaByInventory(InventoryClickEvent event) {
+        if (event == null) return false;
+        return event.getClickedInventory() != null
+                && event.getClickedInventory().equals(event.getInventory());
     }
 } 

@@ -3,6 +3,7 @@ package cn.drcomo.corelib.gui;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.event.inventory.InventoryClickEvent;
 
 import cn.drcomo.corelib.message.MessageService;
 import cn.drcomo.corelib.util.DebugUtil;
@@ -144,6 +145,53 @@ public class GUISessionManager {
         return s != null && s.inventory.equals(inv);
     }
 
+    /**
+     * 判断此次点击是否作用于玩家当前会话的 GUI 区域（顶部容器）。
+     * <p>通过比较 {@code event.getClickedInventory()} 与会话记录的 Inventory 是否相同来判定，
+     * 能准确区分玩家背包槽位。</p>
+     *
+     * @param player 玩家实例
+     * @param event  点击事件
+     * @return true 若点击的容器即为当前会话 GUI
+     */
+    public boolean isSessionInventoryClick(Player player, InventoryClickEvent event) {
+        if (player == null || event == null) return false;
+        GUISession s = sessions.get(player);
+        if (s == null) return false;
+        Inventory clicked = event.getClickedInventory();
+        return clicked != null && clicked.equals(s.inventory);
+    }
+
+    /**
+     * 判断此次点击是否发生在玩家背包区域（即不属于当前会话 GUI）。
+     *
+     * @param player 玩家实例
+     * @param event  点击事件
+     * @return true 当玩家存在会话且点击的容器不是会话 GUI 时返回 true
+     */
+    public boolean isPlayerInventoryClick(Player player, InventoryClickEvent event) {
+        if (player == null || event == null) return false;
+        GUISession s = sessions.get(player);
+        if (s == null) return false;
+        Inventory clicked = event.getClickedInventory();
+        return clicked == null || !clicked.equals(s.inventory);
+    }
+
+    /**
+     * 插件关闭时强制回收所有 GUI 物品并返还给玩家。
+     * <p>调度器已不可用，必须同步调用；若背包已满则自然掉落到玩家脚下。</p>
+     */
+    public void flushOnDisable() {
+        List<Player> targets = new ArrayList<>(sessions.keySet());
+        for (Player p : targets) {
+            GUISession s = sessions.get(p);
+            if (s != null) {
+                flushSessionItems(p, s);
+                safeClose(p, s);
+            }
+        }
+    }
+
     // ================== 内部类 ==================
     private static class GUISession {
         final String sessionId;
@@ -192,5 +240,25 @@ public class GUISessionManager {
             debug.error("close inventory error", e);
         }
         unregisterSession(player);
+    }
+
+    private void flushSessionItems(Player player, GUISession session) {
+        if (player == null || session == null) return;
+        try {
+            Inventory guiInv = session.inventory;
+            if (guiInv == null) return;
+            for (int i = 0; i < guiInv.getSize(); i++) {
+                var item = guiInv.getItem(i);
+                if (item == null) continue;
+                Map<Integer, org.bukkit.inventory.ItemStack> leftover = player.getInventory().addItem(item);
+                for (org.bukkit.inventory.ItemStack lf : leftover.values()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), lf);
+                }
+                guiInv.setItem(i, null);
+            }
+            player.updateInventory();
+        } catch (Exception e) {
+            debug.error("flushSessionItems error", e);
+        }
     }
 }
