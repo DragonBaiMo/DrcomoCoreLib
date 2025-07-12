@@ -378,65 +378,40 @@ public class NBTUtil {
                     break;
                 case NBTTagList:
                     // 处理列表拷贝
-                    NBTType contentType = src.getListType(key);  // 使用 getListType 获取内容类型
-                    if (contentType == null || contentType == NBTType.NBTTagEnd) {
-                        // 空列表：创建空列表（使用字符串列表作为默认，API 会处理为空列表）
-                        dst.getStringList(key);
+                    NBTType subType = src.getListType(key);
+                    if (subType == null || subType == NBTType.NBTTagEnd) {
+                        dst.getStringList(key); // 创建空列表
                     } else {
-                        switch (contentType) {
+                        switch (subType) {
                             case NBTTagString:
-                                ReadableNBTList<String> srcStrList = src.getStringList(key);
-                                ReadWriteNBTList<String> dstStrList = dst.getStringList(key);
-                                for (String item : srcStrList) {
-                                    dstStrList.add(item);
-                                }
+                                ReadWriteNBTList<String> dstStr = dst.getStringList(key);
+                                for (String s : src.getStringList(key)) dstStr.add(s);
                                 break;
                             case NBTTagInt:
-                                ReadableNBTList<Integer> srcIntList = src.getIntegerList(key);
-                                ReadWriteNBTList<Integer> dstIntList = dst.getIntegerList(key);
-                                for (Integer item : srcIntList) {
-                                    dstIntList.add(item);
-                                }
+                                ReadWriteNBTList<Integer> dstInt = dst.getIntegerList(key);
+                                for (Integer i : src.getIntegerList(key)) dstInt.add(i);
                                 break;
                             case NBTTagLong:
-                                ReadableNBTList<Long> srcLongList = src.getLongList(key);
-                                ReadWriteNBTList<Long> dstLongList = dst.getLongList(key);
-                                for (Long item : srcLongList) {
-                                    dstLongList.add(item);
-                                }
+                                ReadWriteNBTList<Long> dstLong = dst.getLongList(key);
+                                for (Long l : src.getLongList(key)) dstLong.add(l);
                                 break;
                             case NBTTagFloat:
-                                ReadableNBTList<Float> srcFloatList = src.getFloatList(key);
-                                ReadWriteNBTList<Float> dstFloatList = dst.getFloatList(key);
-                                for (Float item : srcFloatList) {
-                                    dstFloatList.add(item);
-                                }
+                                ReadWriteNBTList<Float> dstF = dst.getFloatList(key);
+                                for (Float f : src.getFloatList(key)) dstF.add(f);
                                 break;
                             case NBTTagDouble:
-                                ReadableNBTList<Double> srcDblList = src.getDoubleList(key);
-                                ReadWriteNBTList<Double> dstDblList = dst.getDoubleList(key);
-                                for (Double item : srcDblList) {
-                                    dstDblList.add(item);
-                                }
+                                ReadWriteNBTList<Double> dstD = dst.getDoubleList(key);
+                                for (Double d : src.getDoubleList(key)) dstD.add(d);
                                 break;
                             case NBTTagCompound:
-                                ReadableNBTList<ReadWriteNBT> srcCmpList = src.getCompoundList(key);
-                                ReadWriteNBTCompoundList dstCmpList = dst.getCompoundList(key);
-                                for (ReadWriteNBT comp : srcCmpList) {
-                                    ReadWriteNBT newComp = dstCmpList.addCompound();
-                                    newComp.mergeCompound(comp);
-                                }
-                                break;
-                            case NBTTagIntArray:  // 支持 UUID 列表
-                                ReadableNBTList<UUID> srcUUIDList = src.getUUIDList(key);
-                                ReadWriteNBTList<UUID> dstUUIDList = dst.getUUIDList(key);
-                                for (UUID item : srcUUIDList) {
-                                    dstUUIDList.add(item);
+                                ReadWriteNBTCompoundList dstCmp = dst.getCompoundList(key);
+                                for (ReadWriteNBT cmp : src.getCompoundList(key)) {
+                                    ReadWriteNBT newCmp = dstCmp.addCompound();
+                                    newCmp.mergeCompound(cmp);
                                 }
                                 break;
                             default:
-                                logger.log(LogLevel.WARN, "不支持的列表内容类型拷贝: " + contentType + " for key: " + key);
-                                break;
+                                logger.log(LogLevel.WARN, "copyTagGeneric 不支持的列表子类型: " + subType);
                         }
                     }
                     break;
@@ -446,6 +421,511 @@ public class NBTUtil {
             }
         } catch (Exception ex) {
             logger.log(LogLevel.DEBUG, "copyNBTTag 失败 [" + key + "]: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * 获取 ItemStack 的完整 NBT 数据并序列化为字符串（SNBT 格式）。
+     * <p>
+     * 该方法将使用 NBT-API 的 {@code toString()} 实现，返回类似 JSON 的 SNBT 字符串，
+     * 便于日志打印、问题排查与人工比对。
+     * <pre>
+     * String raw = nbtUtil.toRawString(item);
+     * plugin.getLogger().info(raw);
+     * </pre>
+     * 当 {@code item} 为 {@code null} 或发生异常时，将返回空 JSON "{}"。
+     *
+     * @param item 目标物品，可为 {@code null}
+     * @return 物品完整 NBT 的 SNBT 字符串，异常或空物品时返回 "{}"
+     */
+    public String toRawString(ItemStack item) {
+        if (item == null) return "{}";
+        try {
+            final String[] result = {"{}"};
+            // 只读访问，无需克隆
+            NBT.get(item, (ReadableItemNBT nbt) -> result[0] = nbt.toString());
+            return result[0];
+        } catch (Exception ex) {
+            logger.log(LogLevel.DEBUG, "toRawString 异常: " + ex.getMessage());
+            return "{}";
+        }
+    }
+
+    /**
+     * 获取 ItemStack 的原始 NBT Compound 对象，便于高级自定义操作。
+     * <p>
+     * 返回值为 NBT-API 提供的 {@link ReadWriteNBT}（或其运行时实现）。
+     * 调用方可在不破坏本工具封装的前提下，进行更复杂的读取/写入或自定义序列化。
+     * 当 {@code item} 为 {@code null} 或发生异常时，返回 {@code null}。
+     *
+     * <strong>⚠ 注意：</strong> 返回的对象与物品 NBT 引用绑定，若需离线操作请自行克隆。
+     *
+     * @param item 目标物品，可为 {@code null}
+     * @return 物品的 {@code ReadWriteNBT} 复合对象，异常或空物品时返回 {@code null}
+     */
+    public ReadWriteNBT getRawCompound(ItemStack item) {
+        if (item == null) return null;
+        try {
+            final ReadWriteNBT[] result = {null};
+            // 使用只读访问，获取内部 NBT Compound 引用
+            NBT.get(item, (ReadableItemNBT nbt) -> {
+                if (nbt instanceof ReadWriteNBT) {
+                    result[0] = (ReadWriteNBT) nbt; // 直接返回实现引用
+                }
+            });
+            return result[0];
+        } catch (Exception ex) {
+            logger.log(LogLevel.DEBUG, "getRawCompound 异常: " + ex.getMessage());
+            return null;
+        }
+    }
+
+    /* =====================================
+     * 进阶功能区：序列化/反序列化 & 批量操作
+     * ===================================== */
+
+    /**
+     * 从 SNBT/JSON 字符串反序列化并构造 {@link ItemStack}。
+     * <p>
+     * 底层通过 <code>NBT.parseNBT</code> 将字符串解析为 {@link ReadWriteNBT}，
+     * 随后借助 <code>NBT.itemStackFromNBT</code> 还原为物品。
+     *
+     * @param nbtString 完整 NBT 字符串（SNBT/JSON 格式）
+     * @return 还原得到的 {@link ItemStack}
+     * @throws ParseException 当字符串格式不合法或解析失败时抛出
+     */
+    public ItemStack fromRawString(String nbtString) throws cn.drcomo.corelib.hook.placeholder.parse.ParseException {
+        if (nbtString == null || nbtString.isEmpty()) {
+            throw new cn.drcomo.corelib.hook.placeholder.parse.ParseException("NBT 字符串为空");
+        }
+        try {
+            ReadWriteNBT nbt = NBT.parseNBT(nbtString);
+            return NBT.itemStackFromNBT(nbt);
+        } catch (Exception ex) {
+            logger.log(LogLevel.DEBUG, "fromRawString 解析失败: " + ex.getMessage());
+            throw new cn.drcomo.corelib.hook.placeholder.parse.ParseException("NBT 解析失败: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * 获取物品全部 NBT 数据展开为 {@code Map<String, Object>}（递归）。
+     * <p>返回的 Map 中：
+     * <ul>
+     *     <li>基础类型（Number、String、byte[] 等）保持原样；</li>
+     *     <li>复合标签对应嵌套 {@link java.util.Map}；</li>
+     *     <li>列表标签对应 {@link java.util.List}，其中元素类型与实际类型保持一致。</li>
+     * </ul>
+     * 此方法仅用于<strong>读取</strong>，写入请使用 {@link #setAllNbt(ItemStack, Map)}。
+     *
+     * @param item 目标物品
+     * @return 递归展开后的键值 Map，若 item 为 null 返回空 Map
+     */
+    public java.util.Map<String, Object> getAllNbt(ItemStack item) {
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        if (item == null) return result;
+        try {
+            ReadWriteNBT nbt = NBT.itemStackToNBT(item);
+            convertNBTToMap(nbt, result);
+        } catch (Exception ex) {
+            logger.log(LogLevel.DEBUG, "getAllNbt 异常: " + ex.getMessage());
+        }
+        return result;
+    }
+
+    /** 递归辅助：将 ReadableNBT 转换为 Map */
+    private void convertNBTToMap(ReadWriteNBT nbt, java.util.Map<String, Object> target) {
+        for (String key : nbt.getKeys()) {
+            NBTType type = nbt.getType(key);
+            switch (type) {
+                case NBTTagCompound:
+                    java.util.Map<String, Object> child = new java.util.HashMap<>();
+                    convertNBTToMap(nbt.getCompound(key), child);
+                    target.put(key, child);
+                    break;
+                case NBTTagList:
+                    NBTType sub = nbt.getListType(key);
+                    java.util.List<Object> list = new java.util.ArrayList<>();
+                    if (sub != null) {
+                        switch (sub) {
+                            case NBTTagString:
+                                for (String s : nbt.getStringList(key)) list.add(s);
+                                break;
+                            case NBTTagInt:
+                                for (Integer i : nbt.getIntegerList(key)) list.add(i);
+                                break;
+                            case NBTTagLong:
+                                for (Long l : nbt.getLongList(key)) list.add(l);
+                                break;
+                            case NBTTagFloat:
+                                for (Float f : nbt.getFloatList(key)) list.add(f);
+                                break;
+                            case NBTTagDouble:
+                                for (Double d : nbt.getDoubleList(key)) list.add(d);
+                                break;
+                            case NBTTagCompound:
+                                for (ReadWriteNBT cmp : nbt.getCompoundList(key)) {
+                                    java.util.Map<String, Object> cmpMap = new java.util.HashMap<>();
+                                    convertNBTToMap(cmp, cmpMap);
+                                    list.add(cmpMap);
+                                }
+                                break;
+                            default:
+                                list.add("UnsupportedListType:" + sub);
+                        }
+                    }
+                    target.put(key, list);
+                    break;
+                case NBTTagByte:       target.put(key, nbt.getByte(key)); break;
+                case NBTTagShort:      target.put(key, nbt.getShort(key)); break;
+                case NBTTagInt:        target.put(key, nbt.getInteger(key)); break;
+                case NBTTagLong:       target.put(key, nbt.getLong(key)); break;
+                case NBTTagFloat:      target.put(key, nbt.getFloat(key)); break;
+                case NBTTagDouble:     target.put(key, nbt.getDouble(key)); break;
+                case NBTTagString:     target.put(key, nbt.getString(key)); break;
+                case NBTTagByteArray:  target.put(key, nbt.getByteArray(key)); break;
+                case NBTTagIntArray:   target.put(key, nbt.getIntArray(key)); break;
+                case NBTTagLongArray:  target.put(key, nbt.getLongArray(key)); break;
+                default:
+                    target.put(key, "UnsupportedType:" + type);
+            }
+        }
+    }
+
+    /**
+     * 使用 Map 批量覆盖/写入物品 NBT。
+     * <p>仅支持基础类型及嵌套 Map，若遇到不支持的值类型将被忽略。</p>
+     * @param item  目标物品
+     * @param nbtMap 键值 Map
+     * @return 修改后的 ItemStack 克隆
+     */
+    public ItemStack setAllNbt(ItemStack item, java.util.Map<String, Object> nbtMap) {
+        if (item == null || nbtMap == null) return item;
+        ItemStack clone = item.clone();
+        try {
+            NBT.modify(clone, (ReadWriteItemNBT nbt) -> applyMapToNBT(nbt, nbtMap));
+        } catch (Exception ex) {
+            logger.log(LogLevel.DEBUG, "setAllNbt 异常: " + ex.getMessage());
+            return item;
+        }
+        return clone;
+    }
+
+    /** 递归辅助：将 Map 数据写入 NBT */
+    @SuppressWarnings("unchecked")
+    private void applyMapToNBT(ReadWriteNBT dst, java.util.Map<String, Object> map) {
+        for (java.util.Map.Entry<String, Object> entry : map.entrySet()) {
+            String key = entry.getKey();
+            Object val = entry.getValue();
+            if (val == null) continue;
+            if (val instanceof String) {
+                dst.setString(key, (String) val);
+            } else if (val instanceof Integer) {
+                dst.setInteger(key, (Integer) val);
+            } else if (val instanceof Long) {
+                dst.setLong(key, (Long) val);
+            } else if (val instanceof Short) {
+                dst.setShort(key, (Short) val);
+            } else if (val instanceof Byte) {
+                dst.setByte(key, (Byte) val);
+            } else if (val instanceof Float) {
+                dst.setFloat(key, (Float) val);
+            } else if (val instanceof Double) {
+                dst.setDouble(key, (Double) val);
+            } else if (val instanceof byte[]) {
+                dst.setByteArray(key, (byte[]) val);
+            } else if (val instanceof int[]) {
+                dst.setIntArray(key, (int[]) val);
+            } else if (val instanceof long[]) {
+                dst.setLongArray(key, (long[]) val);
+            } else if (val instanceof java.util.Map) {
+                ReadWriteNBT child = dst.getOrCreateCompound(key);
+                applyMapToNBT(child, (java.util.Map<String, Object>) val);
+            } else if (val instanceof java.util.List) {
+                java.util.List<?> listVal = (java.util.List<?>) val;
+                if (listVal.isEmpty()) {
+                    dst.getStringList(key); // 创建空字符串列表占位
+                    continue;
+                }
+                Object first = listVal.stream().filter(java.util.Objects::nonNull).findFirst().orElse(null);
+                if (first == null) {
+                    dst.getStringList(key);
+                    continue;
+                }
+                if (first instanceof String) {
+                    ReadWriteNBTList<String> l = dst.getStringList(key);
+                    l.clear();
+                    for (Object o : listVal) l.add(o == null ? "" : o.toString());
+                } else if (first instanceof Integer) {
+                    ReadWriteNBTList<Integer> l = dst.getIntegerList(key);
+                    l.clear();
+                    for (Object o : listVal) if (o != null) l.add(((Number) o).intValue());
+                } else if (first instanceof Long) {
+                    ReadWriteNBTList<Long> l = dst.getLongList(key);
+                    l.clear();
+                    for (Object o : listVal) if (o != null) l.add(((Number) o).longValue());
+                } else if (first instanceof Float) {
+                    ReadWriteNBTList<Float> l = dst.getFloatList(key);
+                    l.clear();
+                    for (Object o : listVal) if (o != null) l.add(((Number) o).floatValue());
+                } else if (first instanceof Double) {
+                    ReadWriteNBTList<Double> l = dst.getDoubleList(key);
+                    l.clear();
+                    for (Object o : listVal) if (o != null) l.add(((Number) o).doubleValue());
+                } else if (first instanceof java.util.Map) {
+                    ReadWriteNBTCompoundList l = dst.getCompoundList(key);
+                    l.clear();
+                    for (Object o : listVal) {
+                        if (o instanceof java.util.Map) {
+                            ReadWriteNBT newCmp = l.addCompound();
+                            //noinspection unchecked
+                            applyMapToNBT(newCmp, (java.util.Map<String, Object>) o);
+                        }
+                    }
+                } else {
+                    logger.log(LogLevel.WARN, "applyMapToNBT 未支持的列表元素类型 key=" + key + " type=" + first.getClass());
+                }
+            } else {
+                logger.log(LogLevel.WARN, "未支持的值类型, key=" + key + ", type=" + val.getClass());
+            }
+        }
+    }
+
+    /**
+     * 读取原生 NBT 键（不加前缀）。
+     */
+    public Object getRaw(ItemStack item, String key) {
+        if (item == null) return null;
+        try {
+            return NBT.get(item, nbt -> {
+                if (nbt.hasTag(key)) {
+                    NBTType t = nbt.getType(key);
+                    switch (t) {
+                        case NBTTagString: return nbt.getString(key);
+                        case NBTTagInt:    return nbt.getInteger(key);
+                        case NBTTagByte:   return nbt.getByte(key);
+                        case NBTTagShort:  return nbt.getShort(key);
+                        case NBTTagLong:   return nbt.getLong(key);
+                        case NBTTagFloat:  return nbt.getFloat(key);
+                        case NBTTagDouble: return nbt.getDouble(key);
+                        case NBTTagByteArray: return nbt.getByteArray(key);
+                        case NBTTagIntArray:  return nbt.getIntArray(key);
+                        case NBTTagLongArray: return nbt.getLongArray(key);
+                        default: return null;
+                    }
+                }
+                return null;
+            });
+        } catch (Exception ex) {
+            logger.log(LogLevel.DEBUG, "getRaw 异常: " + ex.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 写入原生 NBT 键（不加前缀）。
+     */
+    public ItemStack setRaw(ItemStack item, String key, Object value) {
+        if (item == null) return null;
+        ItemStack clone = item.clone();
+        try {
+            NBT.modify(clone, nbt -> {
+                if (value instanceof String) nbt.setString(key, (String) value);
+                else if (value instanceof Integer) nbt.setInteger(key, (Integer) value);
+                else if (value instanceof Long) nbt.setLong(key, (Long) value);
+                else if (value instanceof Short) nbt.setShort(key, (Short) value);
+                else if (value instanceof Byte) nbt.setByte(key, (Byte) value);
+                else if (value instanceof Float) nbt.setFloat(key, (Float) value);
+                else if (value instanceof Double) nbt.setDouble(key, (Double) value);
+                else if (value instanceof byte[]) nbt.setByteArray(key, (byte[]) value);
+                else if (value instanceof int[]) nbt.setIntArray(key, (int[]) value);
+                else if (value instanceof long[]) nbt.setLongArray(key, (long[]) value);
+                else {
+                    logger.log(LogLevel.WARN, "setRaw 未支持的值类型: " + value.getClass());
+                }
+            });
+            return clone;
+        } catch (Exception ex) {
+            logger.log(LogLevel.DEBUG, "setRaw 异常: " + ex.getMessage());
+            return item;
+        }
+    }
+
+    /**
+     * 返回带缩进、换行的可读性更高的 NBT 字符串。
+     * <p>当前实现基于简单缩进算法，不保证完美格式化，但足够人工阅读。</p>
+     */
+    public String toPrettyString(ItemStack item) {
+        String raw = toRawString(item);
+        StringBuilder pretty = new StringBuilder();
+        int indent = 0;
+        for (char c : raw.toCharArray()) {
+            switch (c) {
+                case '{':
+                case '[':
+                    pretty.append(c).append('\n');
+                    indent++;
+                    pretty.append("  ".repeat(indent));
+                    break;
+                case '}':
+                case ']':
+                    pretty.append('\n');
+                    indent = Math.max(0, indent - 1);
+                    pretty.append("  ".repeat(indent)).append(c);
+                    break;
+                case ',':
+                    pretty.append(c).append('\n').append("  ".repeat(indent));
+                    break;
+                default:
+                    pretty.append(c);
+            }
+        }
+        return pretty.toString();
+    }
+
+    /**
+     * 仅导出符合本插件前缀的所有 NBT 数据（SNBT 字符串）。
+     */
+    public String exportPluginNbt(ItemStack item) {
+        if (item == null) return "{}";
+        try {
+            java.util.Set<String> keys = scanPluginNBTKeys(item);
+            if (keys.isEmpty()) return "{}";
+            ReadWriteNBT out = NBT.createNBTObject();
+            NBT.get(item, src -> {
+                for (String k : keys) {
+                    copyTagGeneric(src, out, k);
+                }
+            });
+            return out.toString();
+        } catch (Exception ex) {
+            logger.log(LogLevel.DEBUG, "exportPluginNbt 异常: " + ex.getMessage());
+            return "{}";
+        }
+    }
+
+    /** 通用复制：支持 ReadableItemNBT -> ReadWriteNBT */
+    private void copyTagGeneric(ReadableItemNBT src, ReadWriteNBT dst, String key) {
+        try {
+            NBTType type = src.getType(key);
+            switch (type) {
+                case NBTTagCompound:
+                    dst.getOrCreateCompound(key).mergeCompound(src.getCompound(key));
+                    break;
+                case NBTTagList:
+                    NBTType subType = src.getListType(key);
+                    if (subType == null || subType == NBTType.NBTTagEnd) {
+                        dst.getStringList(key); // 创建空列表
+                    } else {
+                        switch (subType) {
+                            case NBTTagString:
+                                ReadWriteNBTList<String> dstStr = dst.getStringList(key);
+                                for (String s : src.getStringList(key)) dstStr.add(s);
+                                break;
+                            case NBTTagInt:
+                                ReadWriteNBTList<Integer> dstInt = dst.getIntegerList(key);
+                                for (Integer i : src.getIntegerList(key)) dstInt.add(i);
+                                break;
+                            case NBTTagLong:
+                                ReadWriteNBTList<Long> dstLong = dst.getLongList(key);
+                                for (Long l : src.getLongList(key)) dstLong.add(l);
+                                break;
+                            case NBTTagFloat:
+                                ReadWriteNBTList<Float> dstF = dst.getFloatList(key);
+                                for (Float f : src.getFloatList(key)) dstF.add(f);
+                                break;
+                            case NBTTagDouble:
+                                ReadWriteNBTList<Double> dstD = dst.getDoubleList(key);
+                                for (Double d : src.getDoubleList(key)) dstD.add(d);
+                                break;
+                            case NBTTagCompound:
+                                ReadWriteNBTCompoundList dstCmp = dst.getCompoundList(key);
+                                for (ReadWriteNBT cmp : src.getCompoundList(key)) {
+                                    ReadWriteNBT newCmp = dstCmp.addCompound();
+                                    newCmp.mergeCompound(cmp);
+                                }
+                                break;
+                            default:
+                                logger.log(LogLevel.WARN, "copyTagGeneric 不支持的列表子类型: " + subType);
+                        }
+                    }
+                    break;
+                case NBTTagString:
+                    dst.setString(key, src.getString(key));
+                    break;
+                case NBTTagInt:
+                    dst.setInteger(key, src.getInteger(key));
+                    break;
+                case NBTTagByte:
+                    dst.setByte(key, src.getByte(key));
+                    break;
+                case NBTTagShort:
+                    dst.setShort(key, src.getShort(key));
+                    break;
+                case NBTTagLong:
+                    dst.setLong(key, src.getLong(key));
+                    break;
+                case NBTTagFloat:
+                    dst.setFloat(key, src.getFloat(key));
+                    break;
+                case NBTTagDouble:
+                    dst.setDouble(key, src.getDouble(key));
+                    break;
+                case NBTTagByteArray:
+                    dst.setByteArray(key, src.getByteArray(key));
+                    break;
+                case NBTTagIntArray:
+                    dst.setIntArray(key, src.getIntArray(key));
+                    break;
+                case NBTTagLongArray:
+                    dst.setLongArray(key, src.getLongArray(key));
+                    break;
+                default:
+                    logger.log(LogLevel.WARN, "copyTagGeneric 未支持类型: " + type);
+            }
+        } catch (Exception ex) {
+            logger.log(LogLevel.DEBUG, "copyTagGeneric 异常:" + ex.getMessage());
+        }
+    }
+
+    /**
+     * 将 SNBT 字符串中的数据（仅限本插件前缀）导入到目标物品。
+     */
+    public ItemStack importPluginNbt(ItemStack item, String pluginNbtString) throws cn.drcomo.corelib.hook.placeholder.parse.ParseException {
+        if (item == null) return null;
+        try {
+            ReadWriteNBT src = NBT.parseNBT(pluginNbtString);
+            java.util.Set<String> keys = src.getKeys();
+            ItemStack clone = item.clone();
+            NBT.modify(clone, target -> {
+                for (String k : keys) {
+                    if (keyHandler.isValidKey(k)) {
+                        // 将 src 的 key 写入 target
+                        writeValueToTarget(target, k, src);
+                    }
+                }
+            });
+            return clone;
+        } catch (Exception ex) {
+            logger.log(LogLevel.DEBUG, "importPluginNbt 失败: " + ex.getMessage());
+            throw new cn.drcomo.corelib.hook.placeholder.parse.ParseException("导入插件 NBT 失败: " + ex.getMessage());
+        }
+    }
+
+    private void writeValueToTarget(ReadWriteItemNBT target, String key, ReadWriteNBT src) {
+        NBTType type = src.getType(key);
+        switch (type) {
+            case NBTTagString: target.setString(key, src.getString(key)); break;
+            case NBTTagInt: target.setInteger(key, src.getInteger(key)); break;
+            case NBTTagByte: target.setByte(key, src.getByte(key)); break;
+            case NBTTagShort: target.setShort(key, src.getShort(key)); break;
+            case NBTTagLong: target.setLong(key, src.getLong(key)); break;
+            case NBTTagFloat: target.setFloat(key, src.getFloat(key)); break;
+            case NBTTagDouble: target.setDouble(key, src.getDouble(key)); break;
+            case NBTTagByteArray: target.setByteArray(key, src.getByteArray(key)); break;
+            case NBTTagIntArray: target.setIntArray(key, src.getIntArray(key)); break;
+            case NBTTagLongArray: target.setLongArray(key, src.getLongArray(key)); break;
+            case NBTTagCompound: target.getOrCreateCompound(key).mergeCompound(src.getCompound(key)); break;
+            default: logger.log(LogLevel.WARN, "writeValueToTarget 未支持类型: " + type);
         }
     }
 }

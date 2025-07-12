@@ -171,7 +171,7 @@
   * #### `cleanupInvalidKeys(Set<String> keys)`
 
       * **返回类型:** `Set<String>`
-      * **功能描述:** 这是一个辅助工具方法，用于从一个给定的键集合中，筛选出所有不符合本插件前缀策略的“无效”键。
+      * **功能描述:** 这是一个辅助工具方法，用于从一个给定的键集合中，筛选出所有不符合本插件前缀策略的"无效"键。
       * **参数说明:**
           * `keys` (`Set<String>`): 一个包含完整键名（带前缀）的集合。
 
@@ -188,3 +188,58 @@
       * **功能描述:** 直接调用 `NbtKeyHandler` 的 `removePrefix` 方法，从完整键中移除插件前缀。
       * **参数说明:**
           * `fullKey` (`String`): 完整键名（含前缀）。
+
+  * #### `toRawString(ItemStack item)`
+
+      * **返回类型:** `String`
+      * **功能描述:** 获取目标物品完整 NBT 数据的字符串表示（SNBT 格式），便于日志输出和人工比对。
+      * **参数说明:**
+          * `item` (`ItemStack`): 目标物品。
+      * **返回格式说明:**
+          * 返回值为标准 SNBT（Stringified Named Binary Tag）格式，类似 JSON，但字段顺序、类型与 Minecraft NBT 规范一致。
+          * 例如：`{id:"minecraft:diamond_sword",Count:1b,tag:{display:{Name:"\"神器\""},CustomModelData:1234}}`
+          * 若物品无 NBT 或异常，返回 "{}"。
+      * **典型用途:**
+          * 适合直接打印日志、人工比对、与 NBTExplorer/NBT Exporter 等工具输出对照。
+
+  * #### `getRawCompound(ItemStack item)`
+
+      * **返回类型:** `Object` (运行时实际为 `ReadWriteNBT`)
+      * **功能描述:** 获取物品的原始 NBT Compound 对象，以供高级自定义读取/写入或序列化操作。
+      * **参数说明:**
+          * `item` (`ItemStack`): 目标物品。
+      * **返回格式说明:**
+          * 返回值为 NBT-API 的 `ReadWriteNBT` 实例，可直接调用其 API 进行 NBT 结构的遍历、读取、写入、序列化等操作。
+          * 例如：`compound.getString("id")`、`compound.toString()`（同样为 SNBT 格式）。
+          * 若物品无 NBT 或异常，返回 `null`。
+      * **典型用途:**
+          * 适合插件开发者进行复杂 NBT 结构处理、批量操作、或自定义导出。
+
+  * #### `fromRawString(String nbtString)`
+
+      * **返回类型:** `ItemStack`
+      * **功能描述:** 将 SNBT/JSON 字符串反序列化为 ItemStack；若解析失败抛出 `ParseException`。
+      * **返回格式说明:** 解析遵循 NBT-API `NBT.parseNBT` 规范，支持标准 SNBT，如 `{id:"minecraft:stone",Count:1b}`。
+
+  * #### `getAllNbt(ItemStack item)` / `setAllNbt(ItemStack item, Map<String,Object> nbtMap)`
+
+      * **返回类型:** `Map<String,Object>` / `ItemStack`
+      * **功能描述:** 递归读取或批量写入物品全部 NBT 数据；Map 支持嵌套 `Map` 与 `List` 结构。
+      * **返回格式说明:**
+          * Map 的键为原始 NBT 键名，值类型映射 Java 基础类型、`byte[]/int[]/long[]`、`Map`、`List`（List 支持 String/Number/Compound）。
+
+  * #### `getRaw(ItemStack, String)` / `setRaw(ItemStack,String,Object)`
+
+      * **返回类型:** `Object` / `ItemStack`
+      * **功能描述:** 直接读取/写入原生 NBT 键，不自动添加前缀；支持全部基础类型及数组。
+
+  * #### `toPrettyString(ItemStack item)`
+
+      * **返回类型:** `String`
+      * **功能描述:** 输出带缩进的美化 SNBT，方便人工阅读。
+
+  * #### `exportPluginNbt(ItemStack)` / `importPluginNbt(ItemStack,String)`
+
+      * **返回类型:** `String` / `ItemStack`
+      * **功能描述:** 仅导出/导入符合当前 `NbtKeyHandler` 前缀的自定义 NBT 区域，便于数据迁移与备份。
+      * **返回格式说明:** 同 SNBT；导入时仅处理带前缀键。
