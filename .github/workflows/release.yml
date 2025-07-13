@@ -1,44 +1,32 @@
-name: Release DrcomoCoreLib
-
+name: Upload local-built Jar
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*'          # 仅 Tag 触发
+
+permissions:
+  contents: write      # 生成 Release 需写权限
 
 jobs:
   publish:
     runs-on: windows-latest
-
     steps:
-      - name: 签出代码
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 设置 JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: 构建并提取版本
-        id: build
+      # 查找第一个非 original- 前缀的 jar
+      - name: Detect jar
+        id: jar
+        shell: pwsh
         run: |
-          mvn package -DskipTests
-          VER=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          echo "VER=$VER" >> $GITHUB_ENV
+          $jar = Get-ChildItem target\*.jar |
+                 Where-Object Name -NotMatch '^original-' |
+                 Select-Object -First 1 -ExpandProperty FullName;
+          echo "JAR_PATH=$jar" >> $Env:GITHUB_ENV
 
-      - name: 创建 Release
-        id: create_rel
-        uses: actions/create-release@v1
+      # 发布 Release 并上传刚找到的 Jar
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-
-      - name: 上传 Jar
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_rel.outputs.upload_url }}
-          asset_path: target/DrcomoCoreLib-${{ env.VER }}.jar
-          asset_name: DrcomoCoreLib-${{ env.VER }}.jar
-          asset_content_type: application/java-archive
+          files: ${{ env.JAR_PATH }}
