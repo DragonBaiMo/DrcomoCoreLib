@@ -20,6 +20,8 @@ public class ColorUtil {
     private static final Pattern HEX_PATTERN = Pattern.compile("&#([A-Fa-f0-9]{6})");
     // 匹配所有颜色代码
     private static final Pattern COLOR_PATTERN = Pattern.compile("(?i)[§&].");
+    // 缓存 Bukkit 版本号解析正则
+    private static final Pattern VERSION_PATTERN = Pattern.compile("1\\.(\\d+)");
 
     // 缓存的服务端主版本号，-1 表示尚未初始化
     private static int MAJOR_VERSION = -1;
@@ -101,8 +103,7 @@ public class ColorUtil {
      */
     private static int parseMajorVersion(Server server) {
         String v = server.getBukkitVersion();
-        Pattern p = Pattern.compile("1\\.(\\d+)");
-        Matcher m = p.matcher(v);
+        Matcher m = VERSION_PATTERN.matcher(v);
         if (m.find()) {
             try {
                 return Integer.parseInt(m.group(1));

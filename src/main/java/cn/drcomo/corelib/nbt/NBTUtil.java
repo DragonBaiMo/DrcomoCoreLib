@@ -646,7 +646,13 @@ public class NBTUtil {
                     dst.getStringList(key); // 创建空字符串列表占位
                     continue;
                 }
-                Object first = listVal.stream().filter(java.util.Objects::nonNull).findFirst().orElse(null);
+                Object first = null;
+                for (Object o : listVal) {
+                    if (o != null) {
+                        first = o;
+                        break;
+                    }
+                }
                 if (first == null) {
                     dst.getStringList(key);
                     continue;

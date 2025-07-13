@@ -344,22 +344,30 @@ public class SoundManager {
      */
     private SoundEffectData parseSoundString(String soundString) {
         try {
-            String[] parts = soundString.split("-");
-            if (parts.length < 1 || parts.length > 3) {
-                logger.warn("音效字符串格式无效: " + soundString);
-                return null;
-            }
+            if (soundString == null || soundString.isEmpty()) return null;
 
-            // 基础字段解析
-            String name = parts[0];
+            int first = soundString.indexOf('-');
+            int second = first < 0 ? -1 : soundString.indexOf('-', first + 1);
+
+            String name = first < 0 ? soundString : soundString.substring(0, first);
             float volume = 1.0f;
             float pitch = 1.0f;
 
-            if (parts.length >= 2) {
-                volume = Float.parseFloat(parts[1]);
-            }
-            if (parts.length == 3) {
-                pitch = Float.parseFloat(parts[2]);
+            if (first >= 0) {
+                String volStr = second < 0 ? soundString.substring(first + 1) : soundString.substring(first + 1, second);
+                try {
+                    volume = Float.parseFloat(volStr);
+                } catch (NumberFormatException e) {
+                    logger.warn("音量解析失败: " + soundString);
+                }
+                if (second >= 0) {
+                    String pitStr = soundString.substring(second + 1);
+                    try {
+                        pitch = Float.parseFloat(pitStr);
+                    } catch (NumberFormatException e) {
+                        logger.warn("音调解析失败: " + soundString);
+                    }
+                }
             }
 
             // 应用全局音量倍率

@@ -35,6 +35,8 @@ public class PlaceholderAPIUtil {
     private final Map<String, BiFunction<Player, String, String>> handlers = new HashMap<>();
     private final String identifier;
     private final PlaceholderExpansion expansion;
+    private final String authors;
+    private final String version;
 
     /**
      * 创建一个 PlaceholderAPIUtil 并立即注册到 PlaceholderAPI。
@@ -45,12 +47,14 @@ public class PlaceholderAPIUtil {
     public PlaceholderAPIUtil(Plugin pluginInstance, String identifier) {
         this.plugin = pluginInstance;
         this.identifier = identifier.toLowerCase();
+        this.authors = String.join("| ", plugin.getDescription().getAuthors());
+        this.version = plugin.getDescription().getVersion();
 
         this.expansion = new PlaceholderExpansion() {
             @Override public boolean canRegister()       { return true; }
             @Override public String getIdentifier()      { return PlaceholderAPIUtil.this.identifier; }
-            @Override public String getAuthor()          { return String.join(" | ", plugin.getDescription().getAuthors()); }
-            @Override public String getVersion()         { return plugin.getDescription().getVersion(); }
+            @Override public String getAuthor()          { return authors; }
+            @Override public String getVersion()         { return version; }
 
             @Override
             public String onPlaceholderRequest(Player player, String params) {
