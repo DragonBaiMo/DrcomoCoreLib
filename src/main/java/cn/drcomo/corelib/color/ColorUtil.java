@@ -21,6 +21,9 @@ public class ColorUtil {
     // 匹配所有颜色代码
     private static final Pattern COLOR_PATTERN = Pattern.compile("(?i)[§&].");
 
+    // 缓存的服务端主版本号，-1 表示尚未初始化
+    private static int MAJOR_VERSION = -1;
+
     private ColorUtil() {
         // 私有构造，禁止实例化
     }
@@ -39,7 +42,7 @@ public class ColorUtil {
         while (matcher.find()) {
             String hex = matcher.group(1);
             String replacement;
-            if (getMajorVersion(Bukkit.getServer()) >= 16) {
+            if (getMajorVersion() >= 16) {
                 // §x§R§R§G§G§B§B
                 StringBuilder rep = new StringBuilder("§x");
                 for (char c : hex.toCharArray()) {
@@ -74,15 +77,38 @@ public class ColorUtil {
         return COLOR_PATTERN.matcher(result).replaceAll("");
     }
 
-    /** 提取服务器 Bukkit 主版本号，比如 "1.18.2" → 18 */
-    private static int getMajorVersion(Server server) {
+    /**
+     * 在插件 <code>onEnable()</code> 阶段调用以缓存服务器主版本号，避免运行时频繁解析字符串。
+     *
+     * @param server Bukkit 服务器实例
+     */
+    public static void initMajorVersion(Server server) {
+        if (MAJOR_VERSION == -1) {
+            MAJOR_VERSION = parseMajorVersion(server);
+        }
+    }
+
+    /** 获取已缓存的主版本号，如未初始化则立即解析并缓存 */
+    private static int getMajorVersion() {
+        if (MAJOR_VERSION == -1) {
+            initMajorVersion(Bukkit.getServer());
+        }
+        return MAJOR_VERSION;
+    }
+
+    /**
+     * 解析服务器 Bukkit 主版本号，比如 "1.18.2" → 18
+     */
+    private static int parseMajorVersion(Server server) {
         String v = server.getBukkitVersion();
         Pattern p = Pattern.compile("1\\.(\\d+)");
         Matcher m = p.matcher(v);
         if (m.find()) {
             try {
                 return Integer.parseInt(m.group(1));
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+                // ignore and fall through
+            }
         }
         return 8; // 默认当作低版本
     }

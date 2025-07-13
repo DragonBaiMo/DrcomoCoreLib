@@ -72,4 +72,5 @@
   * **与业务层协作：**
     - GuiManager 只做通用处理，具体业务规则应由调用方实现。
 
------ 
+  * **跨版本兼容：**
+    - 不同 Minecraft / Bukkit 版本的 `ClickType` 枚举可能变动，升级核心库或 Spigot 版本后，应复核 `isDangerousClick` 判定规则。

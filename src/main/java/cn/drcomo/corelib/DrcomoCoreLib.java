@@ -5,6 +5,7 @@ import cn.drcomo.corelib.util.DebugUtil;
 import cn.drcomo.corelib.util.DebugUtil.LogLevel;
 import cn.drcomo.corelib.message.MessageService;
 import cn.drcomo.corelib.hook.placeholder.PlaceholderAPIUtil;
+import cn.drcomo.corelib.color.ColorUtil;
 
 public final class DrcomoCoreLib extends JavaPlugin {
 
@@ -15,6 +16,9 @@ public final class DrcomoCoreLib extends JavaPlugin {
     public void onEnable() {
         // 初始化仅供本库内部使用的 DebugUtil
         this.debug = new DebugUtil(this, LogLevel.INFO);
+
+        // 缓存服务器主版本号，避免运行时频繁解析
+        ColorUtil.initMajorVersion(getServer());
 
         // 打印启动信息，向服务器管理员说明本库的用途
         debug.info("====================================================");
