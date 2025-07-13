@@ -1,4 +1,9 @@
-target
+# 忽略 target 下所有文件
+/target/**      
+# 但保留正式版 Jar（版本化上传用）  
+!/target/*.jar  
+# 继续忽略带 original- 前缀的测试包  
+/target/original-*.jar  
 .idea
 .vscode
 .git
