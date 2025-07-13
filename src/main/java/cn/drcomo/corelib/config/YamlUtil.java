@@ -28,6 +28,7 @@ public class YamlUtil {
     private final Plugin plugin;
     private final DebugUtil logger;
     private final Map<String, YamlConfiguration> configs = new HashMap<>();
+    private final String jarPath;
 
     /**
      * 构造函数
@@ -38,6 +39,19 @@ public class YamlUtil {
     public YamlUtil(Plugin plugin, DebugUtil logger) {
         this.plugin = plugin;
         this.logger = logger;
+        String path;
+        try {
+            path = plugin.getClass()
+                          .getProtectionDomain()
+                          .getCodeSource()
+                          .getLocation()
+                          .toURI()
+                          .getPath();
+        } catch (Exception e) {
+            path = "";
+            logger.error("获取 JAR 路径失败", e);
+        }
+        this.jarPath = path;
     }
 
     /**
@@ -310,7 +324,7 @@ public class YamlUtil {
     }
 
     private void traverseJar(String folder, JarEntryConsumer consumer) throws Exception {
-        try (JarFile jar = new JarFile(getJarFilePath())) {
+        try (JarFile jar = new JarFile(jarPath)) {
             Enumeration<JarEntry> entries = jar.entries();
             while (entries.hasMoreElements()) {
                 JarEntry entry = entries.nextElement();
@@ -334,13 +348,6 @@ public class YamlUtil {
         }
     }
 
-    private String getJarFilePath() throws Exception {
-        return plugin.getClass()
-                     .getProtectionDomain()
-                     .getCodeSource()
-                     .getLocation()
-                     .toURI()
-                     .getPath();
-    }
+    // 保留供可能的扩展使用
 
 }
