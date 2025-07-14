@@ -74,3 +74,9 @@
 
   * **跨版本兼容：**
     - 不同 Minecraft / Bukkit 版本的 `ClickType` 枚举可能变动，升级核心库或 Spigot 版本后，应复核 `isDangerousClick` 判定规则。
+
+**5. 性能隐患与优化建议 (Performance Risks & Optimization)**
+
+- **高频事件**：背包事件与移动事件并列为顶级高频，禁止在主线程执行 O(n²) 搜索或 NBT 深拷贝。将静态常量（如允许操作的 material 列表）缓存到 `static final Set<Material>`，避免每次事件重建。
+- **同步 vs. 异步**：所有 Bukkit API 的物品栈修改必须在主线程。若业务逻辑需异步（数据库 / HTTP），请先复制轻量数据异步处理，再把结果 `Bukkit.getScheduler().runTask(plugin, () -> {...})` 回主线程写入物品。
+- **反射调用开销**：反射仅用于初始化时探测 & 缓存 `MethodHandle`，运行期用缓存对象调用。

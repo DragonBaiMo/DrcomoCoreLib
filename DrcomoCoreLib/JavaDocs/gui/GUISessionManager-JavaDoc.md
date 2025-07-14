@@ -99,3 +99,7 @@
 
   * **多服环境注意：**
     - Bungee/VeloCity 环境下玩家跨服前，应主动 `closeSession`，防止物品留在临时 GUI 中导致丢失。
+
+**5. 多窗口并存注意事项 (Multi-Window Concurrency)**
+
+- 某些插件允许叠加 GUI（如背包插件 + 自定义 GUI）。必须确保仅对目标窗口作限制，判断 `InventoryView#getTopInventory()` 与自定义 GUI 的 holder 是否匹配。

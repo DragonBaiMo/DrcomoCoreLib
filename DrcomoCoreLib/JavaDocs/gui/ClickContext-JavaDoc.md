@@ -27,47 +27,62 @@
   * #### `isShift()`
 
       * **返回类型:** `boolean`
-      * **功能描述:** 判断点击是否为 Shift + 点击。
+      * **功能描述:** 判断点击是否为 Shift + 点击。内部委托 `ClickTypeUtil.isShift(clickType)` 实现。
+      * **无上下文时推荐：** 直接使用 `ClickTypeUtil.isShift(type)`。
 
   * #### `isLeftClick()`
 
       * **返回类型:** `boolean`
-      * **功能描述:** 判断是否按下左键。
+      * **功能描述:** 判断是否按下左键。内部委托 `ClickTypeUtil.isLeftClick(clickType)` 实现。
+      * **无上下文时推荐：** 直接使用 `ClickTypeUtil.isLeftClick(type)`。
 
   * #### `isRightClick()`
 
       * **返回类型:** `boolean`
-      * **功能描述:** 判断是否按下右键。
+      * **功能描述:** 判断是否按下右键。内部委托 `ClickTypeUtil.isRightClick(clickType)` 实现。
+      * **无上下文时推荐：** 直接使用 `ClickTypeUtil.isRightClick(type)`。
 
   * #### `isMiddleClick()`
 
       * **返回类型:** `boolean`
-      * **功能描述:** 判断是否按下中键。
+      * **功能描述:** 判断是否按下中键。内部委托 `ClickTypeUtil.isMiddleClick(clickType)` 实现。
+      * **无上下文时推荐：** 直接使用 `ClickTypeUtil.isMiddleClick(type)`。
 
   * #### `isNumberKey()`
 
       * **返回类型:** `boolean`
-      * **功能描述:** 判断点击是否来自数字键。
+      * **功能描述:** 判断点击是否来自数字键。内部委托 `ClickTypeUtil.isNumberKey(clickType)` 实现。
+      * **无上下文时推荐：** 直接使用 `ClickTypeUtil.isNumberKey(type)`。
 
   * #### `isDrop()`
 
       * **返回类型:** `boolean`
-      * **功能描述:** 判断是否按下丢弃键。
+      * **功能描述:** 判断是否按下丢弃键。内部委托 `ClickTypeUtil.isDrop(clickType)` 实现。
+      * **无上下文时推荐：** 直接使用 `ClickTypeUtil.isDrop(type)`。
 
   * #### `isControlDrop()`
 
       * **返回类型:** `boolean`
-      * **功能描述:** 判断是否按下 Ctrl+丢弃。
+      * **功能描述:** 判断是否按下 Ctrl+丢弃。内部委托 `ClickTypeUtil.isControlDrop(clickType)` 实现。
+      * **无上下文时推荐：** 直接使用 `ClickTypeUtil.isControlDrop(type)`。
 
   * #### `isSwapOffhand()`
 
       * **返回类型:** `boolean`
-      * **功能描述:** 判断是否与副手物品交换。
+      * **功能描述:** 判断是否与副手物品交换。内部委托 `ClickTypeUtil.isSwapOffhand(clickType)` 实现。
+      * **无上下文时推荐：** 直接使用 `ClickTypeUtil.isSwapOffhand(type)`。
+
+  * #### `isKeyboardTriggerClick()`
+
+      * **返回类型:** `boolean`
+      * **功能描述:** 判断是否为快捷键操作点击（Shift、数字键、副手交换、双击、窗口边缘）。内部委托 `ClickTypeUtil.isKeyboardTriggerClick(clickType)` 实现。
+      * **无上下文时推荐：** 直接使用 `ClickTypeUtil.isKeyboardTriggerClick(type)`。
 
   * #### `isDangerous()`
 
       * **返回类型:** `boolean`
-      * **功能描述:** 判断该点击是否被视为危险操作。
+      * **功能描述:** 判断该点击是否被视为危险操作。内部委托 `ClickTypeUtil.isDangerous(clickType)` 实现。
+      * **无上下文时推荐：** 直接使用 `ClickTypeUtil.isDangerous(type)`。
 
 **4. 注意事项 (Cautions)**
   * **上下文数据构造边界：**
@@ -83,3 +98,7 @@
     - 避免在异步线程直接操作 Bukkit API。
   * **持久化与缓存：**
     - 不要将 ClickContext 本身缓存或序列化；如确有需要，仅存储业务必需的最小字段。
+
+**5. 槽位与容器类型注意事项 (Slot & Container Type Cautions)**
+
+- 服务端不同版本对 `slot` 的含义不同，`clickedInventory` 可能为 `null`，工作台、盔甲架、展示框等有自定义槽位编号。建议使用 `InventoryView#convertSlot(int)` 统一转化，通过 `InventoryType`/`Holder` 判断容器类型，务必区分顶部容器与玩家背包。

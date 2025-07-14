@@ -29,22 +29,12 @@ public class GuiManager {
     /**
      * 判断点击类型是否危险，需拦截。
      *
-     * @param click 点击类型
+     * @param ctx 点击上下文
      * @return true 表示危险
      */
-    public boolean isDangerousClick(ClickType click) {
-        if (click == null) {
-            return true;
-        }
-        return click.isShiftClick()
-                || click.isKeyboardClick()
-                || click.isCreativeAction()
-                || click == ClickType.DOUBLE_CLICK
-                || click == ClickType.SWAP_OFFHAND
-                || click == ClickType.UNKNOWN
-                || click == ClickType.CONTROL_DROP
-                || click == ClickType.NUMBER_KEY
-                || click == ClickType.DROP;
+    @Deprecated
+    public boolean isDangerousClick(ClickContext ctx) {
+        return ctx.isDangerous();
     }
 
     /**

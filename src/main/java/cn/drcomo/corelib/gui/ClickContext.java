@@ -37,71 +37,70 @@ public record ClickContext(
      * 是否为 Shift 点击。
      */
     public boolean isShift() {
-        return clickType.isShiftClick();
+        return ClickTypeUtil.isShift(clickType);
     }
 
     /**
      * 是否为左键点击。
      */
     public boolean isLeftClick() {
-        return clickType.isLeftClick();
+        return ClickTypeUtil.isLeftClick(clickType);
     }
 
     /**
      * 是否为右键点击。
      */
     public boolean isRightClick() {
-        return clickType.isRightClick();
+        return ClickTypeUtil.isRightClick(clickType);
     }
 
     /**
      * 是否为中键点击。
      */
     public boolean isMiddleClick() {
-        return clickType == ClickType.MIDDLE;
+        return ClickTypeUtil.isMiddleClick(clickType);
     }
 
     /**
-
      * 是否使用数字键。
      */
     public boolean isNumberKey() {
-        return clickType == ClickType.NUMBER_KEY;
+        return ClickTypeUtil.isNumberKey(clickType);
     }
 
     /**
      * 是否按下丢弃键。
      */
     public boolean isDrop() {
-        return clickType == ClickType.DROP;
+        return ClickTypeUtil.isDrop(clickType);
     }
 
     /**
      * 是否为 Ctrl+丢弃。
      */
     public boolean isControlDrop() {
-        return clickType == ClickType.CONTROL_DROP;
+        return ClickTypeUtil.isControlDrop(clickType);
     }
 
     /**
      * 是否为与副手交换。
      */
     public boolean isSwapOffhand() {
-        return clickType == ClickType.SWAP_OFFHAND;
+        return ClickTypeUtil.isSwapOffhand(clickType);
     }
 
     /**
-     * 是否属于危险点击。
+     * 是否为快捷键操作点击。
+     * 包括 Shift+点击、副手切换、数字键点击、双击、窗口边缘点击
+     */
+    public boolean isKeyboardTriggerClick() {
+        return ClickTypeUtil.isKeyboardTriggerClick(clickType);
+    }
+
+    /**
+     * 是否属于非普通点击 (除 Left 和 Right 点击外)。
      */
     public boolean isDangerous() {
-        if (clickType == null) {
-            return true;
-        }
-        return clickType.isShiftClick()
-                || clickType.isKeyboardClick()
-                || clickType.isCreativeAction()
-                || clickType == ClickType.DOUBLE_CLICK
-                || clickType == ClickType.SWAP_OFFHAND
-                || clickType == ClickType.UNKNOWN;
+        return ClickTypeUtil.isDangerous(clickType);
     }
 }
