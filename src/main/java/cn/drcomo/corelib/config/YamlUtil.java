@@ -10,12 +10,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
+import java.nio.file.StandardWatchEventKinds;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -289,6 +296,45 @@ public class YamlUtil {
             });
         } catch (Exception e) {
             logger.error("初始化复制文件夹失败: " + resourceFolder, e);
+        }
+    }
+
+    /**
+     * 监听指定配置文件，一旦文件被修改则自动重载并触发回调。
+     *
+     * @param configName 配置文件名（不含 .yml）
+     * @param onChange   文件变更后的回调，提供最新的 YamlConfiguration
+     */
+    public void watchConfig(String configName, Consumer<YamlConfiguration> onChange) {
+        File file = getConfigFile(configName);
+        Path dir = file.getParentFile().toPath();
+        try {
+            WatchService service = FileSystems.getDefault().newWatchService();
+            dir.register(service, StandardWatchEventKinds.ENTRY_MODIFY);
+            Thread watcher = new Thread(() -> {
+                while (true) {
+                    WatchKey key;
+                    try {
+                        key = service.take();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                    for (WatchEvent<?> event : key.pollEvents()) {
+                        Path changed = dir.resolve((Path) event.context());
+                        if (changed.equals(file.toPath())) {
+                            reloadConfig(configName);
+                            onChange.accept(getConfig(configName));
+                        }
+                    }
+                    if (!key.reset()) break;
+                }
+            }, "YamlUtil-Watch-" + configName);
+            watcher.setDaemon(true);
+            watcher.start();
+            logger.info("开始监听配置文件: " + file.getName());
+        } catch (IOException e) {
+            logger.error("监听配置文件失败: " + file.getName(), e);
         }
     }
 

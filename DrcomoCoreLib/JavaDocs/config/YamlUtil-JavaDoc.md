@@ -144,3 +144,12 @@
       * **参数说明:**
           * `fileName` (`String`): 文件名。
           * `path` (`String`): 路径。
+
+  * #### `watchConfig(String configName, Consumer<YamlConfiguration> onChange)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 使用 `WatchService` 监听配置文件变更。当文件内容被修改时，自
+      动重载该文件并执行回调函数。
+      * **参数说明:**
+          * `configName` (`String`): 文件名（不含 `.yml`）。
+          * `onChange` (`Consumer<YamlConfiguration>`): 变更后的回调，参数为最新配置。
