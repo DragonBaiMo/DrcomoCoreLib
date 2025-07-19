@@ -90,9 +90,21 @@ public class MessageService {
 
     // === 基础消息获取与解析方法 ===
 
+    /**
+     * 解析完整键名，自动补全配置的 {@code keyPrefix} 前缀。
+     *
+     * @param key 原始键名
+     * @return 如果缺失则补上前缀后的键名
+     */
+    private String resolveKey(String key) {
+        return keyPrefix.isEmpty() || key.startsWith(keyPrefix)
+                ? key
+                : keyPrefix + key;
+    }
+
     /** 从缓存中获取原始消息。 */
     public String getRaw(String key) {
-        String actual = keyPrefix.isEmpty() || key.startsWith(keyPrefix) ? key : keyPrefix + key;
+        String actual = resolveKey(key);
         String raw = messages.get(actual);
         if (raw == null) {
             logger.warn("未找到原始消息，键: " + actual);
@@ -138,12 +150,13 @@ public class MessageService {
 
     /** 从语言文件获取原始消息列表。 */
     public List<String> getList(String key) {
+        String actual = resolveKey(key);
         YamlConfiguration cfg = yamlUtil.getConfig(langConfigPath);
-        List<String> list = cfg.getStringList(key);
+        List<String> list = cfg.getStringList(actual);
         if (list.isEmpty()) {
-            logger.warn("未找到消息列表，键: " + key);
+            logger.warn("未找到消息列表，键: " + actual);
         } else {
-            logger.debug("获取消息列表，键: " + key + "，条目数: " + list.size());
+            logger.debug("获取消息列表，键: " + actual + "，条目数: " + list.size());
         }
         return list;
     }
