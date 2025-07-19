@@ -261,6 +261,15 @@
           * `player` (`Player`): 目标玩家。
           * `messages` (`List<String>`): 已经解析和处理好颜色的消息列表。
 
+  * #### `sendActionBar(Player player, String key, Map<String, String> custom)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 解析并通过 ActionBar 向玩家发送单行消息。
+      * **参数说明:**
+          * `player` (`Player`): 目标玩家。
+          * `key` (`String`): 消息键。
+          * `custom` (`Map<String, String>`): 自定义占位符。
+
   * #### `sendStagedActionBar(Player player, List<String> messages)`
 
       * **返回类型:** `void`
@@ -268,6 +277,16 @@
       * **参数说明:**
           * `player` (`Player`): 目标玩家。
           * `messages` (`List<String>`): 要在 ActionBar 上显示的消息列表。
+
+  * #### `sendTitle(Player player, String titleKey, String subKey, Map<String, String> custom)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 解析并向玩家发送标题和副标题。
+      * **参数说明:**
+          * `player` (`Player`): 目标玩家。
+          * `titleKey` (`String`): 主标题的消息键。
+          * `subKey` (`String`): 副标题的消息键。
+          * `custom` (`Map<String, String>`): 自定义占位符。
 
   * #### `sendStagedTitle(Player player, List<String> titles, List<String> subtitles)`
 

@@ -259,6 +259,19 @@ public class MessageService {
         sendColorizedList(player, messages);
     }
 
+    /**
+     * 解析并向玩家发送一条 ActionBar 消息。
+     *
+     * @param player 目标玩家
+     * @param key    消息键
+     * @param custom 自定义占位符
+     */
+    public void sendActionBar(Player player, String key, Map<String, String> custom) {
+        String msg = parse(key, player, custom);
+        if (msg != null) sendActionBar(player, msg);
+        else logger.warn("发送 ActionBar 失败，键: " + key);
+    }
+
     public void sendStagedActionBar(Player player, List<String> messages) {
         for (String msg : messages) sendActionBar(player, msg);
     }
@@ -266,6 +279,21 @@ public class MessageService {
     public void sendStagedTitle(Player player, List<String> titles, List<String> subtitles) {
         int n = Math.min(titles.size(), subtitles.size());
         for (int i = 0; i < n; i++) sendTitle(player, titles.get(i), subtitles.get(i));
+    }
+
+    /**
+     * 解析并向玩家发送 Title 与 SubTitle。
+     *
+     * @param player   目标玩家
+     * @param titleKey 主标题键
+     * @param subKey   副标题键
+     * @param custom   自定义占位符
+     */
+    public void sendTitle(Player player, String titleKey, String subKey, Map<String, String> custom) {
+        String title = parse(titleKey, player, custom);
+        String sub = parse(subKey, player, custom);
+        if (title != null && sub != null) sendTitle(player, title, sub);
+        else logger.warn("发送 Title 失败，键: " + titleKey + " / " + subKey);
     }
 
     // === 上下文消息管理 ===
