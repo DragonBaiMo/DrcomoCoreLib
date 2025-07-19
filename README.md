@@ -80,6 +80,9 @@ public class MyAwesomePlugin extends JavaPlugin {
 
         // 2. 为你的插件创建独立的 Yaml 配置工具，并注入日志实例
         myYamlUtil = new YamlUtil(this, myLogger);
+        myYamlUtil.loadConfig("config");
+        myYamlUtil.watchConfig("config", updated ->
+                myLogger.info("配置文件已重新加载！"));
 
         // 3. 实例化 SoundManager，注入所有需要的依赖
         mySoundManager = new SoundManager(
