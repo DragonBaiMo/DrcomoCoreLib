@@ -78,6 +78,14 @@
       * **参数说明:**
           * `fileName` (`String`): 文件名，**不**包含 `.yml` 后缀。
 
+  * #### `loadAllConfigsInFolder(String folderPath)`
+
+      * **返回类型:** `Map<String, YamlConfiguration>`
+      * **功能描述:** 扫描指定目录下的所有 `.yml` 文件并逐个加载，返回的映射以文件名为键，`YamlConfiguration` 为值，同时写入内部缓存。
+      * **参数说明:**
+          * `folderPath` (`String`): 相对于插件数据文件夹的目录路径。
+      * **返回值:** `Map<文件名, 配置对象>`
+
   * #### `reloadConfig(String fileName)`
 
       * **返回类型:** `void`

@@ -149,6 +149,36 @@ public class YamlUtil {
     }
 
     /**
+     * 扫描指定目录下的所有 {@code .yml} 文件并全部加载。
+     * 加载的配置会放入内部缓存，以文件名（不含副档名）为键。
+     *
+     * @param folderPath 相对于插件数据文件夹的目录路径
+     * @return 以文件名为键、配置对象为值的映射
+     */
+    public Map<String, YamlConfiguration> loadAllConfigsInFolder(String folderPath) {
+        Map<String, YamlConfiguration> map = new HashMap<>();
+        File dir = new File(plugin.getDataFolder(), folderPath);
+        if (!dir.exists() || !dir.isDirectory()) {
+            logger.warn("目录不存在: " + dir.getPath());
+            return map;
+        }
+        File[] files = dir.listFiles((d, name) -> name.endsWith(".yml"));
+        if (files == null) return map;
+        for (File file : files) {
+            String name = file.getName().replaceFirst("\\.yml$", "");
+            try {
+                YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
+                configs.put(name, cfg);
+                map.put(name, cfg);
+                logger.debug("Loaded config: " + file.getPath());
+            } catch (Exception e) {
+                logger.error("加载配置失败: " + file.getPath(), e);
+            }
+        }
+        return map;
+    }
+
+    /**
      * 重载配置文件
      *
      * @param fileName 文件名（不含 .yml）
