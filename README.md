@@ -92,6 +92,12 @@ public class MyAwesomePlugin extends JavaPlugin {
         );
         mySoundManager.loadSounds(); // 手动加载音效
 
+        // 4. 使用类型安全的方式读取配置
+        boolean autoSave = myYamlUtil.getValue("settings.auto-save", Boolean.class, true);
+        if (autoSave) {
+            myLogger.info("自动保存已启用");
+        }
+
         myLogger.info("我的插件已成功加载，并配置好了核心库工具！");
     }
 }

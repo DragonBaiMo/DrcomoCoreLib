@@ -144,3 +144,12 @@
       * **参数说明:**
           * `fileName` (`String`): 文件名。
           * `path` (`String`): 路径。
+
+  * #### `getValue(String path, Class<T> type, T defaultValue)`
+
+      * **返回类型:** `<T>`
+      * **功能描述:** 从默认 `config.yml` 中按给定类型读取值。若路径不存在或类型不符，会写入并返回 `defaultValue`。
+      * **参数说明:**
+          * `path` (`String`): 配置路径。
+          * `type` (`Class<T>`): 期望的类型，例如 `String.class`。
+          * `defaultValue` (`T`): 默认值。
