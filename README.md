@@ -95,6 +95,12 @@ public class MyAwesomePlugin extends JavaPlugin {
         );
         mySoundManager.loadSounds(); // 手动加载音效
 
+        // 4. 使用类型安全的方式读取配置
+        boolean autoSave = myYamlUtil.getValue("settings.auto-save", Boolean.class, true);
+        if (autoSave) {
+            myLogger.info("自动保存已启用");
+        }
+
         myLogger.info("我的插件已成功加载，并配置好了核心库工具！");
     }
 }
@@ -105,7 +111,7 @@ public class MyAwesomePlugin extends JavaPlugin {
 本库提供以下核心工具类，所有类都需通过 `new` 关键字实例化使用：
 
   * `DebugUtil`: 分级日志工具。
-  * `YamlUtil`: YAML 配置文件管理器。
+  * `YamlUtil`: YAML 配置文件管理器，可一次性加载目录内的多份配置。
   * `MessageService`: 支持多语言和 PlaceholderAPI 的消息管理器。
   * `SoundManager`: 音效管理器。
   * `NBTUtil`: 物品 NBT 数据操作工具。

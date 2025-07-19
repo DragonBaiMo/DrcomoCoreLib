@@ -36,6 +36,8 @@ public class YamlUtil {
     private final DebugUtil logger;
     private final Map<String, YamlConfiguration> configs = new HashMap<>();
     private final String jarPath;
+    /** 默认配置文件名 */
+    private static final String DEFAULT_FILE = "config";
 
     /**
      * 构造函数
@@ -154,6 +156,36 @@ public class YamlUtil {
     }
 
     /**
+     * 扫描指定目录下的所有 {@code .yml} 文件并全部加载。
+     * 加载的配置会放入内部缓存，以文件名（不含副档名）为键。
+     *
+     * @param folderPath 相对于插件数据文件夹的目录路径
+     * @return 以文件名为键、配置对象为值的映射
+     */
+    public Map<String, YamlConfiguration> loadAllConfigsInFolder(String folderPath) {
+        Map<String, YamlConfiguration> map = new HashMap<>();
+        File dir = new File(plugin.getDataFolder(), folderPath);
+        if (!dir.exists() || !dir.isDirectory()) {
+            logger.warn("目录不存在: " + dir.getPath());
+            return map;
+        }
+        File[] files = dir.listFiles((d, name) -> name.endsWith(".yml"));
+        if (files == null) return map;
+        for (File file : files) {
+            String name = file.getName().replaceFirst("\\.yml$", "");
+            try {
+                YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
+                configs.put(name, cfg);
+                map.put(name, cfg);
+                logger.debug("Loaded config: " + file.getPath());
+            } catch (Exception e) {
+                logger.error("加载配置失败: " + file.getPath(), e);
+            }
+        }
+        return map;
+    }
+
+    /**
      * 重载配置文件
      *
      * @param fileName 文件名（不含 .yml）
@@ -266,6 +298,27 @@ public class YamlUtil {
         ConfigurationSection sec = getConfig(fileName).getConfigurationSection(path);
         logger.debug("Section retrieved: " + path + " exists=" + (sec != null));
         return sec;
+    }
+
+    /**
+     * 从默认 config.yml 中以类型安全的方式读取配置。
+     * 若路径不存在或类型不符，则写入并返回默认值。
+     *
+     * @param path         配置路径
+     * @param type         期望的类型，例如 {@code String.class}
+     * @param defaultValue 默认值
+     * @return 读取到的值
+     */
+    public <T> T getValue(String path, Class<T> type, T defaultValue) {
+        YamlConfiguration cfg = getConfig(DEFAULT_FILE);
+        Object val = cfg.get(path);
+        if (val == null || !type.isInstance(val)) {
+            cfg.set(path, defaultValue);
+            saveConfig(DEFAULT_FILE);
+            logger.debug("Set typed default: " + path + " = " + defaultValue);
+            return defaultValue;
+        }
+        return type.cast(val);
     }
 
     /**
