@@ -120,9 +120,12 @@ public class MyAwesomePlugin extends JavaPlugin {
   * `MessageService`: 支持多语言和 PlaceholderAPI 的消息管理器。
   * `SoundManager`: 音效管理器。
   * `NBTUtil`: 物品 NBT 数据操作工具。
+  * `JsonUtil`: 适用于保存或读取 JSON 文件、验证与美化 JSON 字符串。
   * `PlaceholderAPIUtil`: PlaceholderAPI 占位符注册与解析工具。
   * `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
   * `ArchiveUtil`: 压缩、解压与日期归档管理工具。
+  * `AsyncTaskManager`: 统一管理异步任务与定时调度的工具。
+  * `PerformanceUtil`: 获取 TPS、CPU、内存与 GC 数据的性能监控工具。
   * ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
 
 ### **优化点分析：**
