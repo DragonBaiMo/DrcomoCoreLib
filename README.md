@@ -111,13 +111,20 @@ public class MyAwesomePlugin extends JavaPlugin {
 本库提供以下核心工具类，所有类都需通过 `new` 关键字实例化使用：
 
   * `DebugUtil`: 分级日志工具。
-  * `YamlUtil`: YAML 配置文件管理器，可一次性加载目录内的多份配置。
+ * `YamlUtil`: YAML 配置文件管理器，可一次性加载目录内的多份配置。
+ * `ConfigValidator`: 配置校验器，结合 `YamlUtil` 在加载或热重载配置时验证必填项与数据类型。
   * `MessageService`: 支持多语言和 PlaceholderAPI 的消息管理器。
   * `SoundManager`: 音效管理器。
   * `NBTUtil`: 物品 NBT 数据操作工具。
   * `PlaceholderAPIUtil`: PlaceholderAPI 占位符注册与解析工具。
-  * `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
-  * ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
+* `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
+* ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
+
+### 何时使用 ConfigValidator?
+
+在读取或重新加载配置文件后，如需确保配置键存在且类型正确，可使用 `ConfigValidator`。
+先通过 `validateString`、`validateNumber` 等方法声明字段规则，再调用 `validate(cfg)`
+获得 `ValidationResult`，根据 `isSuccess()` 决定是否继续执行插件逻辑。
 
 ### **优化点分析：**
 
