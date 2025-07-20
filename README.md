@@ -124,6 +124,7 @@ public class MyAwesomePlugin extends JavaPlugin {
   * `JsonUtil`: 适用于保存或读取 JSON 文件、验证与美化 JSON 字符串。
   * `PlaceholderAPIUtil`: PlaceholderAPI 占位符注册与解析工具。
   * `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
+  * `HttpUtil`: 异步 HTTP 请求工具，可配置代理、超时和重试。
   * `ArchiveUtil`: 压缩、解压与日期归档管理工具。
   * `AsyncTaskManager`: 统一管理异步任务与定时调度的工具。
   * `PerformanceUtil`: 获取 TPS、CPU、内存与 GC 数据的性能监控工具。
