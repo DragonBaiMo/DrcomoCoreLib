@@ -117,7 +117,18 @@ public class MyAwesomePlugin extends JavaPlugin {
   * `NBTUtil`: 物品 NBT 数据操作工具。
   * `PlaceholderAPIUtil`: PlaceholderAPI 占位符注册与解析工具。
   * `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
+  * `HttpUtil`: 异步 HTTP 请求工具，可配置代理、超时和重试。
   * ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
+
+### HttpUtil 使用时机
+
+在插件需要访问外部接口或上传数据时，可使用 `HttpUtil`。根据实际场景选择适当方法：
+
+* **get**：拉取远程配置或读取文本资源。
+* **post**：提交 JSON 或表单等数据，并处理返回值。
+* **upload**：向服务器上传文件。
+
+所有调用均返回 `CompletableFuture<String>`，可在回调中异步处理结果或异常。
 
 ### **优化点分析：**
 
