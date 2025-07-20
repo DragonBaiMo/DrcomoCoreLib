@@ -117,7 +117,17 @@ public class MyAwesomePlugin extends JavaPlugin {
   * `NBTUtil`: 物品 NBT 数据操作工具。
   * `PlaceholderAPIUtil`: PlaceholderAPI 占位符注册与解析工具。
   * `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
+  * `AsyncTaskManager`: 统一管理异步任务与定时调度的工具。
   * ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
+
+### AsyncTaskManager 使用指引
+
+* `submitAsync(Runnable)`: 当你只需在后台执行任务而不关心返回值时使用。
+* `submitAsync(Callable<T>)`: 当任务需要产出结果并通过 `Future` 获取时使用。
+* `scheduleAsync(Runnable, long, TimeUnit)`: 需要延迟执行一次任务时使用。
+* `scheduleAtFixedRate(Runnable, long, long, TimeUnit)`: 需要固定间隔循环执行任务时使用。
+* `submitBatch(Collection<? extends Runnable>)`: 一次性提交多个独立任务时使用。
+* `shutdown()`: 在插件关闭或不再需要异步能力时调用以回收线程。
 
 ### **优化点分析：**
 
