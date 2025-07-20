@@ -101,6 +101,11 @@ public class MyAwesomePlugin extends JavaPlugin {
             myLogger.info("自动保存已启用");
         }
 
+        // 5. 备份数据并清理旧归档
+        ArchiveUtil archiveUtil = new ArchiveUtil(myLogger);
+        String zip = archiveUtil.archiveByDate("plugins/MyPlugin/data", "backups");
+        archiveUtil.cleanupOldArchives("backups", 30);
+
         myLogger.info("我的插件已成功加载，并配置好了核心库工具！");
     }
 }
@@ -118,16 +123,10 @@ public class MyAwesomePlugin extends JavaPlugin {
   * `JsonUtil`: 适用于保存或读取 JSON 文件、验证与美化 JSON 字符串。
   * `PlaceholderAPIUtil`: PlaceholderAPI 占位符注册与解析工具。
   * `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
+  * `ArchiveUtil`: 压缩、解压与日期归档管理工具。
   * `AsyncTaskManager`: 统一管理异步任务与定时调度的工具。
   * `PerformanceUtil`: 获取 TPS、CPU、内存与 GC 数据的性能监控工具。
   * ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
-
-### **何时使用 JsonUtil？**
-
-当你需要将数据对象转为 JSON 保存到磁盘，或从 JSON 文件恢复为 Java 对象时，可调用
-`writeJsonFile` 与 `readJsonFile`。若只是临时序列化或反序列化字符串，可使用 `toJson`
-和 `fromJson`。`isValidJson` 适合在处理外部输入前做格式校验，`prettyPrint` 则常用于
-调试时输出更可读的 JSON 内容。
 
 ### **优化点分析：**
 
