@@ -16,8 +16,12 @@ title: DrcomoCoreLib JavaDocs
 
 
 ### 配置文件读写 (YAML)
-- **功能描述**：对 `.yml` 文件进行加载、重载、保存、读写键值、复制默认配置、获取配置节等操作。  
+- **功能描述**：对 `.yml` 文件进行加载、重载、保存、读写键值、复制默认配置、获取配置节等操作。
 - **查询文档**：[查看](./JavaDocs/config/YamlUtil-JavaDoc.md)
+
+### 配置校验
+- **功能描述**：在读取或重载配置后，验证必填项是否存在且类型正确。
+- **查询文档**：[查看](./JavaDocs/config/ConfigValidator-JavaDoc.md)
 
 
 ### 文本颜色处理

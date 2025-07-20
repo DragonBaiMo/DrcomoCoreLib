@@ -116,7 +116,8 @@ public class MyAwesomePlugin extends JavaPlugin {
 本库提供以下核心工具类，所有类都需通过 `new` 关键字实例化使用：
 
   * `DebugUtil`: 分级日志工具。
-  * `YamlUtil`: YAML 配置文件管理器，可一次性加载目录内的多份配置。
+ * `YamlUtil`: YAML 配置文件管理器，可一次性加载目录内的多份配置。
+ * `ConfigValidator`: 配置校验器，结合 `YamlUtil` 在加载或热重载配置时验证必填项与数据类型。
   * `MessageService`: 支持多语言和 PlaceholderAPI 的消息管理器。
   * `SoundManager`: 音效管理器。
   * `NBTUtil`: 物品 NBT 数据操作工具。
