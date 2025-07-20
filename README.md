@@ -101,6 +101,11 @@ public class MyAwesomePlugin extends JavaPlugin {
             myLogger.info("自动保存已启用");
         }
 
+        // 5. 备份数据并清理旧归档
+        ArchiveUtil archiveUtil = new ArchiveUtil(myLogger);
+        String zip = archiveUtil.archiveByDate("plugins/MyPlugin/data", "backups");
+        archiveUtil.cleanupOldArchives("backups", 30);
+
         myLogger.info("我的插件已成功加载，并配置好了核心库工具！");
     }
 }
@@ -117,6 +122,7 @@ public class MyAwesomePlugin extends JavaPlugin {
   * `NBTUtil`: 物品 NBT 数据操作工具。
   * `PlaceholderAPIUtil`: PlaceholderAPI 占位符注册与解析工具。
   * `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
+  * `ArchiveUtil`: 压缩、解压与日期归档管理工具。
   * ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
 
 ### **优化点分析：**
