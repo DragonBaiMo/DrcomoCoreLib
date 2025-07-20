@@ -117,12 +117,9 @@ public class MyAwesomePlugin extends JavaPlugin {
   * `NBTUtil`: 物品 NBT 数据操作工具。
   * `PlaceholderAPIUtil`: PlaceholderAPI 占位符注册与解析工具。
   * `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
+  * `AsyncTaskManager`: 统一管理异步任务与定时调度的工具。
   * `PerformanceUtil`: 获取 TPS、CPU、内存与 GC 数据的性能监控工具。
   * ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
-
-在需要排查卡顿或定期收集服务器性能数据时，可创建 `PerformanceUtil` 实例并调
-用 `snapshot()`。它会返回包含 TPS、CPU 占用和内存信息的 `PerformanceSnapshot`，便
-于记录或上报。
 
 ### **优化点分析：**
 
