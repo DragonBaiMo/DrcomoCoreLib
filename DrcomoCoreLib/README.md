@@ -64,6 +64,10 @@ title: DrcomoCoreLib JavaDocs
 - **功能描述**：计算字符串形式的数学表达式（支持变量）。  
 - **查询文档**：[查看](./JavaDocs/math/FormulaCalculator-JavaDoc.md)
 
+### 文件归档与压缩
+- **功能描述**：压缩或解压文件/目录，并可按日期归档和清理旧文件。
+- **查询文档**：[查看](./JavaDocs/archive/ArchiveUtil-JavaDoc.md)
+
 
 ### 音效管理
 - **功能描述**：从配置文件加载音效并通过键名（key）播放。  
