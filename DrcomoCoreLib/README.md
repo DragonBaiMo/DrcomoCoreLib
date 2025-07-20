@@ -16,8 +16,12 @@ title: DrcomoCoreLib JavaDocs
 
 
 ### 配置文件读写 (YAML)
-- **功能描述**：对 `.yml` 文件进行加载、重载、保存、读写键值、复制默认配置、获取配置节等操作。  
+- **功能描述**：对 `.yml` 文件进行加载、重载、保存、读写键值、复制默认配置、获取配置节等操作。
 - **查询文档**：[查看](./JavaDocs/config/YamlUtil-JavaDoc.md)
+
+### 配置校验
+- **功能描述**：在读取或重载配置后，验证必填项是否存在且类型正确。
+- **查询文档**：[查看](./JavaDocs/config/ConfigValidator-JavaDoc.md)
 
 
 ### 文本颜色处理
@@ -59,6 +63,10 @@ title: DrcomoCoreLib JavaDocs
 ### 数学公式计算
 - **功能描述**：计算字符串形式的数学表达式（支持变量）。  
 - **查询文档**：[查看](./JavaDocs/math/FormulaCalculator-JavaDoc.md)
+
+### 文件归档与压缩
+- **功能描述**：压缩或解压文件/目录，并可按日期归档和清理旧文件。
+- **查询文档**：[查看](./JavaDocs/archive/ArchiveUtil-JavaDoc.md)
 
 
 ### 音效管理

@@ -101,6 +101,11 @@ public class MyAwesomePlugin extends JavaPlugin {
             myLogger.info("自动保存已启用");
         }
 
+        // 5. 备份数据并清理旧归档
+        ArchiveUtil archiveUtil = new ArchiveUtil(myLogger);
+        String zip = archiveUtil.archiveByDate("plugins/MyPlugin/data", "backups");
+        archiveUtil.cleanupOldArchives("backups", 30);
+
         myLogger.info("我的插件已成功加载，并配置好了核心库工具！");
     }
 }
@@ -111,24 +116,19 @@ public class MyAwesomePlugin extends JavaPlugin {
 本库提供以下核心工具类，所有类都需通过 `new` 关键字实例化使用：
 
   * `DebugUtil`: 分级日志工具。
-  * `YamlUtil`: YAML 配置文件管理器，可一次性加载目录内的多份配置。
+ * `YamlUtil`: YAML 配置文件管理器，可一次性加载目录内的多份配置。
+ * `ConfigValidator`: 配置校验器，结合 `YamlUtil` 在加载或热重载配置时验证必填项与数据类型。
   * `MessageService`: 支持多语言和 PlaceholderAPI 的消息管理器。
   * `SoundManager`: 音效管理器。
   * `NBTUtil`: 物品 NBT 数据操作工具。
+  * `JsonUtil`: 适用于保存或读取 JSON 文件、验证与美化 JSON 字符串。
   * `PlaceholderAPIUtil`: PlaceholderAPI 占位符注册与解析工具。
   * `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
   * `HttpUtil`: 异步 HTTP 请求工具，可配置代理、超时和重试。
+  * `ArchiveUtil`: 压缩、解压与日期归档管理工具。
+  * `AsyncTaskManager`: 统一管理异步任务与定时调度的工具。
+  * `PerformanceUtil`: 获取 TPS、CPU、内存与 GC 数据的性能监控工具。
   * ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
-
-### HttpUtil 使用时机
-
-在插件需要访问外部接口或上传数据时，可使用 `HttpUtil`。根据实际场景选择适当方法：
-
-* **get**：拉取远程配置或读取文本资源。
-* **post**：提交 JSON 或表单等数据，并处理返回值。
-* **upload**：向服务器上传文件。
-
-所有调用均返回 `CompletableFuture<String>`，可在回调中异步处理结果或异常。
 
 ### **优化点分析：**
 
