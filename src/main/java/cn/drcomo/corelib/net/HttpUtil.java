@@ -76,8 +76,14 @@ public class HttpUtil {
      * @return 异步响应字符串
      */
     public CompletableFuture<String> upload(String url, java.nio.file.Path path, Map<String, String> headers) {
-        HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(url))
-                .POST(HttpRequest.BodyPublishers.ofFile(path));
+        HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(url));
+        try {
+            req.POST(HttpRequest.BodyPublishers.ofFile(path));
+        } catch (java.io.FileNotFoundException e) {
+            CompletableFuture<String> fail = new CompletableFuture<>();
+            fail.completeExceptionally(new java.util.concurrent.CompletionException("文件未找到: " + path, e));
+            return fail;
+        }
         applyHeaders(req, headers);
         return sendAsync(req.build(), 0);
     }

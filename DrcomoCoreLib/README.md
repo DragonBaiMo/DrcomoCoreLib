@@ -20,8 +20,11 @@ title: DrcomoCoreLib JavaDocs
 - **查询文档**：[查看](./JavaDocs/config/YamlUtil-JavaDoc.md)
 
 ### 配置校验
-- **功能描述**：在读取或重载配置后，验证必填项是否存在且类型正确。
-- **查询文档**：[查看](./JavaDocs/config/ConfigValidator-JavaDoc.md)
+- **功能描述**：在读取或重载配置后，验证必填项是否存在且类型正确，支持字符串、数值、枚举类型验证以及自定义校验规则。
+- **核心查询**：[查看](./JavaDocs/config/ConfigValidator-JavaDoc.md)（配置校验器主入口）
+- **关联查询**：
+  - [查看](./JavaDocs/config/ValidatorBuilder-JavaDoc.md)（链式校验规则构建器）
+  - [查看](./JavaDocs/config/ValidationResult-JavaDoc.md)（校验结果处理）
 
 
 ### 文本颜色处理
@@ -63,6 +66,27 @@ title: DrcomoCoreLib JavaDocs
 ### 数学公式计算
 - **功能描述**：计算字符串形式的数学表达式（支持变量）。  
 - **查询文档**：[查看](./JavaDocs/math/FormulaCalculator-JavaDoc.md)
+
+
+### 异步任务管理
+- **功能描述**：管理异步任务执行，支持任务提交、延迟执行、定时调度、批量处理等，内置异常捕获和日志记录。
+- **查询文档**：[查看](./JavaDocs/async/AsyncTaskManager-JavaDoc.md)
+
+
+### 性能监控
+- **功能描述**：实时获取服务器TPS、CPU使用率、内存使用情况和GC统计信息，支持Paper和Spigot服务器。
+- **查询文档**：[查看](./JavaDocs/performance/PerformanceUtil-JavaDoc.md)（性能采集工具）
+- **关联查询**：[查看](./JavaDocs/performance/PerformanceSnapshot-JavaDoc.md)（性能快照数据）
+
+
+### JSON序列化工具
+- **功能描述**：基于Gson的JSON序列化与反序列化工具，支持对象转JSON、JSON转对象、文件读写和复杂泛型类型解析。
+- **查询文档**：[查看](./JavaDocs/json/JsonUtil-JavaDoc.md)
+
+
+### HTTP网络请求
+- **功能描述**：基于Java 11 HttpClient的异步HTTP工具，支持GET/POST请求、文件上传、代理配置、超时设置和重试机制。
+- **查询文档**：[查看](./JavaDocs/net/HttpUtil-JavaDoc.md)
 
 ### 文件归档与压缩
 - **功能描述**：压缩或解压文件/目录，并可按日期归档和清理旧文件。

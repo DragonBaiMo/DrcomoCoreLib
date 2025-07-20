@@ -39,24 +39,43 @@
           * `path` (`String`): 配置路径。
           * `enumClass` (`Class<E>`): 期望的枚举类型。
 
-  * #### `required()` *(ValidatorBuilder)*
-
-      * **返回类型:** `ValidatorBuilder`
-      * **功能描述:** 标记当前配置项为必填项，若缺失则校验失败。
-      * **参数说明:** 无。
-
-  * #### `custom(Predicate<Object> rule, String message)` *(ValidatorBuilder)*
-
-      * **返回类型:** `ValidatorBuilder`
-      * **功能描述:** 为当前配置项添加自定义校验规则，当 `rule.test(value)` 返回 `false` 时，校验失败并记录 `message`。
-      * **参数说明:**
-          * `rule` (`Predicate<Object>`): 自定义断言。
-          * `message` (`String`): 失败时的提示信息。
-
   * #### `validate(Configuration config)`
 
       * **返回类型:** `ValidationResult`
       * **功能描述:** 针对给定的 `Configuration` 执行所有已声明的校验，并返回结果对象，包含是否通过及所有错误信息。
       * **参数说明:**
           * `config` (`Configuration`): 要校验的配置实例。
+
+**4. 完整工作流程 (Complete Workflow)**
+
+```java
+// 1. 准备配置和依赖
+YamlUtil yamlUtil = new YamlUtil(plugin, logger);
+yamlUtil.loadConfig("config");
+ConfigValidator validator = new ConfigValidator(yamlUtil, logger);
+
+// 2. 声明校验规则（返回 ValidatorBuilder 进行链式配置）
+validator.validateString("server.name").required();
+validator.validateNumber("server.port").required()
+    .custom(port -> ((Number) port).intValue() > 0, "端口必须大于0");
+validator.validateEnum("server.mode", ServerMode.class);
+
+// 3. 执行校验（返回 ValidationResult）
+ValidationResult result = validator.validate(yamlUtil.getConfig());
+
+// 4. 处理结果
+if (result.isSuccess()) {
+    logger.info("配置校验通过");
+} else {
+    for (String error : result.getErrors()) {
+        logger.error("配置错误: " + error);
+    }
+}
+```
+
+**5. 相关类说明 (Related Classes)**
+
+  * **ValidatorBuilder:** 由 `validateXxx()` 方法返回，用于设置具体的校验约束。[查看详细文档](./ValidatorBuilder-JavaDoc.md)
+  * **ValidationResult:** 由 `validate()` 方法返回，包含校验结果和错误信息。[查看详细文档](./ValidationResult-JavaDoc.md)
+  * **YamlUtil:** 提供配置文件加载功能，ConfigValidator 需要其提供的 Configuration 对象。
 
