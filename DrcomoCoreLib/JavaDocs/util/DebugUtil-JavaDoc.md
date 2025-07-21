@@ -93,3 +93,19 @@
           * `message` (`String`): 对错误的描述信息。
           * `t` (`Throwable`): 捕获到的异常对象。
 
+**4. 高级配置示例 (Advanced Usage)**
+
+  * 自定义前缀与模板：
+    ```java
+    DebugUtil logger = new DebugUtil(this, DebugUtil.LogLevel.INFO);
+    logger.setPrefix("&f[&bMyPlugin&r]&f ");
+    logger.setFormatTemplate("%prefix%[%level%] %msg%");
+    ```
+
+  * 将日志写入额外文件：
+    ```java
+    logger.addFileHandler(new File(getDataFolder(), "debug.log"));
+    ```
+
+  * 也可使用 `addHandler()` 转发到自定义 `java.util.logging.Handler`。
+
