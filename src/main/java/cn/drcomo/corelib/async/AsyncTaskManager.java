@@ -26,24 +26,21 @@ public class AsyncTaskManager {
     private final ScheduledExecutorService scheduler;
 
     /**
-     * 构造异步任务管理器。
+     * 构造异步任务管理器，使用默认线程池实现。
      *
      * @param plugin 插件实例
      * @param logger DebugUtil 日志工具
      */
     public AsyncTaskManager(Plugin plugin, DebugUtil logger) {
+        this(plugin, logger, createDefaultExecutor(plugin), createDefaultScheduler(plugin));
+    }
+
+    private AsyncTaskManager(Plugin plugin, DebugUtil logger,
+                             ExecutorService executor, ScheduledExecutorService scheduler) {
         this.plugin = plugin;
         this.logger = logger;
-        this.executor = Executors.newCachedThreadPool(r -> {
-            Thread t = new Thread(r, plugin.getName() + "-Async-" + THREAD_COUNTER.getAndIncrement());
-            t.setDaemon(true);
-            return t;
-        });
-        this.scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, plugin.getName() + "-Scheduler-" + THREAD_COUNTER.getAndIncrement());
-            t.setDaemon(true);
-            return t;
-        });
+        this.executor = executor;
+        this.scheduler = scheduler;
     }
 
     /**
@@ -135,5 +132,62 @@ public class AsyncTaskManager {
                 throw e;
             }
         };
+    }
+
+    private static ExecutorService createDefaultExecutor(Plugin plugin) {
+        return Executors.newCachedThreadPool(r -> {
+            Thread t = new Thread(r, plugin.getName() + "-Async-" + THREAD_COUNTER.getAndIncrement());
+            t.setDaemon(true);
+            return t;
+        });
+    }
+
+    private static ScheduledExecutorService createDefaultScheduler(Plugin plugin) {
+        return Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, plugin.getName() + "-Scheduler-" + THREAD_COUNTER.getAndIncrement());
+            t.setDaemon(true);
+            return t;
+        });
+    }
+
+    /**
+     * 创建 Builder 以自定义线程池。
+     */
+    public static Builder newBuilder(Plugin plugin, DebugUtil logger) {
+        return new Builder(plugin, logger);
+    }
+
+    /**
+     * 构建器，用于自定义执行器实现。
+     */
+    public static class Builder {
+        private final Plugin plugin;
+        private final DebugUtil logger;
+        private ExecutorService executor;
+        private ScheduledExecutorService scheduler;
+
+        private Builder(Plugin plugin, DebugUtil logger) {
+            this.plugin = plugin;
+            this.logger = logger;
+        }
+
+        /** 设置自定义执行线程池 */
+        public Builder executor(ExecutorService executor) {
+            this.executor = executor;
+            return this;
+        }
+
+        /** 设置自定义调度线程池 */
+        public Builder scheduler(ScheduledExecutorService scheduler) {
+            this.scheduler = scheduler;
+            return this;
+        }
+
+        /** 构建 AsyncTaskManager 实例 */
+        public AsyncTaskManager build() {
+            ExecutorService ex = executor != null ? executor : createDefaultExecutor(plugin);
+            ScheduledExecutorService sch = scheduler != null ? scheduler : createDefaultScheduler(plugin);
+            return new AsyncTaskManager(plugin, logger, ex, sch);
+        }
     }
 }

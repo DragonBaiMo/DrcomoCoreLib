@@ -130,6 +130,22 @@ public class MyAwesomePlugin extends JavaPlugin {
   * `PerformanceUtil`: 获取 TPS、CPU、内存与 GC 数据的性能监控工具。
   * ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
 
+### **更换线程池示例**
+
+通过 `AsyncTaskManager.newBuilder()` 可接入自定义线程池或调度器。
+
+```java
+ExecutorService exec = Executors.newFixedThreadPool(4);
+ScheduledExecutorService sched = Executors.newSingleThreadScheduledExecutor();
+AsyncTaskManager manager = AsyncTaskManager
+        .newBuilder(this, myLogger)
+        .executor(exec)
+        .scheduler(sched) // 可替换为封装 BukkitScheduler 的实现
+        .build();
+```
+
+若需使用 Bukkit 原生调度器，可将 `BukkitScheduler` 封装为 `ScheduledExecutorService` 后传入 `scheduler()`。
+
 ### **优化点分析：**
 
 1.  **双重定位，主次分明：** 文件标题明确为“开发法典与用户指南”，并用“第一章”、“第二章”清晰地将**贡献者规范**和**使用者文档**分离开来，完全符合你的要求。
