@@ -94,6 +94,8 @@ public class MyAwesomePlugin extends JavaPlugin {
             true            // 找不到音效时警告
         );
         mySoundManager.loadSounds(); // 手动加载音效
+        // 可在需要时自定义音量与音调
+        // mySoundManager.play("level_up", player.getLocation(), 0.8f, 1.2f);
 
         // 4. 使用类型安全的方式读取配置
         boolean autoSave = myYamlUtil.getValue("settings.auto-save", Boolean.class, true);

@@ -164,6 +164,29 @@ public class SoundManager {
     }
 
     /**
+     * 在指定位置播放音效，并临时指定音量与音调。
+     * <p>
+     * 临时参数优先级高于 YAML 配置文件中定义的默认值。
+     *
+     * @param key    音效键
+     * @param loc    播放位置
+     * @param volume 临时音量
+     * @param pitch  临时音调
+     */
+    public void play(String key, Location loc, float volume, float pitch) {
+        SoundEffectData base = soundCache.get(key);
+        if (base != null) {
+            float actualVolume = volume * volumeMultiplier;
+            SoundEffectData temp = new SoundEffectData(base.sound, base.name, actualVolume, pitch);
+            playToWorld(loc, temp);
+            logger.debug("在位置 " + loc + " 播放音效: " + key
+                    + " (volume=" + volume + ", pitch=" + pitch + ")");
+        } else if (warnOnMissingKeys) {
+            logger.warn("找不到音效键: " + key);
+        }
+    }
+
+    /**
      * 在半径范围内播放音效
      *
      * @param center 中心位置
