@@ -16,6 +16,7 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.ClosedWatchServiceException;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -358,36 +359,69 @@ public class YamlUtil {
      * @param configName 配置文件名（不含 .yml）
      * @param onChange   文件变更后的回调，提供最新的 YamlConfiguration
      */
-    public void watchConfig(String configName, Consumer<YamlConfiguration> onChange) {
+    public ConfigWatchHandle watchConfig(String configName, Consumer<YamlConfiguration> onChange) {
         File file = getConfigFile(configName);
         Path dir = file.getParentFile().toPath();
         try {
             WatchService service = FileSystems.getDefault().newWatchService();
-            dir.register(service, StandardWatchEventKinds.ENTRY_MODIFY);
+            WatchKey key = dir.register(service, StandardWatchEventKinds.ENTRY_MODIFY);
             Thread watcher = new Thread(() -> {
-                while (true) {
-                    WatchKey key;
+                while (!Thread.currentThread().isInterrupted()) {
+                    WatchKey wk;
                     try {
-                        key = service.take();
+                        wk = service.take();
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         break;
+                    } catch (ClosedWatchServiceException e) {
+                        break;
                     }
-                    for (WatchEvent<?> event : key.pollEvents()) {
+                    for (WatchEvent<?> event : wk.pollEvents()) {
                         Path changed = dir.resolve((Path) event.context());
                         if (changed.equals(file.toPath())) {
                             reloadConfig(configName);
                             onChange.accept(getConfig(configName));
                         }
                     }
-                    if (!key.reset()) break;
+                    if (!wk.reset()) {
+                        break;
+                    }
                 }
+                try {
+                    service.close();
+                } catch (IOException ignore) {
+                }
+                logger.info("停止监听配置文件: " + file.getName());
             }, "YamlUtil-Watch-" + configName);
             watcher.setDaemon(true);
             watcher.start();
             logger.info("开始监听配置文件: " + file.getName());
+            return new ConfigWatchHandle(watcher, key, service);
         } catch (IOException e) {
             logger.error("监听配置文件失败: " + file.getName(), e);
+            return null;
+        }
+    }
+
+    public static class ConfigWatchHandle implements AutoCloseable {
+        private final Thread thread;
+        private final WatchKey key;
+        private final WatchService service;
+
+        private ConfigWatchHandle(Thread thread, WatchKey key, WatchService service) {
+            this.thread = thread;
+            this.key = key;
+            this.service = service;
+        }
+
+        @Override
+        public void close() {
+            key.cancel();
+            thread.interrupt();
+            try {
+                service.close();
+            } catch (IOException ignored) {
+            }
         }
     }
 
