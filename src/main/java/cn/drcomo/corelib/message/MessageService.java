@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IllegalFormatException;
+import java.util.LinkedHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
@@ -47,13 +48,19 @@ public class MessageService {
     private final Map<String, BiFunction<Player, String, String>> internalHandlers = new HashMap<>();
     // === 可配置字段 ===
     /** 语言文件路径（不含 .yml） */
-    private final String langConfigPath;
+    private String langConfigPath;
     /** 消息键统一前缀，可为空 */
-    private final String keyPrefix;
+    private String keyPrefix;
 
-    // 内部占位符匹配正则：{key} 或 {key:args}
-    private static final Pattern INTERNAL_PLACEHOLDER_PATTERN =
+    /** 默认内部占位符匹配正则：{key} 或 {key:args} */
+    private static final Pattern DEFAULT_INTERNAL_PLACEHOLDER_PATTERN =
             Pattern.compile("\\{([a-zA-Z0-9_]+)(?::([^}]*))?\\}");
+
+    /** 当前内部占位符匹配正则 */
+    private Pattern internalPlaceholderPattern = DEFAULT_INTERNAL_PLACEHOLDER_PATTERN;
+
+    /** 额外占位符解析规则 */
+    private final Map<Pattern, BiFunction<Player, Matcher, String>> extraPlaceholderRules = new LinkedHashMap<>();
 
     /**
      * 构造函数，允许调用方自定义语言文件及键前缀。
@@ -73,6 +80,7 @@ public class MessageService {
         this.placeholderUtil = placeholderUtil;
         this.langConfigPath = langConfigPath;
         this.keyPrefix = keyPrefix == null ? "" : keyPrefix;
+        this.internalPlaceholderPattern = DEFAULT_INTERNAL_PLACEHOLDER_PATTERN;
         yamlUtil.loadConfig(this.langConfigPath);
         loadMessages(this.langConfigPath);
     }
@@ -86,6 +94,43 @@ public class MessageService {
         messages.clear();
         loadMessages(langConfigPath);
         logger.info("语言文件重载完成，共加载消息: " + messages.size() + " 条");
+    }
+
+    /**
+     * 切换语言文件路径并立即重新加载。
+     * @param newPath 新的语言文件路径（不含 .yml）
+     */
+    public void switchLanguage(String newPath) {
+        this.langConfigPath = newPath;
+        yamlUtil.loadConfig(this.langConfigPath);
+        reloadLanguages();
+    }
+
+    /**
+     * 动态修改键前缀。
+     * @param newPrefix 新前缀，可为 null
+     */
+    public void setKeyPrefix(String newPrefix) {
+        this.keyPrefix = newPrefix == null ? "" : newPrefix;
+    }
+
+    /**
+     * 设置内部占位符的匹配正则。
+     * @param pattern 新正则
+     */
+    public void setInternalPlaceholderPattern(Pattern pattern) {
+        if (pattern != null) this.internalPlaceholderPattern = pattern;
+    }
+
+    /**
+     * 新增一个自定义占位符解析规则。
+     * @param pattern  匹配的正则
+     * @param resolver 解析函数，入参为玩家和匹配器
+     */
+    public void addPlaceholderRule(Pattern pattern, BiFunction<Player, Matcher, String> resolver) {
+        if (pattern != null && resolver != null) {
+            extraPlaceholderRules.put(pattern, resolver);
+        }
     }
 
     // === 基础消息获取与解析方法 ===
@@ -363,18 +408,34 @@ public class MessageService {
 
     /** 替换内部 {key:args} 占位符 */
     private String applyInternalPlaceholders(Player player, String text) {
-        if (text == null || internalHandlers.isEmpty()) return text;
-        Matcher m = INTERNAL_PLACEHOLDER_PATTERN.matcher(text);
-        StringBuffer sb = new StringBuffer();
-        while (m.find()) {
-            String key  = m.group(1).toLowerCase();
-            String args = m.group(2) == null ? "" : m.group(2);
-            BiFunction<Player, String, String> fn = internalHandlers.get(key);
-            String rep = fn != null ? fn.apply(player, args) : m.group(0);
-            m.appendReplacement(sb, Matcher.quoteReplacement(rep));
+        if (text == null) return text;
+
+        if (!internalHandlers.isEmpty()) {
+            Matcher m = internalPlaceholderPattern.matcher(text);
+            StringBuffer sb = new StringBuffer();
+            while (m.find()) {
+                String key  = m.group(1).toLowerCase();
+                String args = m.group(2) == null ? "" : m.group(2);
+                BiFunction<Player, String, String> fn = internalHandlers.get(key);
+                String rep = fn != null ? fn.apply(player, args) : m.group(0);
+                m.appendReplacement(sb, Matcher.quoteReplacement(rep));
+            }
+            m.appendTail(sb);
+            text = sb.toString();
         }
-        m.appendTail(sb);
-        return sb.toString();
+
+        for (Map.Entry<Pattern, BiFunction<Player, Matcher, String>> e : extraPlaceholderRules.entrySet()) {
+            Matcher m = e.getKey().matcher(text);
+            StringBuffer sb = new StringBuffer();
+            while (m.find()) {
+                String rep = e.getValue().apply(player, m);
+                m.appendReplacement(sb, Matcher.quoteReplacement(rep));
+            }
+            m.appendTail(sb);
+            text = sb.toString();
+        }
+
+        return text;
     }
 
     /** 发送着色文本 */

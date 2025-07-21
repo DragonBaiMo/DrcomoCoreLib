@@ -65,6 +65,24 @@
             return false;
         }
         ```
+        
+  * #### `switchLanguage(String newPath)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 切换语言文件路径并立即重新加载消息。
+      * **参数说明:**
+          * `newPath` (`String`): 新的语言文件路径（不含 `.yml`）。
+      * **使用示例:**
+        ```java
+        messageService.switchLanguage("languages/en_US");
+        ```
+
+  * #### `setKeyPrefix(String newPrefix)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 动态修改所有消息键的统一前缀。
+      * **参数说明:**
+          * `newPrefix` (`String`): 新前缀，可为 `null`。
 
   * #### `getRaw(String key)`
 
@@ -163,6 +181,21 @@
             return "无效参数";
         });
         ```
+
+  * #### `setInternalPlaceholderPattern(Pattern pattern)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 自定义内部占位符的匹配正则。
+      * **参数说明:**
+          * `pattern` (`Pattern`): 新的匹配模式。
+
+  * #### `addPlaceholderRule(Pattern pattern, BiFunction<Player, Matcher, String> resolver)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 新增一条基于正则的自定义占位符解析规则。
+      * **参数说明:**
+          * `pattern` (`Pattern`): 用于匹配占位符的正则。
+          * `resolver` (`BiFunction<Player, Matcher, String>`): 当匹配到占位符时调用的解析函数。
 
   * #### `send(Player player, String key)`
 
