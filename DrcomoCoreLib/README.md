@@ -109,5 +109,5 @@ title: DrcomoCoreLib JavaDocs
 - **关联查询 (辅助工具)**：[查看](./JavaDocs/gui/GuiManager-JavaDoc.md) (用于安全播放音效、清理光标、检查危险点击等)
 
 ### 数据库操作 (SQLite)
-- **功能描述**：连接管理 SQLite 数据库，初始化表结构，执行增删改查（CRUD）、事务处理。  
+- **功能描述**：连接管理 SQLite 数据库，初始化表结构，执行增删改查（CRUD）、事务处理。内置 HikariCP 连接池并提供异步接口，适合并发环境。
 - **查询文档**：[查看](./JavaDocs/database)

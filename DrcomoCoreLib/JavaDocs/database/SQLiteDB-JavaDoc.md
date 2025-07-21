@@ -3,7 +3,7 @@
 **1. 概述 (Overview)**
 
   * **完整路径:** `cn.drcomo.corelib.database.SQLiteDB`
-  * **核心职责:** 管理 SQLite 连接、初始化表结构，并提供最基础的增删改查以及事务执行能力。它遵循零硬编码和控制反转原则，由调用方传入数据库路径和初始化脚本。
+  * **核心职责:** 管理 SQLite 连接、初始化表结构，并提供最基础的增删改查以及事务执行能力。自 1.1 起内部集成 HikariCP 连接池，保证多线程环境下安全获取连接。它遵循零硬编码和控制反转原则，由调用方传入数据库路径和初始化脚本。
 
 **2. 如何实例化 (Initialization)**
 
@@ -67,6 +67,36 @@
       * **功能描述:** 关闭自动提交后执行回调内的多次数据库更新，若发生异常则回滚，否则提交。
       * **参数说明:**
           * `callback` (`SQLRunnable`): 在事务中执行的逻辑。
+
+  * #### `connectAsync()`
+
+      * **返回类型:** `CompletableFuture<Void>`
+      * **功能描述:** 异步打开连接，底层仍使用连接池。
+
+  * #### `initializeSchemaAsync()`
+
+      * **返回类型:** `CompletableFuture<Void>`
+      * **功能描述:** 在后台线程执行初始化脚本。
+
+  * #### `executeUpdateAsync(String sql, Object... params)`
+
+      * **返回类型:** `CompletableFuture<Integer>`
+      * **功能描述:** 异步执行更新语句，返回影响行数。
+
+  * #### `queryOneAsync(String sql, ResultSetHandler<T> handler, Object... params)`
+
+      * **返回类型:** `CompletableFuture<T>`
+      * **功能描述:** 异步查询单行数据。
+
+  * #### `queryListAsync(String sql, ResultSetHandler<T> handler, Object... params)`
+
+      * **返回类型:** `CompletableFuture<List<T>>`
+      * **功能描述:** 异步查询多行数据。
+
+  * #### `transactionAsync(SQLRunnable callback)`
+
+      * **返回类型:** `CompletableFuture<Void>`
+      * **功能描述:** 异步执行事务逻辑。
 
 **4. 内部接口 (Inner Interfaces)**
 
