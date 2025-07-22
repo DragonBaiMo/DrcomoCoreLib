@@ -78,6 +78,11 @@ public class MyAwesomePlugin extends JavaPlugin {
     public void onEnable() {
         // 1. 为你的插件创建独立的日志工具
         myLogger = new DebugUtil(this, DebugUtil.LogLevel.INFO);
+        // 可选：自定义前缀和输出格式
+        myLogger.setPrefix("&f[&bMyPlugin&r]&f ");
+        myLogger.setFormatTemplate("%prefix%[%level%] %msg%");
+        // 额外将日志写入文件
+        myLogger.addFileHandler(new File(getDataFolder(), "debug.log"));
 
         // 2. 为你的插件创建独立的 Yaml 配置工具，并注入日志实例
         myYamlUtil = new YamlUtil(this, myLogger);
@@ -109,7 +114,7 @@ public class MyAwesomePlugin extends JavaPlugin {
         String zip = archiveUtil.archiveByDate("plugins/MyPlugin/data", "backups");
         archiveUtil.cleanupOldArchives("backups", 30);
 
-        myLogger.info("我的插件已成功加载，并配置好了核心库工具！");
+myLogger.info("我的插件已成功加载，并配置好了核心库工具！");
     }
 
     @Override
@@ -120,6 +125,8 @@ public class MyAwesomePlugin extends JavaPlugin {
     }
 }
 ```
+
+> **注意**：自定义模板必须包含 `%msg%` 占位符，否则日志内容将丢失。将日志写入文件时请确认插件目录可写。
 
 ### **核心模块一览**
 

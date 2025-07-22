@@ -1,5 +1,9 @@
 package cn.drcomo.corelib.util;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.logging.FileHandler;
+import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,7 +34,8 @@ public class DebugUtil {
     }
 
     private final Logger logger;
-    private final String prefix;
+    private String prefix;
+    private String formatTemplate = "%prefix%%msg%";
     private LogLevel configuredLevel;
 
     /**
@@ -40,7 +45,7 @@ public class DebugUtil {
      */
     public DebugUtil(Plugin plugin, LogLevel level) {
         this.logger = plugin.getLogger();
-        // 前缀示例：[YourPluginName]
+        // 默认前缀示例：[YourPluginName]
         this.prefix = ColorUtil.translateColors("&f[&a" + plugin.getName() + "&f]&r ");
         this.configuredLevel = level;
     }
@@ -52,6 +57,43 @@ public class DebugUtil {
 
     public LogLevel getLevel() {
         return configuredLevel;
+    }
+
+    /**
+     * 自定义日志前缀
+     * @param newPrefix 前缀字符串，可包含颜色代码
+     */
+    public void setPrefix(String newPrefix) {
+        this.prefix = ColorUtil.translateColors(newPrefix);
+    }
+
+    /**
+     * 设置日志格式化模板，支持 %prefix%, %level%, %msg%
+     * @param template 模板字符串
+     */
+    public void setFormatTemplate(String template) {
+        if (template != null && !template.isEmpty()) {
+            this.formatTemplate = template;
+        }
+    }
+
+    /**
+     * 将日志转发到额外 Handler
+     * @param handler 任意 java.util.logging.Handler
+     */
+    public void addHandler(Handler handler) {
+        if (handler != null) {
+            logger.addHandler(handler);
+        }
+    }
+
+    /**
+     * 追加日志到额外文件
+     * @param file 目标文件
+     */
+    public void addFileHandler(File file) throws IOException {
+        FileHandler fh = new FileHandler(file.getPath(), true);
+        addHandler(fh);
     }
 
     // 简化方法
@@ -68,11 +110,16 @@ public class DebugUtil {
         if (configuredLevel == LogLevel.NONE || level.getLevel() < configuredLevel.getLevel()) {
             return;
         }
-        String formatted = prefix + message;
+        String msg = level == LogLevel.DEBUG
+                ? ColorUtil.stripColorCodes("&7[DEBUG] " + message)
+                : message;
+        String formatted = formatTemplate
+                .replace("%prefix%", prefix)
+                .replace("%level%", level.name())
+                .replace("%msg%", msg);
         switch (level) {
             case DEBUG:
-                // DEBUG 用灰色，并加 [DEBUG] 标签
-                logger.log(Level.INFO, ColorUtil.stripColorCodes( "&7[DEBUG] " + message));
+                logger.log(Level.INFO, formatted);
                 break;
             case INFO:
                 logger.log(Level.INFO, formatted);
@@ -95,10 +142,16 @@ public class DebugUtil {
         if (configuredLevel == LogLevel.NONE || level.getLevel() < configuredLevel.getLevel()) {
             return;
         }
-        String formatted = prefix + message;
+        String msg = level == LogLevel.DEBUG
+                ? ColorUtil.stripColorCodes("&7[DEBUG] " + message)
+                : message;
+        String formatted = formatTemplate
+                .replace("%prefix%", prefix)
+                .replace("%level%", level.name())
+                .replace("%msg%", msg);
         switch (level) {
             case DEBUG:
-                logger.log(Level.INFO, ColorUtil.stripColorCodes("&7[DEBUG] " + message), t);
+                logger.log(Level.INFO, formatted, t);
                 break;
             case INFO:
                 logger.log(Level.INFO, formatted, t);
