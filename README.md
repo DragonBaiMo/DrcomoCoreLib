@@ -119,9 +119,8 @@ myLogger.info("我的插件已成功加载，并配置好了核心库工具！")
 
     @Override
     public void onDisable() {
-        if (configHandle != null) {
-            configHandle.close();
-        }
+        // 停止所有文件监听器，防止线程泄露
+        myYamlUtil.stopAllWatches();
     }
 }
 ```

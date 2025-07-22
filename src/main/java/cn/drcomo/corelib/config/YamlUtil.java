@@ -37,6 +37,8 @@ public class YamlUtil {
     private final DebugUtil logger;
     private final Map<String, YamlConfiguration> configs = new HashMap<>();
     private final String jarPath;
+    /** 已创建的配置文件监听器 */
+    private final Set<ConfigWatchHandle> watchHandles = new HashSet<>();
     /** 默认配置文件名 */
     private static final String DEFAULT_FILE = "config";
 
@@ -396,11 +398,27 @@ public class YamlUtil {
             watcher.setDaemon(true);
             watcher.start();
             logger.info("开始监听配置文件: " + file.getName());
-            return new ConfigWatchHandle(watcher, key, service);
+            ConfigWatchHandle handle = new ConfigWatchHandle(watcher, key, service);
+            watchHandles.add(handle);
+            return handle;
         } catch (IOException e) {
             logger.error("监听配置文件失败: " + file.getName(), e);
             return null;
         }
+    }
+
+    /**
+     * 停止并关闭所有正在监听的配置文件。
+     */
+    public void stopAllWatches() {
+        for (ConfigWatchHandle handle : new HashSet<>(watchHandles)) {
+            try {
+                handle.close();
+            } catch (Exception e) {
+                logger.error("关闭配置监听失败", e);
+            }
+        }
+        watchHandles.clear();
     }
 
     public static class ConfigWatchHandle implements AutoCloseable {
