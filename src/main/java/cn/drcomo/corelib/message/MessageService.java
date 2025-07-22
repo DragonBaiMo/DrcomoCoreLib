@@ -1,5 +1,6 @@
 package cn.drcomo.corelib.message;
 
+// 显示导入所有必要类
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -32,8 +33,9 @@ import java.util.regex.Pattern;
  */
 public class MessageService {
 
-    // 插件实例，用于访问插件数据和资源
-    private final Plugin plugin;
+    // === 私有字段 ===
+    // 插件实例，用于访问插件数据和资源（当前未使用，已注释）
+//    private final Plugin plugin;
     // 日志工具，用于调试、信息、警告和错误日志
     private final DebugUtil logger;
     // YAML 工具，用于加载和管理语言文件
@@ -51,17 +53,15 @@ public class MessageService {
     private String langConfigPath;
     /** 消息键统一前缀，可为空 */
     private String keyPrefix;
-
     /** 默认内部占位符匹配正则：{key} 或 {key:args} */
     private static final Pattern DEFAULT_INTERNAL_PLACEHOLDER_PATTERN =
             Pattern.compile("\\{([a-zA-Z0-9_]+)(?::([^}]*))?\\}");
-
     /** 当前内部占位符匹配正则 */
     private Pattern internalPlaceholderPattern = DEFAULT_INTERNAL_PLACEHOLDER_PATTERN;
-
     /** 额外占位符解析规则 */
     private final Map<Pattern, BiFunction<Player, Matcher, String>> extraPlaceholderRules = new LinkedHashMap<>();
 
+    // === 构造函数 ===
     /**
      * 构造函数，允许调用方自定义语言文件及键前缀。
      * @param plugin          插件实例
@@ -74,19 +74,17 @@ public class MessageService {
     public MessageService(Plugin plugin, DebugUtil logger, YamlUtil yamlUtil,
                           PlaceholderAPIUtil placeholderUtil,
                           String langConfigPath, String keyPrefix) {
-        this.plugin = plugin;
+//        this.plugin = plugin;  // 未调用，已注释
         this.logger = logger;
         this.yamlUtil = yamlUtil;
         this.placeholderUtil = placeholderUtil;
         this.langConfigPath = langConfigPath;
         this.keyPrefix = keyPrefix == null ? "" : keyPrefix;
-        this.internalPlaceholderPattern = DEFAULT_INTERNAL_PLACEHOLDER_PATTERN;
         yamlUtil.loadConfig(this.langConfigPath);
         loadMessages(this.langConfigPath);
     }
 
-    // === 初始化和重载方法 ===
-
+    // === 初始化和语言切换 ===
     /** 重新加载语言文件并刷新消息缓存。 */
     public void reloadLanguages() {
         logger.info("重新加载语言文件...");
@@ -119,7 +117,9 @@ public class MessageService {
      * @param pattern 新正则
      */
     public void setInternalPlaceholderPattern(Pattern pattern) {
-        if (pattern != null) this.internalPlaceholderPattern = pattern;
+        if (pattern != null) {
+            this.internalPlaceholderPattern = pattern;
+        }
     }
 
     /**
@@ -133,13 +133,18 @@ public class MessageService {
         }
     }
 
-    // === 基础消息获取与解析方法 ===
-
+    // === 内部占位符注册 ===
     /**
-     * 解析完整键名，自动补全配置的 {@code keyPrefix} 前缀。
-     *
-     * @param key 原始键名
-     * @return 如果缺失则补上前缀后的键名
+     * 注册一个内部占位符，形如 {key} 或 {key:args}。
+     * 子插件 onEnable() 中调用即可。
+     */
+    public void registerInternalPlaceholder(String key, BiFunction<Player, String, String> resolver) {
+        internalHandlers.put(key.toLowerCase(), resolver);
+    }
+
+    // === 消息获取与解析 ===
+    /**
+     * 解析完整键名，自动补全配置的 keyPrefix 前缀。
      */
     private String resolveKey(String key) {
         return keyPrefix.isEmpty() || key.startsWith(keyPrefix)
@@ -147,7 +152,7 @@ public class MessageService {
                 : keyPrefix + key;
     }
 
-    /** 从缓存中获取原始消息。 */
+    /** 获取原始消息并记录日志。 */
     public String getRaw(String key) {
         String actual = resolveKey(key);
         String raw = messages.get(actual);
@@ -159,7 +164,7 @@ public class MessageService {
         return raw;
     }
 
-    /** 根据键获取并格式化消息（String.format）。 */
+    /** 格式化并获取消息，使用 String.format。 */
     public String get(String key, Object... args) {
         String raw = getRaw(key);
         if (raw == null) {
@@ -177,8 +182,11 @@ public class MessageService {
     }
 
     /**
-     * 解析消息并替换占位符。<br>
-     * 步骤：1. String.format；2. 自定义 %placeholder%；3. 内部 {key:args}；4. PAPI %plugin_key%。
+     * 完整解析消息并替换占位符。
+     * 1. String.format
+     * 2. 自定义 %placeholder%
+     * 3. 内部 {key[:args]}
+     * 4. PlaceholderAPI %plugin_key%
      */
     public String parse(String key, Player player, Map<String, String> custom) {
         String msg = get(key);
@@ -186,14 +194,10 @@ public class MessageService {
             logger.warn("解析失败，消息为 null，键: " + key);
             return null;
         }
-        msg = applyCustomPlaceholders(msg, custom);
-        msg = applyInternalPlaceholders(player, msg);
-        String parsed = placeholderUtil.parse(player, msg);
-        logger.debug("完整解析完成，键: " + key + " -> " + parsed);
-        return parsed;
+        return processPlaceholders(player, msg, custom);
     }
 
-    /** 从语言文件获取原始消息列表。 */
+    /** 获取原始字符串列表。 */
     public List<String> getList(String key) {
         String actual = resolveKey(key);
         YamlConfiguration cfg = yamlUtil.getConfig(langConfigPath);
@@ -206,43 +210,36 @@ public class MessageService {
         return list;
     }
 
-    /** 解析消息列表并替换所有占位符。 */
+    /** 解析列表并替换占位符。 */
     public List<String> parseList(String key, Player player, Map<String, String> custom) {
         List<String> raw = getList(key);
-        List<String> out = new ArrayList<>();
+        List<String> out = new ArrayList<>(raw.size());
         for (String line : raw) {
-            String msg = applyCustomPlaceholders(line, custom);
-            msg = applyInternalPlaceholders(player, msg);
-            msg = placeholderUtil.parse(player, msg);
+            String msg = processPlaceholders(player, line, custom);
             out.add(msg);
             logger.debug("解析列表项，键: " + key + " -> " + msg);
         }
         return out;
     }
 
-    // === 内部占位符注册 ===
-
-    /**
-     * 注册一个内部占位符，形如 {key} 或 {key:args}。<br>
-     * 子插件 onEnable() 中调用即可。
-     */
-    public void registerInternalPlaceholder(String key, BiFunction<Player, String, String> resolver) {
-        internalHandlers.put(key.toLowerCase(), resolver);
-    }
-
     // === 消息发送方法 ===
-
     public void send(Player player, String key) {
         String msg = parse(key, player, Collections.emptyMap());
-        if (msg != null) sendColorizedRaw(player, msg);
-        else logger.warn("发送消息失败，键: " + key);
+        if (msg != null) {
+            sendColorizedRaw(player, msg);
+        } else {
+            logger.warn("发送消息失败，键: " + key);
+        }
     }
 
     public void send(CommandSender target, String key, Map<String, String> custom) {
         Player p = (target instanceof Player) ? (Player) target : null;
         String msg = parse(key, p, custom);
-        if (msg != null) sendColorizedRaw(target, msg);
-        else logger.warn("发送消息失败，键: " + key);
+        if (msg != null) {
+            sendColorizedRaw(target, msg);
+        } else {
+            logger.warn("发送消息失败，键: " + key);
+        }
     }
 
     public void sendList(CommandSender target, String key) {
@@ -253,42 +250,6 @@ public class MessageService {
     public void sendList(CommandSender target, String key, Map<String, String> custom) {
         Player p = (target instanceof Player) ? (Player) target : null;
         sendColorizedList(target, parseList(key, p, custom));
-    }
-
-    public void broadcast(String key) {
-        String msg = parse(key, null, Collections.emptyMap());
-        if (msg != null) {
-            String col = ColorUtil.translateColors(msg);
-            Bukkit.broadcastMessage(col);
-            logger.debug("广播消息，键: " + key + " -> " + col);
-        } else {
-            logger.warn("广播失败，键: " + key);
-        }
-    }
-
-    public void broadcast(String key, Map<String, String> custom, String permission) {
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            if (p.hasPermission(permission)) {
-                String msg = parse(key, p, custom);
-                if (msg != null) {
-                    String col = ColorUtil.translateColors(msg);
-                    p.sendMessage(col);
-                    logger.debug("广播给 " + p.getName() + "，键: " + key);
-                }
-            }
-        }
-    }
-
-    public void broadcastList(String key, Map<String, String> custom, String permission) {
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            if (p.hasPermission(permission)) {
-                for (String msg : parseList(key, p, custom)) {
-                    String col = ColorUtil.translateColors(msg);
-                    p.sendMessage(col);
-                    logger.debug("广播列表给 " + p.getName() + "，键: " + key);
-                }
-            }
-        }
     }
 
     public void sendRaw(CommandSender target, String rawMessage) {
@@ -304,48 +265,64 @@ public class MessageService {
         sendColorizedList(player, messages);
     }
 
-    /**
-     * 解析并向玩家发送一条 ActionBar 消息。
-     *
-     * @param player 目标玩家
-     * @param key    消息键
-     * @param custom 自定义占位符
-     */
     public void sendActionBar(Player player, String key, Map<String, String> custom) {
         String msg = parse(key, player, custom);
-        if (msg != null) sendActionBar(player, msg);
-        else logger.warn("发送 ActionBar 失败，键: " + key);
+        if (msg != null) {
+            sendActionBarRaw(player, msg);
+        } else {
+            logger.warn("发送 ActionBar 失败，键: " + key);
+        }
     }
 
     public void sendStagedActionBar(Player player, List<String> messages) {
-        for (String msg : messages) sendActionBar(player, msg);
+        for (String msg : messages) {
+            sendActionBarRaw(player, msg);
+        }
+    }
+
+    public void sendTitle(Player player, String titleKey, String subKey, Map<String, String> custom) {
+        String title = parse(titleKey, player, custom);
+        String sub = parse(subKey, player, custom);
+        if (title != null && sub != null) {
+            sendTitleRaw(player, title, sub);
+        } else {
+            logger.warn("发送 Title 失败，键: " + titleKey + " / " + subKey);
+        }
     }
 
     public void sendStagedTitle(Player player, List<String> titles, List<String> subtitles) {
         int n = Math.min(titles.size(), subtitles.size());
-        for (int i = 0; i < n; i++) sendTitle(player, titles.get(i), subtitles.get(i));
+        for (int i = 0; i < n; i++) {
+            sendTitleRaw(player, titles.get(i), subtitles.get(i));
+        }
     }
 
-    /**
-     * 解析并向玩家发送 Title 与 SubTitle。
-     *
-     * @param player   目标玩家
-     * @param titleKey 主标题键
-     * @param subKey   副标题键
-     * @param custom   自定义占位符
-     */
-    public void sendTitle(Player player, String titleKey, String subKey, Map<String, String> custom) {
-        String title = parse(titleKey, player, custom);
-        String sub = parse(subKey, player, custom);
-        if (title != null && sub != null) sendTitle(player, title, sub);
-        else logger.warn("发送 Title 失败，键: " + titleKey + " / " + subKey);
+    // === 广播方法 ===
+    public void broadcast(String key) {
+        String msg = parse(key, null, Collections.emptyMap());
+        if (msg != null) {
+            String col = ColorUtil.translateColors(msg);
+            Bukkit.broadcastMessage(col);
+            logger.debug("广播消息，键: " + key + " -> " + col);
+        } else {
+            logger.warn("广播失败，键: " + key);
+        }
+    }
+
+    public void broadcast(String key, Map<String, String> custom, String permission) {
+        broadcastToPermission(key, custom, permission);
+    }
+
+    public void broadcastList(String key, Map<String, String> custom, String permission) {
+        broadcastListToPermission(key, custom, permission);
     }
 
     // === 上下文消息管理 ===
-
     public void storeMessage(Object context, String key, Map<String, String> custom) {
         String msg = parse(key, null, custom);
-        if (msg != null) contextMessages.computeIfAbsent(context, k -> new ArrayList<>()).add(msg);
+        if (msg != null) {
+            contextMessages.computeIfAbsent(context, k -> new ArrayList<>()).add(msg);
+        }
     }
 
     public void storeMessageList(Object context, String key, Map<String, String> custom) {
@@ -365,12 +342,21 @@ public class MessageService {
 
     public void sendContext(Object context, Player player, String channel) {
         List<String> list = contextMessages.getOrDefault(context, Collections.emptyList());
-        if (list.isEmpty()) return;
+        if (list.isEmpty()) {
+            return;
+        }
         switch (channel.toLowerCase()) {
-            case "chat":      sendOptimizedChat(player, list);            break;
-            case "actionbar": sendStagedActionBar(player, list);          break;
-            case "title":     sendStagedTitle(player, list, Collections.emptyList()); break;
-            default: logger.warn("未知渠道: " + channel);
+            case "chat":
+                sendOptimizedChat(player, list);
+                break;
+            case "actionbar":
+                sendStagedActionBar(player, list);
+                break;
+            case "title":
+                sendStagedTitle(player, list, Collections.emptyList());
+                break;
+            default:
+                logger.warn("未知渠道: " + channel);
         }
         contextMessages.remove(context);
     }
@@ -396,78 +382,113 @@ public class MessageService {
         logger.info("加载消息: " + messages.size() + " 条，来源: " + path);
     }
 
-    /** 替换 %custom% 占位符 */
-    private String applyCustomPlaceholders(String msg, Map<String, String> custom) {
+    /**
+     * 统一处理占位符替换逻辑：
+     *  自定义占位符 -> 内部占位符 -> PlaceholderAPI 占位符
+     */
+    private String processPlaceholders(Player player, String msg, Map<String, String> custom) {
+        String result = msg;
+        // 自定义 %key%
         if (custom != null) {
             for (Map.Entry<String, String> e : custom.entrySet()) {
-                msg = msg.replace("%" + e.getKey() + "%", e.getValue());
+                result = result.replace("%" + e.getKey() + "%", e.getValue());
             }
         }
-        return msg;
-    }
-
-    /** 替换内部 {key:args} 占位符 */
-    private String applyInternalPlaceholders(Player player, String text) {
-        if (text == null) return text;
-
+        // 内部 {key:args}
         if (!internalHandlers.isEmpty()) {
-            Matcher m = internalPlaceholderPattern.matcher(text);
+            Matcher m = internalPlaceholderPattern.matcher(result);
             StringBuffer sb = new StringBuffer();
             while (m.find()) {
-                String key  = m.group(1).toLowerCase();
+                String k = m.group(1).toLowerCase();
                 String args = m.group(2) == null ? "" : m.group(2);
-                BiFunction<Player, String, String> fn = internalHandlers.get(key);
+                BiFunction<Player, String, String> fn = internalHandlers.get(k);
                 String rep = fn != null ? fn.apply(player, args) : m.group(0);
                 m.appendReplacement(sb, Matcher.quoteReplacement(rep));
             }
             m.appendTail(sb);
-            text = sb.toString();
+            result = sb.toString();
         }
-
+        // 额外规则
         for (Map.Entry<Pattern, BiFunction<Player, Matcher, String>> e : extraPlaceholderRules.entrySet()) {
-            Matcher m = e.getKey().matcher(text);
+            Matcher m = e.getKey().matcher(result);
             StringBuffer sb = new StringBuffer();
             while (m.find()) {
                 String rep = e.getValue().apply(player, m);
                 m.appendReplacement(sb, Matcher.quoteReplacement(rep));
             }
             m.appendTail(sb);
-            text = sb.toString();
+            result = sb.toString();
         }
-
-        return text;
+        // PlaceholderAPI
+        result = placeholderUtil.parse(player, result);
+        logger.debug("完整解析完成 -> " + result);
+        return result;
     }
 
-    /** 发送着色文本 */
+    /** 发送带颜色的单行消息 */
     private void sendColorizedRaw(CommandSender target, String msg) {
-        if (msg == null || msg.trim().isEmpty()) return;
+        if (msg == null || msg.trim().isEmpty()) {
+            return;
+        }
         String col = ColorUtil.translateColors(msg);
         target.sendMessage(col);
     }
 
-    /** 发送列表 */
+    /** 发送带颜色的消息列表 */
     private void sendColorizedList(CommandSender target, List<String> list) {
-        for (String msg : list) sendColorizedRaw(target, msg);
+        for (String msg : list) {
+            sendColorizedRaw(target, msg);
+        }
     }
 
-    /** 发送 ActionBar */
-    private void sendActionBar(Player player, String msg) {
-        player.spigot().sendMessage(ChatMessageType.ACTION_BAR,
-                new TextComponent(ColorUtil.translateColors(msg)));
+    /** 发送原始 ActionBar 文本 */
+    private void sendActionBarRaw(Player player, String msg) {
+        player.spigot().sendMessage(
+                ChatMessageType.ACTION_BAR,
+                new TextComponent(ColorUtil.translateColors(msg))
+        );
     }
 
-    /** 发送 Title/SubTitle */
-    private void sendTitle(Player player, String title, String sub) {
+    /** 发送原始 Title/SubTitle 文本 */
+    private void sendTitleRaw(Player player, String title, String sub) {
         player.sendTitle(
                 ColorUtil.translateColors(title),
                 ColorUtil.translateColors(sub),
-                10, 70, 20);
+                10, 70, 20
+        );
     }
 
-    /** 通用上下文发送 */
+    /** 带权限的单条广播 */
+    private void broadcastToPermission(String key, Map<String, String> custom, String permission) {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.hasPermission(permission)) {
+                String msg = parse(key, p, custom);
+                if (msg != null) {
+                    sendColorizedRaw(p, msg);
+                    logger.debug("广播给 " + p.getName() + "，键: " + key);
+                }
+            }
+        }
+    }
+
+    /** 带权限的列表广播 */
+    private void broadcastListToPermission(String key, Map<String, String> custom, String permission) {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.hasPermission(permission)) {
+                for (String msg : parseList(key, p, custom)) {
+                    sendColorizedRaw(p, msg);
+                    logger.debug("广播列表给 " + p.getName() + "，键: " + key);
+                }
+            }
+        }
+    }
+
+    /** 通用上下文发送实现 */
     private void sendContextMessages(Object context, Player player, BiConsumer<CommandSender, String> fn) {
         List<String> list = contextMessages.getOrDefault(context, Collections.emptyList());
-        for (String msg : list) fn.accept(player, msg);
+        for (String msg : list) {
+            fn.accept(player, msg);
+        }
         contextMessages.remove(context);
     }
 }

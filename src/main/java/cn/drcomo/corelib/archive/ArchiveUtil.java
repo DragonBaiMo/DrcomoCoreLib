@@ -3,6 +3,8 @@ package cn.drcomo.corelib.archive;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -15,13 +17,14 @@ import cn.drcomo.corelib.util.DebugUtil;
 
 /**
  * 归档与压缩工具。
- * <p>基于标准的 {@link java.util.zip} API 实现文件/目录的压缩、解压，
- * 并提供按日期归档与旧文件清理能力。</p>
+ * <p>基于标准的 <code>java.util.zip</code> API 实现文件/目录的压缩、解压， 并提供按日期归档与旧文件清理能力。</p>
  */
 public class ArchiveUtil {
 
+    /** 缓冲区大小 */
     private static final int BUFFER_SIZE = 8192;
 
+    /** 调试日志工具 */
     private final DebugUtil logger;
 
     /**
@@ -33,10 +36,12 @@ public class ArchiveUtil {
         this.logger = logger;
     }
 
+    // ========================== 压缩相关 ==========================
+
     /**
-     * 将指定文件或目录压缩为 ZIP。
+     * 将指定文件或目录压缩为 ZIP，使用默认压缩级别。
      *
-     * @param sourcePath   待压缩的文件或目录路径
+     * @param sourcePath    待压缩的文件或目录路径
      * @param targetZipPath 生成的 zip 文件路径
      */
     public void compress(String sourcePath, String targetZipPath) {
@@ -46,9 +51,9 @@ public class ArchiveUtil {
     /**
      * 将指定文件或目录压缩为 ZIP，并指定压缩级别。
      *
-     * @param sourcePath   待压缩的文件或目录路径
+     * @param sourcePath    待压缩的文件或目录路径
      * @param targetZipPath 生成的 zip 文件路径
-     * @param level        压缩级别，范围 -1~9
+     * @param level         压缩级别，范围 -1~9
      */
     public void compress(String sourcePath, String targetZipPath, int level) {
         File source = new File(sourcePath);
@@ -65,30 +70,7 @@ public class ArchiveUtil {
         }
     }
 
-    /** 递归添加文件到 ZIP */
-    private void addToZip(File file, String entryName, ZipOutputStream zos) throws IOException {
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children == null) return;
-            if (!entryName.endsWith("/")) {
-                zos.putNextEntry(new ZipEntry(entryName + "/"));
-                zos.closeEntry();
-            }
-            for (File child : children) {
-                addToZip(child, entryName + "/" + child.getName(), zos);
-            }
-        } else {
-            try (FileInputStream fis = new FileInputStream(file)) {
-                zos.putNextEntry(new ZipEntry(entryName));
-                byte[] buffer = new byte[BUFFER_SIZE];
-                int len;
-                while ((len = fis.read(buffer)) > 0) {
-                    zos.write(buffer, 0, len);
-                }
-                zos.closeEntry();
-            }
-        }
-    }
+    // ========================== 解压相关 ==========================
 
     /**
      * 解压 ZIP 文件到目标目录。
@@ -98,29 +80,25 @@ public class ArchiveUtil {
      */
     public void extract(String zipPath, String destDir) {
         File dir = new File(destDir);
+        // 初始化目标目录
         if (!dir.exists() && !dir.mkdirs()) {
             logger.error("创建目录失败: " + destDir);
             return;
         }
+
         try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipPath))) {
             ZipEntry entry;
-            byte[] buffer = new byte[BUFFER_SIZE];
             while ((entry = zis.getNextEntry()) != null) {
                 File newFile = new File(dir, entry.getName());
                 if (entry.isDirectory()) {
-                    if (!newFile.exists() && !newFile.mkdirs()) {
-                        logger.warn("创建目录失败: " + newFile.getPath());
-                    }
+                    // 创建子目录
+                    createDir(newFile, false);
                 } else {
-                    File parent = newFile.getParentFile();
-                    if (parent != null && !parent.exists() && !parent.mkdirs()) {
-                        logger.warn("创建目录失败: " + parent.getPath());
-                    }
+                    // 确保父目录存在
+                    createDir(newFile.getParentFile(), false);
+                    // 写入文件内容
                     try (FileOutputStream fos = new FileOutputStream(newFile)) {
-                        int len;
-                        while ((len = zis.read(buffer)) > 0) {
-                            fos.write(buffer, 0, len);
-                        }
+                        copyBytes(zis, fos);
                     }
                 }
                 zis.closeEntry();
@@ -131,17 +109,19 @@ public class ArchiveUtil {
         }
     }
 
+    // ========================== 归档与清理 ==========================
+
     /**
      * 按当前日期生成归档文件并压缩。
-     * 文件名格式: yyyyMMdd-HHmmss.zip
+     * <p>文件名格式: yyyyMMdd-HHmmss.zip</p>
      *
      * @param sourcePath 待归档的文件或目录
      * @param archiveDir 归档输出目录
      * @return 生成的归档文件路径，失败时返回 null
      */
     public String archiveByDate(String sourcePath, String archiveDir) {
-        String time = new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date());
-        String zipPath = archiveDir + File.separator + time + ".zip";
+        String timestamp = new SimpleDateFormat("yyyyMMdd-HHmmss").format(new Date());
+        String zipPath = archiveDir + File.separator + timestamp + ".zip";
         compress(sourcePath, zipPath);
         File zipFile = new File(zipPath);
         return zipFile.exists() ? zipPath : null;
@@ -159,31 +139,94 @@ public class ArchiveUtil {
             logger.warn("目录不存在: " + archiveDir);
             return;
         }
-        long expire = System.currentTimeMillis() - days * 86400000L;
+        long expireTime = System.currentTimeMillis() - days * 86_400_000L;
         File[] files = dir.listFiles((d, name) -> name.endsWith(".zip"));
-        if (files == null) return;
+        if (files == null) {
+            return;
+        }
         for (File f : files) {
-            if (f.lastModified() < expire && f.delete()) {
+            if (f.lastModified() < expireTime && f.delete()) {
                 logger.debug("已删除旧归档: " + f.getName());
             }
         }
     }
 
+    // ========================== 工具方法 ==========================
+
     /**
-     * 将字节大小转换为可读格式。
+     * 递归添加文件或目录到 ZIP。
      *
-     * @param size 字节数
-     * @return 友好的字符串，如 "10 MB"
+     * @param file      当前处理的文件或目录
+     * @param entryName 在 ZIP 中的条目名称
+     * @param zos       ZIP 输出流
+     * @throws IOException IO 异常
      */
-    public String formatFileSize(long size) {
-        if (size < 1024) return size + " B";
-        int unit = 0;
-        double d = size;
-        String[] units = {"KB", "MB", "GB", "TB"};
-        while (d >= 1024 && unit < units.length - 1) {
-            d /= 1024;
-            unit++;
+    private void addToZip(File file, String entryName, ZipOutputStream zos) throws IOException {
+        if (file.isDirectory()) {
+            // 目录条目须以“/”结尾
+            if (!entryName.endsWith("/")) {
+                zos.putNextEntry(new ZipEntry(entryName + "/"));
+                zos.closeEntry();
+            }
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    addToZip(child, entryName + "/" + child.getName(), zos);
+                }
+            }
+        } else {
+            // 文件内容写入
+            try (FileInputStream fis = new FileInputStream(file)) {
+                zos.putNextEntry(new ZipEntry(entryName));
+                copyBytes(fis, zos);
+                zos.closeEntry();
+            }
         }
-        return String.format("%.1f %s", d, units[unit]);
     }
+
+    /**
+     * 创建目录，如果已存在则跳过，失败时记录日志。
+     *
+     * @param dir       目标目录
+     * @param isError   是否以 error 级别记录（false 则 warn）
+     * @return true 表示目录存在或创建成功，false 表示创建失败
+     */
+    private boolean createDir(File dir, boolean isError) {
+        if (dir == null) {
+            return false;
+        }
+        if (dir.exists()) {
+            return true;
+        }
+        if (dir.mkdirs()) {
+            return true;
+        } else {
+            String msg = "创建目录失败: " + dir.getPath();
+            if (isError) {
+                logger.error(msg);
+            } else {
+                logger.warn(msg);
+            }
+            return false;
+        }
+    }
+
+    /**
+     * 从输入流复制字节到输出流，直至 EOF。
+     *
+     * @param in  输入流
+     * @param out 输出流
+     * @throws IOException IO 异常
+     */
+    private void copyBytes(InputStream in, OutputStream out) throws IOException {
+        byte[] buffer = new byte[BUFFER_SIZE];
+        int len;
+        while ((len = in.read(buffer)) > 0) {
+            out.write(buffer, 0, len);
+        }
+    }
+
+    // ========================== 未使用代码（隐藏） ==========================
+    // 下面为暂未调用的方法或示例，保留以备后续扩展：
+    // // public void unusedMethod() { … }
 }

@@ -535,6 +535,4 @@ public class YamlUtil {
         }
     }
 
-    // 保留供可能的扩展使用
-
 }

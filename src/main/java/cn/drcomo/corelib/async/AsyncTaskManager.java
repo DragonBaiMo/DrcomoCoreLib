@@ -11,11 +11,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 异步任务管理器。
- * <p>
+ *
  * 内部维护普通和定时两种线程池，用于执行和调度异步任务。
  * 所有回调中的异常都会被捕获并记录到提供的 {@link DebugUtil} 实例。
- * </p>
- * 在插件关闭时应调用 {@link #close()} 以释放线程资源。
+ * 插件关闭时应调用 {@link #close()} 以释放线程资源。
  */
 public class AsyncTaskManager implements AutoCloseable {
 
@@ -27,74 +26,83 @@ public class AsyncTaskManager implements AutoCloseable {
     private final ScheduledExecutorService scheduler;
 
     /**
-     * 构造异步任务管理器，使用默认线程池实现。
+     * 使用默认线程池构造异步任务管理器。
      *
      * @param plugin 插件实例
-     * @param logger DebugUtil 日志工具
+     * @param logger 日志工具
      */
     public AsyncTaskManager(Plugin plugin, DebugUtil logger) {
-        this(plugin, logger, createDefaultExecutor(plugin, 0, null), createDefaultScheduler(plugin, 1, null));
+        this(plugin, logger,
+             createDefaultExecutor(plugin, 0, null),
+             createDefaultScheduler(plugin, 1, null));
     }
 
     private AsyncTaskManager(Plugin plugin, DebugUtil logger,
-                             ExecutorService executor, ScheduledExecutorService scheduler) {
+                             ExecutorService executor,
+                             ScheduledExecutorService scheduler) {
         this.plugin = plugin;
         this.logger = logger;
         this.executor = executor;
         this.scheduler = scheduler;
     }
 
+    //================ public API =================
+
     /**
      * 提交一个异步任务。
      *
-     * @param task 需要执行的任务
-     * @return 代表任务的 Future
+     * @param task 任务
+     * @return Future 句柄
      */
     public Future<?> submitAsync(Runnable task) {
-        return executor.submit(wrap(task));
+        return executor.submit(wrapRunnable(task));
     }
 
     /**
-     * 提交一个异步任务并返回结果。
+     * 提交一个可返回结果的异步任务。
      *
-     * @param task 可返回结果的任务
-     * @param <T>  返回值类型
-     * @return 代表任务的 Future
+     * @param task 任务
+     * @param <T>  返回类型
+     * @return Future 句柄
      */
     public <T> Future<T> submitAsync(Callable<T> task) {
-        return executor.submit(wrap(task));
+        return executor.submit(wrapCallable(task));
     }
 
     /**
      * 延迟执行异步任务。
      *
      * @param task  任务
-     * @param delay 延迟时间
+     * @param delay 延迟时长
      * @param unit  时间单位
-     * @return 调度结果句柄
+     * @return ScheduledFuture 句柄
      */
     public ScheduledFuture<?> scheduleAsync(Runnable task, long delay, TimeUnit unit) {
-        return scheduler.schedule(wrap(task), delay, unit);
+        return scheduler.schedule(wrapRunnable(task), delay, unit);
     }
 
     /**
      * 以固定频率执行任务。
      *
      * @param task         任务
-     * @param initialDelay 首次执行前的延迟
-     * @param period       间隔时间
+     * @param initialDelay 首次延迟
+     * @param period       重复间隔
      * @param unit         时间单位
-     * @return 调度结果句柄
+     * @return ScheduledFuture 句柄
      */
-    public ScheduledFuture<?> scheduleAtFixedRate(Runnable task, long initialDelay, long period, TimeUnit unit) {
-        return scheduler.scheduleAtFixedRate(wrap(task), initialDelay, period, unit);
+    public ScheduledFuture<?> scheduleAtFixedRate(Runnable task,
+                                                  long initialDelay,
+                                                  long period,
+                                                  TimeUnit unit) {
+        return scheduler.scheduleAtFixedRate(wrapRunnable(task),
+                                             initialDelay, period, unit);
     }
 
     /**
-     * 批量提交多个任务。
+     * 批量提交多个 Runnable 任务。
      *
      * @param tasks 任务集合
-     * @return 每个任务对应的 Future 列表
+     * @return 对应的 Future 列表
      */
     public List<Future<?>> submitBatch(Collection<? extends Runnable> tasks) {
         List<Future<?>> futures = new ArrayList<>();
@@ -107,7 +115,7 @@ public class AsyncTaskManager implements AutoCloseable {
     }
 
     /**
-     * 关闭内部线程池，停止接受新任务。
+     * 关闭线程池，停止接受新任务。
      */
     public void shutdown() {
         executor.shutdown();
@@ -115,15 +123,19 @@ public class AsyncTaskManager implements AutoCloseable {
     }
 
     /**
-     * 与 {@link #shutdown()} 功能相同，方便 try-with-resources
-     * 或在插件 {@code onDisable()} 中调用。
+     * 与 {@link #shutdown()} 功能相同，方便 try-with-resources 或 onDisable 调用。
      */
     @Override
     public void close() {
         shutdown();
     }
 
-    private Runnable wrap(Runnable task) {
+    //================ private helpers =================
+
+    /**
+     * 包装 Runnable，使其在执行异常时记录日志。
+     */
+    private Runnable wrapRunnable(Runnable task) {
         return () -> {
             try {
                 task.run();
@@ -133,7 +145,10 @@ public class AsyncTaskManager implements AutoCloseable {
         };
     }
 
-    private <T> Callable<T> wrap(Callable<T> task) {
+    /**
+     * 包装 Callable，使其在执行异常时记录日志并重新抛出。
+     */
+    private <T> Callable<T> wrapCallable(Callable<T> task) {
         return () -> {
             try {
                 return task.call();
@@ -144,46 +159,83 @@ public class AsyncTaskManager implements AutoCloseable {
         };
     }
 
-    private static ExecutorService createDefaultExecutor(Plugin plugin, int poolSize, ThreadFactory factory) {
-        ThreadFactory useFactory = factory != null ? factory : r -> {
-            Thread t = new Thread(r, plugin.getName() + "-Async-" + THREAD_COUNTER.getAndIncrement());
-            t.setDaemon(true);
-            return t;
-        };
+    /**
+     * 创建默认线程池。
+     *
+     * @param plugin      插件实例
+     * @param poolSize    固定大小；若 <= 0 则使用缓存线程池
+     * @param customFac   自定义线程工厂（可为 null）
+     * @return ExecutorService
+     */
+    private static ExecutorService createDefaultExecutor(Plugin plugin,
+                                                         int poolSize,
+                                                         ThreadFactory customFac) {
+        ThreadFactory factory = customFac != null
+                ? customFac
+                : createThreadFactory(plugin, "-Async-");
         if (poolSize > 0) {
-            return Executors.newFixedThreadPool(poolSize, useFactory);
+            return Executors.newFixedThreadPool(poolSize, factory);
         }
-        return Executors.newCachedThreadPool(useFactory);
-    }
-
-    private static ScheduledExecutorService createDefaultScheduler(Plugin plugin, int poolSize, ThreadFactory factory) {
-        ThreadFactory useFactory = factory != null ? factory : r -> {
-            Thread t = new Thread(r, plugin.getName() + "-Scheduler-" + THREAD_COUNTER.getAndIncrement());
-            t.setDaemon(true);
-            return t;
-        };
-        if (poolSize > 1) {
-            return Executors.newScheduledThreadPool(poolSize, useFactory);
-        }
-        return Executors.newSingleThreadScheduledExecutor(useFactory);
+        return Executors.newCachedThreadPool(factory);
     }
 
     /**
-     * 创建 Builder 以自定义线程池。
+     * 创建默认调度线程池。
+     *
+     * @param plugin        插件实例
+     * @param schedulerSize 固定大小；若 <= 1 则使用单线程调度
+     * @param customFac     自定义线程工厂（可为 null）
+     * @return ScheduledExecutorService
+     */
+    private static ScheduledExecutorService createDefaultScheduler(Plugin plugin,
+                                                                   int schedulerSize,
+                                                                   ThreadFactory customFac) {
+        ThreadFactory factory = customFac != null
+                ? customFac
+                : createThreadFactory(plugin, "-Scheduler-");
+        if (schedulerSize > 1) {
+            return Executors.newScheduledThreadPool(schedulerSize, factory);
+        }
+        return Executors.newSingleThreadScheduledExecutor(factory);
+    }
+
+    /**
+     * 创建一个命名格式化的线程工厂，线程名形如：<插件名>{prefix}{序号}。
+     *
+     * @param plugin 插件实例
+     * @param prefix 名称前缀（如 "-Async-"、"-Scheduler-"）
+     * @return ThreadFactory
+     */
+    private static ThreadFactory createThreadFactory(Plugin plugin,
+                                                     String prefix) {
+        return runnable -> {
+            String name = plugin.getName()
+                    + prefix
+                    + THREAD_COUNTER.getAndIncrement();
+            Thread t = new Thread(runnable, name);
+            t.setDaemon(true);
+            return t;
+        };
+    }
+
+    //================ Builder =================
+
+    /**
+     * 创建 Builder 以自定义线程池参数。
      */
     public static Builder newBuilder(Plugin plugin, DebugUtil logger) {
         return new Builder(plugin, logger);
     }
 
     /**
-     * 构建器，用于自定义执行器实现。
+     * Builder 用于自定义 ExecutorService 与 ScheduledExecutorService。
      */
     public static class Builder {
         private final Plugin plugin;
         private final DebugUtil logger;
         private ExecutorService executor;
         private ScheduledExecutorService scheduler;
-        private int poolSize;
+        private int poolSize = 0;
         private int schedulerSize = 1;
         private ThreadFactory threadFactory;
         private ThreadFactory schedulerFactory;
@@ -199,13 +251,13 @@ public class AsyncTaskManager implements AutoCloseable {
             return this;
         }
 
-        /** 设置默认线程池的大小 */
+        /** 设置默认执行线程池大小 */
         public Builder poolSize(int size) {
             this.poolSize = Math.max(0, size);
             return this;
         }
 
-        /** 设置线程工厂 */
+        /** 设置执行线程工厂 */
         public Builder threadFactory(ThreadFactory factory) {
             this.threadFactory = factory;
             return this;
@@ -217,7 +269,7 @@ public class AsyncTaskManager implements AutoCloseable {
             return this;
         }
 
-        /** 设置调度线程数量 */
+        /** 设置调度线程池大小 */
         public Builder schedulerSize(int size) {
             this.schedulerSize = Math.max(1, size);
             return this;
@@ -231,9 +283,16 @@ public class AsyncTaskManager implements AutoCloseable {
 
         /** 构建 AsyncTaskManager 实例 */
         public AsyncTaskManager build() {
-            ExecutorService ex = executor != null ? executor : createDefaultExecutor(plugin, poolSize, threadFactory);
-            ScheduledExecutorService sch = scheduler != null ? scheduler : createDefaultScheduler(plugin, schedulerSize, schedulerFactory);
+            ExecutorService ex = executor != null
+                    ? executor
+                    : createDefaultExecutor(plugin, poolSize, threadFactory);
+            ScheduledExecutorService sch = scheduler != null
+                    ? scheduler
+                    : createDefaultScheduler(plugin, schedulerSize, schedulerFactory);
             return new AsyncTaskManager(plugin, logger, ex, sch);
         }
     }
+
+    // ================= 未调用的内容（如有）可在此处注释隐藏 =================
+    // （目前所有方法均被调用，无需额外隐藏）
 }

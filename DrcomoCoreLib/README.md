@@ -4,14 +4,6 @@ title: DrcomoCoreLib 子插件开发者指南
 
 # **DrcomoCoreLib 子插件开发者指南**
 
-### **核心哲学：成为一个纯粹的"军火库"，而非"预制营房"**
-
-`DrcomoCoreLib` 的唯一使命，是为所有依赖它的子插件提供**高复用、零耦合、完全可控**的工具集。它是一个抽象的逻辑工具箱，而非一个具象的功能插件。
-
-我们不创造功能，我们只**赋能创造**。
-
----
-
 ## **安装与依赖**
 
 1.  将 `DrcomoCoreLib.jar` 放入服务器的 `plugins` 文件夹。
@@ -170,27 +162,6 @@ if (coreLib != null) {
 
 ---
 
-## **核心模块一览**
-
-本库提供以下核心工具类，所有类都需通过 `new` 关键字实例化使用：
-
-  * `DebugUtil`: 分级日志工具。
-  * `YamlUtil`: YAML 配置文件管理器，可一次性加载目录内的多份配置。
-  * `ConfigValidator`: 配置校验器，结合 `YamlUtil` 在加载或热重载配置时验证必填项与数据类型。
-  * `MessageService`: 支持多语言和 PlaceholderAPI 的消息管理器，可在运行时切换语言文件或调整键前缀，并允许自定义占位符解析规则。
-  * `SoundManager`: 音效管理器。
-  * `NBTUtil`: 物品 NBT 数据操作工具。
-  * `JsonUtil`: 适用于保存或读取 JSON 文件、验证与美化 JSON 字符串。
-  * `PlaceholderAPIUtil`: PlaceholderAPI 占位符注册与解析工具。
-  * `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
-  * `HttpUtil`: 异步 HTTP 请求工具，可配置代理、默认请求头、基础 URI、超时、重试或自定义 HttpClient 和执行器。
-  * `ArchiveUtil`: 压缩、解压与日期归档管理工具。
-  * `AsyncTaskManager`: 统一管理异步任务与定时调度的工具。
-  * `PerformanceUtil`: 获取 TPS、CPU、内存与 GC 数据的性能监控工具。
-  * ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
-
----
-
 ## **API文档查询规则**
 
 当接收到与 DrcomoCoreLib 开发相关的用户请求时，严格遵循以下规则，将所需功能映射到对应的API文档，并基于该文档提供解决方案。
@@ -240,23 +211,6 @@ if (coreLib != null) {
 - **查询文档**：[查看](./JavaDocs/hook/placeholder/parse/PlaceholderConditionEvaluator-JavaDoc.md)
 - **关联查询**：[查看](./JavaDocs/hook/placeholder/parse/ParseException-JavaDoc.md)（表达式解析异常处理）
 
-```java
-// 创建 AsyncTaskManager 作为异步执行器
-AsyncTaskManager taskManager = new AsyncTaskManager(this, myLogger);
-PlaceholderConditionEvaluator evaluator = new PlaceholderConditionEvaluator(
-        this,
-        myLogger,
-        myPapiUtil,
-        taskManager
-);
-
-evaluator.parseAndEvaluateAsync("%player_level% >= 20", player).thenAccept(pass -> {
-    if (pass) {
-        player.sendMessage("满足条件!");
-    }
-});
-```
-
 
 ### 经济系统交互 (Vault / PlayerPoints)
 - **功能描述**：查询玩家余额、扣款、存款、格式化货币等操作。  
@@ -292,6 +246,7 @@ evaluator.parseAndEvaluateAsync("%player_level% >= 20", player).thenAccept(pass 
 - **功能描述**：基于Java 11 HttpClient的异步HTTP工具，支持GET/POST请求、文件上传、代理配置、超时设置和重试机制。
 - **查询文档**：[查看](./JavaDocs/net/HttpUtil-JavaDoc.md)
 
+
 ### 文件归档与压缩
 - **功能描述**：压缩或解压文件/目录，并可按日期归档和清理旧文件。
 - **查询文档**：[查看](./JavaDocs/archive/ArchiveUtil-JavaDoc.md)
@@ -312,6 +267,7 @@ evaluator.parseAndEvaluateAsync("%player_level% >= 20", player).thenAccept(pass 
 - **会话超时设置**：构造 `GUISessionManager` 时可传入自定义过期毫秒数，或稍后调用 `setSessionTimeout(long)` 动态调整。
 - **关联查询 (数据载体)**：[查看](./JavaDocs/gui/ClickContext-JavaDoc.md) (用于在回调中获取点击类型、玩家等上下文信息)
 - **关联查询 (辅助工具)**：[查看](./JavaDocs/gui/GuiManager-JavaDoc.md) (用于安全播放音效、清理光标、检查危险点击等)
+
 
 ### 数据库操作 (SQLite)
 - **功能描述**：连接管理 SQLite 数据库，初始化表结构，执行增删改查（CRUD）、事务处理。内置 HikariCP 连接池并提供异步接口，适合并发环境。
