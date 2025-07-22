@@ -174,6 +174,12 @@
     handle.close();
     ```
 
+  * #### `stopAllWatches()`
+
+      * **返回类型:** `void`
+      * **功能描述:** 关闭并清理所有由 `watchConfig` 创建的监听器。通常在插件停用
+        时调用，以避免后台线程泄露。
+
   * #### `getValue(String path, Class<T> type, T defaultValue)`
 
       * **返回类型:** `<T>`
