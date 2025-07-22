@@ -8,14 +8,18 @@
 **2. 如何实例化 (Initialization)**
 
   * **核心思想:** 该管理器遵循控制反转原则，构造时需要传入主插件实例、调试工具以及可选的 `MessageService`。它本身不注册事件，事件应由外部绑定。
-  * **构造函数:** `public GUISessionManager(Plugin plugin, DebugUtil debug, MessageService messageService)`
+  * **构造函数 1:** `public GUISessionManager(Plugin plugin, DebugUtil debug, MessageService messageService)`
+  * **构造函数 2:** `public GUISessionManager(Plugin plugin, DebugUtil debug, MessageService messageService, long sessionTimeout)`
   * **代码示例:**
     ```java
     Plugin plugin = this; // 你的插件主类
     DebugUtil logger = new DebugUtil(plugin, DebugUtil.LogLevel.INFO);
     MessageService msgSvc = null; // 如无需要可传入 null
 
+    // 使用默认 5 分钟过期时间
     GUISessionManager manager = new GUISessionManager(plugin, logger, msgSvc);
+    // 或自定义过期时间（毫秒）
+    // GUISessionManager manager = new GUISessionManager(plugin, logger, msgSvc, 10 * 60 * 1000L);
     ```
 
 **3. 公共API方法 (Public API Methods)**
@@ -79,6 +83,12 @@
 
       * **功能描述:** 插件关闭 (`onDisable`) 时同步回收所有仍在会话中的 GUI 物品并返还给玩家；若背包已满则自然掉落。
       * **使用场景:** 保证插件关闭时不会因调度器停止而导致物品丢失。
+
+  * #### `void setSessionTimeout(long sessionTimeout)`
+
+      * **功能描述:** 动态调整会话的过期时间（毫秒）。
+      * **参数说明:**
+          * `sessionTimeout` (`long`): 会话过期的毫秒数。
 
 **4. 注意事项 (Cautions)**
 
