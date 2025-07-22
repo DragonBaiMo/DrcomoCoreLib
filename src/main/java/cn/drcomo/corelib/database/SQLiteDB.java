@@ -34,6 +34,7 @@ public class SQLiteDB {
     private final List<String> initScripts;
     private HikariDataSource dataSource;
     private final ThreadLocal<Connection> txConnection = new ThreadLocal<>();
+    private final SQLiteDBConfig config = new SQLiteDBConfig();
 
     /**
      * 构造方法。
@@ -50,6 +51,15 @@ public class SQLiteDB {
     }
 
     /**
+     * 获取连接池配置实例，可在调用 {@link #connect()} 前调整参数。
+     *
+     * @return 当前配置实例
+     */
+    public SQLiteDBConfig getConfig() {
+        return config;
+    }
+
+    /**
      * 打开数据库连接。
      * 如果所在目录不存在将会自动创建。
      *
@@ -61,12 +71,12 @@ public class SQLiteDB {
         if (parent != null && !parent.exists()) {
             parent.mkdirs();
         }
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:sqlite:" + dbFilePath);
-        config.setPoolName(plugin.getName() + "-SQLitePool");
-        config.setMaximumPoolSize(10);
-        config.setConnectionTestQuery("SELECT 1");
-        this.dataSource = new HikariDataSource(config);
+        HikariConfig hikari = new HikariConfig();
+        hikari.setJdbcUrl("jdbc:sqlite:" + dbFilePath);
+        hikari.setPoolName(plugin.getName() + "-SQLitePool");
+        hikari.setMaximumPoolSize(config.getMaximumPoolSize());
+        hikari.setConnectionTestQuery(config.getConnectionTestQuery());
+        this.dataSource = new HikariDataSource(hikari);
     }
 
     /**
@@ -287,6 +297,45 @@ public class SQLiteDB {
     private void returnConnection(Connection conn) throws SQLException {
         if (txConnection.get() == null && conn != null) {
             conn.close();
+        }
+    }
+
+    /**
+     * 连接池配置。
+     * 在调用 {@link #connect()} 前调整以自定义 HikariCP 行为。
+     */
+    public static class SQLiteDBConfig {
+        private int maximumPoolSize = 10;
+        private String connectionTestQuery = "SELECT 1";
+
+        /**
+         * 设置连接池最大线程数。
+         *
+         * @param size 大小
+         * @return 当前配置
+         */
+        public SQLiteDBConfig maximumPoolSize(int size) {
+            this.maximumPoolSize = size;
+            return this;
+        }
+
+        /**
+         * 设置测试连接的查询语句。
+         *
+         * @param query SQL 查询
+         * @return 当前配置
+         */
+        public SQLiteDBConfig connectionTestQuery(String query) {
+            this.connectionTestQuery = query;
+            return this;
+        }
+
+        public int getMaximumPoolSize() {
+            return maximumPoolSize;
+        }
+
+        public String getConnectionTestQuery() {
+            return connectionTestQuery;
         }
     }
 
