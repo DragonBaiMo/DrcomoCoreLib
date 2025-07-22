@@ -1,12 +1,182 @@
 ---
-title: DrcomoCoreLib JavaDocs
+title: DrcomoCoreLib 子插件开发者指南
 ---
 
-# **DrcomoCoreLib API 文档查询规则**
+# **DrcomoCoreLib 子插件开发者指南**
 
-当接收到与 DrcomoCoreLib 开发相关的用户请求时，严格遵循以下规则，将所需功能映射到对应的API文档，并基于该文档提供解决方案。  
+### **核心哲学：成为一个纯粹的"军火库"，而非"预制营房"**
+
+`DrcomoCoreLib` 的唯一使命，是为所有依赖它的子插件提供**高复用、零耦合、完全可控**的工具集。它是一个抽象的逻辑工具箱，而非一个具象的功能插件。
+
+我们不创造功能，我们只**赋能创造**。
+
+---
+
+## **安装与依赖**
+
+1.  将 `DrcomoCoreLib.jar` 放入服务器的 `plugins` 文件夹。
+2.  在你的插件 `plugin.yml` 中添加依赖：
+    ```yaml
+    depend: [DrcomoCoreLib]
+    ```
+
+## **核心使用范例**
+
+`DrcomoCoreLib` 的所有工具类都不能直接使用，你必须在你的插件中通过 `new` 关键字创建它们的实例，并将依赖注入。
+
+### **基础实例化模式**
+
+根据 `DrcomoCoreLib` 主类的设计理念，该类由 Bukkit/Spigot 服务器自动管理，开发者**不应也无需**手动创建其实例。开发者需要关注的是如何在自己的插件中，正确地实例化和使用本库提供的其他工具类。
+
+```java
+// 在你的插件主类的 onEnable() 方法中
+public class MyAwesomePlugin extends JavaPlugin {
+
+    private DebugUtil myLogger;
+    private YamlUtil myYamlUtil;
+    private YamlUtil.ConfigWatchHandle configHandle;
+    private SoundManager mySoundManager;
+
+    @Override
+    public void onEnable() {
+        // 1. 为你的插件创建独立的日志工具
+        myLogger = new DebugUtil(this, DebugUtil.LogLevel.INFO);
+        // 可选：自定义前缀和输出格式
+        myLogger.setPrefix("&f[&bMyPlugin&r]&f ");
+        myLogger.setFormatTemplate("%prefix%[%level%] %msg%");
+        // 额外将日志写入文件
+        myLogger.addFileHandler(new File(getDataFolder(), "debug.log"));
+
+        // 2. 为你的插件创建独立的 Yaml 配置工具，并注入日志实例
+        myYamlUtil = new YamlUtil(this, myLogger);
+        myYamlUtil.loadConfig("config");
+        configHandle = myYamlUtil.watchConfig("config", updated ->
+                myLogger.info("配置文件已重新加载！"));
+
+        // 3. 实例化 SoundManager，注入所有需要的依赖
+        mySoundManager = new SoundManager(
+            this,
+            myYamlUtil,
+            myLogger,
+            "mySounds.yml", // 自定义配置文件名
+            1.0f,           // 全局音量
+            true            // 找不到音效时警告
+        );
+        mySoundManager.loadSounds(); // 手动加载音效
+        // 可在需要时自定义音量与音调
+        // mySoundManager.play("level_up", player.getLocation(), 0.8f, 1.2f);
+
+        // 4. 使用类型安全的方式读取配置
+        boolean autoSave = myYamlUtil.getValue("settings.auto-save", Boolean.class, true);
+        if (autoSave) {
+            myLogger.info("自动保存已启用");
+        }
+
+        // 5. 备份数据并清理旧归档
+        ArchiveUtil archiveUtil = new ArchiveUtil(myLogger);
+        String zip = archiveUtil.archiveByDate("plugins/MyPlugin/data", "backups");
+        archiveUtil.cleanupOldArchives("backups", 30);
+        // 若需更细粒度控制，可指定压缩级别
+        archiveUtil.compress("logs/latest.log", "logs.zip", 9);
+
+        myLogger.info("我的插件已成功加载，并配置好了核心库工具！");
+    }
+
+    @Override
+    public void onDisable() {
+        // 停止所有文件监听器，防止线程泄露
+        if (myYamlUtil != null) {
+            myYamlUtil.stopAllWatches();
+        }
+        
+        // 如果使用了 AsyncTaskManager，记得关闭以释放线程资源
+        // if (asyncTaskManager != null) {
+        //     asyncTaskManager.close();
+        // }
+        
+        myLogger.info("插件已安全卸载");
+    }
+}
+```
+
+> **注意**：自定义模板必须包含 `%msg%` 占位符，否则日志内容将丢失。将日志写入文件时请确认插件目录可写。
+
+### **高级配置示例**
+
+#### **更换线程池示例**
+
+通过 `AsyncTaskManager.newBuilder()` 可接入自定义线程池或调度器。
+
+```java
+ExecutorService exec = Executors.newFixedThreadPool(4);
+ScheduledExecutorService sched = Executors.newSingleThreadScheduledExecutor();
+AsyncTaskManager manager = AsyncTaskManager
+        .newBuilder(this, myLogger)
+        .executor(exec)
+        .scheduler(sched) // 可替换为封装 BukkitScheduler 的实现
+        .build();
+// 在插件 onDisable() 方法中调用以释放线程资源
+// manager.close();
+```
+
+#### **自定义 HttpClient 示例**
+
+可通过 `HttpUtil.newBuilder()` 注入自定义的 `HttpClient` 或执行器，实现完全控制的网络请求。
+
+```java
+ExecutorService pool = Executors.newFixedThreadPool(2);
+HttpClient client = HttpClient.newBuilder()
+        .executor(pool)
+        .build();
+
+HttpUtil http = HttpUtil.newBuilder()
+        .logger(myLogger)
+        .client(client)      // 直接使用自定义 HttpClient
+        .build();
+```
+
+若需使用 Bukkit 原生调度器，可将 `BukkitScheduler` 封装为 `ScheduledExecutorService` 后传入 `scheduler()`。
+
+#### **获取 DrcomoCoreLib 实例（可选）**
+
+虽然通常不需要直接与 `DrcomoCoreLib` 主类交互，但如果需要获取其实例：
+
+```java
+DrcomoCoreLib coreLib = (DrcomoCoreLib) Bukkit.getPluginManager().getPlugin("DrcomoCoreLib");
+
+if (coreLib != null) {
+    // 你可以获取到实例，但通常不会直接与它交互。
+    // 它的价值在于作为一个加载入口和提供用法示例。
+    getLogger().info("成功获取到 DrcomoCoreLib 实例。");
+}
+```
+
+---
+
+## **核心模块一览**
+
+本库提供以下核心工具类，所有类都需通过 `new` 关键字实例化使用：
+
+  * `DebugUtil`: 分级日志工具。
+  * `YamlUtil`: YAML 配置文件管理器，可一次性加载目录内的多份配置。
+  * `ConfigValidator`: 配置校验器，结合 `YamlUtil` 在加载或热重载配置时验证必填项与数据类型。
+  * `MessageService`: 支持多语言和 PlaceholderAPI 的消息管理器，可在运行时切换语言文件或调整键前缀，并允许自定义占位符解析规则。
+  * `SoundManager`: 音效管理器。
+  * `NBTUtil`: 物品 NBT 数据操作工具。
+  * `JsonUtil`: 适用于保存或读取 JSON 文件、验证与美化 JSON 字符串。
+  * `PlaceholderAPIUtil`: PlaceholderAPI 占位符注册与解析工具。
+  * `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
+  * `HttpUtil`: 异步 HTTP 请求工具，可配置代理、超时、重试或自定义 HttpClient 和执行器。
+  * `ArchiveUtil`: 压缩、解压与日期归档管理工具。
+  * `AsyncTaskManager`: 统一管理异步任务与定时调度的工具。
+  * `PerformanceUtil`: 获取 TPS、CPU、内存与 GC 数据的性能监控工具。
+  * ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
+
+---
 
 ## **API文档查询规则**
+
+当接收到与 DrcomoCoreLib 开发相关的用户请求时，严格遵循以下规则，将所需功能映射到对应的API文档，并基于该文档提供解决方案。
 
 ---
 
