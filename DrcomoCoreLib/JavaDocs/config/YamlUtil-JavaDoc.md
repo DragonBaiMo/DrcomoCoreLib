@@ -153,15 +153,25 @@
           * `fileName` (`String`): 文件名。
           * `path` (`String`): 路径。
 
-  * #### `watchConfig(String configName, Consumer<YamlConfiguration> onChange)`
+* #### `watchConfig(String configName, Consumer<YamlConfiguration> onChange)`
 
-      * **返回类型:** `YamlUtil.ConfigWatchHandle`
-      * **功能描述:** 使用 `WatchService` 监听配置文件变更。当文件内容被修改时自动
-      重载该文件并执行回调函数。返回的 `ConfigWatchHandle` 可以在不再需要监听时调
-      用 `close()` 来安全地终止线程并关闭 `WatchService`。
-      * **参数说明:**
-          * `configName` (`String`): 文件名（不含 `.yml`）。
-          * `onChange` (`Consumer<YamlConfiguration>`): 变更后的回调，参数为最新配置。
+    * **返回类型:** `YamlUtil.ConfigWatchHandle`
+    * **功能描述:** 使用 `WatchService` 监听配置文件变更。当文件内容被修改时自动
+      重载该文件并执行回调函数。等同于调用扩展方法并仅监听 `ENTRY_MODIFY` 事件。
+    * **参数说明:**
+        * `configName` (`String`): 文件名（不含 `.yml`）。
+        * `onChange` (`Consumer<YamlConfiguration>`): 变更后的回调，参数为最新配置。
+
+* #### `watchConfig(String configName, Consumer<YamlConfiguration> onChange, ExecutorService executor, WatchEvent.Kind<?>... kinds)`
+
+    * **返回类型:** `YamlUtil.ConfigWatchHandle`
+    * **功能描述:** 自定义监听事件类型并可指定执行监听任务的线程池。当 `executor`
+      为 `null` 时会创建守护线程。`kinds` 为空时默认仅监听 `ENTRY_MODIFY`。
+    * **参数说明:**
+        * `configName` (`String`): 文件名（不含 `.yml`）。
+        * `onChange` (`Consumer<YamlConfiguration>`): 变更后的回调，参数为最新配置。
+        * `executor` (`ExecutorService`): 执行监听任务的线程池，传入 `null` 时自建线程。
+        * `kinds` (`WatchEvent.Kind<?>...`): 监听的事件类型，例如 `ENTRY_CREATE`、`ENTRY_DELETE`。
 
   * **代码示例：**
 
