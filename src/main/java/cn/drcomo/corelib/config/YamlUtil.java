@@ -23,6 +23,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -360,14 +362,32 @@ public class YamlUtil {
      *
      * @param configName 配置文件名（不含 .yml）
      * @param onChange   文件变更后的回调，提供最新的 YamlConfiguration
+     * @return 监听句柄，可通过 {@link ConfigWatchHandle#close()} 停止监听
      */
     public ConfigWatchHandle watchConfig(String configName, Consumer<YamlConfiguration> onChange) {
+        return watchConfig(configName, onChange, null, StandardWatchEventKinds.ENTRY_MODIFY);
+    }
+
+    /**
+     * 监听指定配置文件，并允许自定义执行器和监听的事件类型。
+     *
+     * @param configName 配置文件名（不含 .yml）
+     * @param onChange   文件变更后的回调，提供最新的 YamlConfiguration
+     * @param executor   执行监听任务的线程池，传入 {@code null} 时将创建守护线程
+     * @param kinds      要监听的事件类型，如 {@link StandardWatchEventKinds#ENTRY_MODIFY}
+     * @return 监听句柄，可通过 {@link ConfigWatchHandle#close()} 停止监听
+     */
+    public ConfigWatchHandle watchConfig(String configName, Consumer<YamlConfiguration> onChange,
+                                         ExecutorService executor, WatchEvent.Kind<?>... kinds) {
+        if (kinds == null || kinds.length == 0) {
+            kinds = new WatchEvent.Kind<?>[]{StandardWatchEventKinds.ENTRY_MODIFY};
+        }
         File file = getConfigFile(configName);
         Path dir = file.getParentFile().toPath();
         try {
             WatchService service = FileSystems.getDefault().newWatchService();
-            WatchKey key = dir.register(service, StandardWatchEventKinds.ENTRY_MODIFY);
-            Thread watcher = new Thread(() -> {
+            WatchKey key = dir.register(service, kinds);
+            Runnable task = () -> {
                 while (!Thread.currentThread().isInterrupted()) {
                     WatchKey wk;
                     try {
@@ -394,11 +414,20 @@ public class YamlUtil {
                 } catch (IOException ignore) {
                 }
                 logger.info("停止监听配置文件: " + file.getName());
-            }, "YamlUtil-Watch-" + configName);
-            watcher.setDaemon(true);
-            watcher.start();
-            logger.info("开始监听配置文件: " + file.getName());
-            ConfigWatchHandle handle = new ConfigWatchHandle(watcher, key, service);
+            };
+
+            ConfigWatchHandle handle;
+            if (executor == null) {
+                Thread watcher = new Thread(task, "YamlUtil-Watch-" + configName);
+                watcher.setDaemon(true);
+                watcher.start();
+                logger.info("开始监听配置文件: " + file.getName());
+                handle = new ConfigWatchHandle(watcher, null, key, service);
+            } else {
+                Future<?> future = executor.submit(task);
+                logger.info("开始监听配置文件: " + file.getName());
+                handle = new ConfigWatchHandle(null, future, key, service);
+            }
             watchHandles.add(handle);
             return handle;
         } catch (IOException e) {
@@ -423,11 +452,13 @@ public class YamlUtil {
 
     public static class ConfigWatchHandle implements AutoCloseable {
         private final Thread thread;
+        private final Future<?> future;
         private final WatchKey key;
         private final WatchService service;
 
-        private ConfigWatchHandle(Thread thread, WatchKey key, WatchService service) {
+        private ConfigWatchHandle(Thread thread, Future<?> future, WatchKey key, WatchService service) {
             this.thread = thread;
+            this.future = future;
             this.key = key;
             this.service = service;
         }
@@ -435,7 +466,12 @@ public class YamlUtil {
         @Override
         public void close() {
             key.cancel();
-            thread.interrupt();
+            if (thread != null) {
+                thread.interrupt();
+            }
+            if (future != null) {
+                future.cancel(true);
+            }
             try {
                 service.close();
             } catch (IOException ignored) {
