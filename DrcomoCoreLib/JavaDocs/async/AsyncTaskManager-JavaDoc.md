@@ -27,6 +27,13 @@
             .scheduler(sched)
             .build();
 
+    // 仅调节线程数量与名称
+    AsyncTaskManager tuned = AsyncTaskManager
+            .newBuilder(plugin, logger)
+            .poolSize(4)
+            .threadFactory(r -> new Thread(r, "MyPool-%d".formatted(r.hashCode())))
+            .build();
+
     manager.submitAsync(() -> logger.info("run"));
     ```
 

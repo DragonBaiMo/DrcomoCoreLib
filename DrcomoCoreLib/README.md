@@ -123,6 +123,13 @@ AsyncTaskManager manager = AsyncTaskManager
         .executor(exec)
         .scheduler(sched) // 可替换为封装 BukkitScheduler 的实现
         .build();
+
+// 快速调整内部线程池
+AsyncTaskManager tuned = AsyncTaskManager
+        .newBuilder(this, myLogger)
+        .poolSize(4)
+        .threadFactory(r -> new Thread(r, "Worker-" + r.hashCode()))
+        .build();
 // 在插件 onDisable() 方法中调用以释放线程资源
 // manager.close();
 ```
@@ -266,7 +273,7 @@ evaluator.parseAndEvaluateAsync("%player_level% >= 20", player).thenAccept(pass 
 
 
 ### 异步任务管理
-- **功能描述**：管理异步任务执行，支持任务提交、延迟执行、定时调度、批量处理等，内置异常捕获和日志记录。
+- **功能描述**：管理异步任务执行，支持任务提交、延迟执行、定时调度、批量处理等，内置异常捕获和日志记录。通过 Builder 可调整线程池大小及线程工厂。
 - **查询文档**：[查看](./JavaDocs/async/AsyncTaskManager-JavaDoc.md)
 
 
