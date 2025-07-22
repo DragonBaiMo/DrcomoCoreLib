@@ -9,6 +9,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -23,12 +24,17 @@ public class HttpUtil {
     private final HttpClient client;
     private final Duration timeout;
     private final int maxRetries;
+    private final URI baseUri;
+    private final Map<String, String> defaultHeaders;
 
-    private HttpUtil(DebugUtil logger, HttpClient client, Duration timeout, int maxRetries) {
+    private HttpUtil(DebugUtil logger, HttpClient client, Duration timeout, int maxRetries,
+                     URI baseUri, Map<String, String> defaultHeaders) {
         this.logger = logger;
         this.client = client;
         this.timeout = timeout;
         this.maxRetries = maxRetries;
+        this.baseUri = baseUri;
+        this.defaultHeaders = defaultHeaders;
     }
 
     /**
@@ -48,9 +54,10 @@ public class HttpUtil {
      * @return 异步响应字符串
      */
     public CompletableFuture<String> get(String url, Map<String, String> headers) {
-        HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(url)).GET();
+        URI uri = baseUri != null ? baseUri.resolve(url) : URI.create(url);
+        HttpRequest.Builder req = HttpRequest.newBuilder(uri).GET();
         applyHeaders(req, headers);
-        return sendAsync(req.build(), 0);
+        return request(req.build()).thenApply(HttpResponse::body);
     }
 
     /**
@@ -62,10 +69,11 @@ public class HttpUtil {
      * @return 异步响应字符串
      */
     public CompletableFuture<String> post(String url, String body, Map<String, String> headers) {
-        HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(url))
+        URI uri = baseUri != null ? baseUri.resolve(url) : URI.create(url);
+        HttpRequest.Builder req = HttpRequest.newBuilder(uri)
                 .POST(HttpRequest.BodyPublishers.ofString(body));
         applyHeaders(req, headers);
-        return sendAsync(req.build(), 0);
+        return request(req.build()).thenApply(HttpResponse::body);
     }
 
     /**
@@ -77,7 +85,8 @@ public class HttpUtil {
      * @return 异步响应字符串
      */
     public CompletableFuture<String> upload(String url, java.nio.file.Path path, Map<String, String> headers) {
-        HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(url));
+        URI uri = baseUri != null ? baseUri.resolve(url) : URI.create(url);
+        HttpRequest.Builder req = HttpRequest.newBuilder(uri);
         try {
             req.POST(HttpRequest.BodyPublishers.ofFile(path));
         } catch (java.io.FileNotFoundException e) {
@@ -86,26 +95,38 @@ public class HttpUtil {
             return fail;
         }
         applyHeaders(req, headers);
-        return sendAsync(req.build(), 0);
+        return request(req.build()).thenApply(HttpResponse::body);
     }
 
     private void applyHeaders(HttpRequest.Builder builder, Map<String, String> headers) {
+        if (defaultHeaders != null) {
+            defaultHeaders.forEach(builder::header);
+        }
         if (headers != null) {
             headers.forEach(builder::header);
         }
         builder.timeout(timeout);
     }
 
-    private CompletableFuture<String> sendAsync(HttpRequest request, int attempt) {
+    /**
+     * 发送自定义 HttpRequest。
+     *
+     * @param request 请求对象
+     * @return 异步响应
+     */
+    public CompletableFuture<HttpResponse<String>> request(HttpRequest request) {
+        return sendRequest(request, 0);
+    }
+
+    private CompletableFuture<HttpResponse<String>> sendRequest(HttpRequest request, int attempt) {
         return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenApply(HttpResponse::body)
                 .exceptionallyCompose(ex -> {
                     logger.error("网络请求失败: " + ex.getMessage());
                     if (attempt < maxRetries) {
                         logger.warn("重试中... (" + (attempt + 1) + "/" + maxRetries + ")");
-                        return sendAsync(request, attempt + 1);
+                        return sendRequest(request, attempt + 1);
                     }
-                    CompletableFuture<String> fail = new CompletableFuture<>();
+                    CompletableFuture<HttpResponse<String>> fail = new CompletableFuture<>();
                     fail.completeExceptionally(ex);
                     return fail;
                 });
@@ -121,6 +142,8 @@ public class HttpUtil {
         private int retries = 0;
         private HttpClient client;
         private Executor executor;
+        private URI baseUri;
+        private final Map<String, String> defaultHeaders = new HashMap<>();
 
         /**
          * 设置日志工具。
@@ -162,6 +185,35 @@ public class HttpUtil {
         }
 
         /**
+         * 设置基础 URI，GET/POST/UPLOAD 请求可使用相对路径。
+         *
+         * @param baseUri 基础地址
+         */
+        public Builder baseUri(URI baseUri) {
+            this.baseUri = baseUri;
+            return this;
+        }
+
+        /**
+         * 设置默认请求头，在每次请求时自动携带。
+         *
+         * @param name  名称
+         * @param value 值
+         */
+        public Builder defaultHeader(String name, String value) {
+            this.defaultHeaders.put(name, value);
+            return this;
+        }
+
+        /**
+         * 批量设置默认请求头。
+         */
+        public Builder defaultHeaders(Map<String, String> headers) {
+            this.defaultHeaders.putAll(headers);
+            return this;
+        }
+
+        /**
          * 设置超时时间。
          *
          * @param timeout 超时
@@ -198,7 +250,7 @@ public class HttpUtil {
                 }
                 useClient = cb.build();
             }
-            return new HttpUtil(logger, useClient, timeout, retries);
+            return new HttpUtil(logger, useClient, timeout, retries, baseUri, defaultHeaders);
         }
     }
 }
