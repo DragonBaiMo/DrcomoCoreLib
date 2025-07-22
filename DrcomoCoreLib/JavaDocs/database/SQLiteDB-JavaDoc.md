@@ -14,9 +14,16 @@
     Plugin myPlugin = this;
     List<String> scripts = Arrays.asList("schema.sql");
     SQLiteDB db = new SQLiteDB(myPlugin, "data/mydb.sqlite", scripts);
+    db.getConfig()
+        .maximumPoolSize(20)
+        .connectionTestQuery("SELECT 1");
     db.connect();
     db.initializeSchema();
     ```
+
+  * **可配置项：** 通过 `db.getConfig()` 可以修改连接池参数。
+      * `maximumPoolSize`：连接池最大连接数，默认 `10`。
+      * `connectionTestQuery`：检测连接有效性的 SQL，默认 `SELECT 1`。
 
 **3. 公共API方法 (Public API Methods)**
 
