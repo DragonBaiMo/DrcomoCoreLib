@@ -20,10 +20,18 @@
 
   * #### `void compress(String sourcePath, String targetZipPath)`
 
-    * **功能描述:** 将指定文件或目录压缩为 ZIP 文件，路径均为绝对或相对文件系统路径。
+    * **功能描述:** 使用默认级别将文件或目录压缩为 ZIP 文件。
     * **参数说明:**
         * `sourcePath` — 待压缩的文件或目录。
         * `targetZipPath` — 压缩后生成的 ZIP 文件路径。
+
+  * #### `void compress(String sourcePath, String targetZipPath, int level)`
+
+    * **功能描述:** 指定压缩级别进行 ZIP 压缩，级别范围 `-1~9`。
+    * **参数说明:**
+        * `sourcePath` — 待压缩的文件或目录。
+        * `targetZipPath` — 压缩后生成的 ZIP 文件路径。
+        * `level` — 压缩级别，`-1` 为默认级别。
 
   * #### `void extract(String zipPath, String destDir)`
 
@@ -63,6 +71,8 @@
     String zip = util.archiveByDate("plugins/MyPlugin/data", "backups");
     // 删除30天前的旧备份
     util.cleanupOldArchives("backups", 30);
+    // 手动指定压缩级别
+    util.compress("logs/latest.log", "logs.zip", 9);
     ```
 
   * **解压归档进行恢复**

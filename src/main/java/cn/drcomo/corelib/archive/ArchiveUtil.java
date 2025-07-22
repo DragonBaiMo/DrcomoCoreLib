@@ -9,6 +9,7 @@ import java.util.Date;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
+import java.util.zip.Deflater;
 
 import cn.drcomo.corelib.util.DebugUtil;
 
@@ -39,12 +40,24 @@ public class ArchiveUtil {
      * @param targetZipPath 生成的 zip 文件路径
      */
     public void compress(String sourcePath, String targetZipPath) {
+        compress(sourcePath, targetZipPath, Deflater.DEFAULT_COMPRESSION);
+    }
+
+    /**
+     * 将指定文件或目录压缩为 ZIP，并指定压缩级别。
+     *
+     * @param sourcePath   待压缩的文件或目录路径
+     * @param targetZipPath 生成的 zip 文件路径
+     * @param level        压缩级别，范围 -1~9
+     */
+    public void compress(String sourcePath, String targetZipPath, int level) {
         File source = new File(sourcePath);
         if (!source.exists()) {
             logger.warn("源路径不存在: " + sourcePath);
             return;
         }
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(targetZipPath))) {
+            zos.setLevel(level);
             addToZip(source, source.getName(), zos);
             logger.info("压缩完成: " + targetZipPath);
         } catch (IOException e) {

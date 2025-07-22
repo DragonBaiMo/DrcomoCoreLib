@@ -113,6 +113,8 @@ public class MyAwesomePlugin extends JavaPlugin {
         ArchiveUtil archiveUtil = new ArchiveUtil(myLogger);
         String zip = archiveUtil.archiveByDate("plugins/MyPlugin/data", "backups");
         archiveUtil.cleanupOldArchives("backups", 30);
+        // 若需更细粒度控制，可指定压缩级别
+        archiveUtil.compress("logs/latest.log", "logs.zip", 9);
 
 myLogger.info("我的插件已成功加载，并配置好了核心库工具！");
     }
