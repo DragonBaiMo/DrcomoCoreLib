@@ -9,14 +9,29 @@
 
   * **核心思想:** 每个子插件根据自身需求创建独立实例，并在插件关闭时调用 `shutdown()` 释放线程资源。
   * **构造函数:** `public AsyncTaskManager(Plugin plugin, DebugUtil logger)`
+  * **Builder:** `AsyncTaskManager.newBuilder(plugin, logger)` 可自定义线程池。
   * **代码示例:**
     ```java
     Plugin plugin = this;
     DebugUtil logger = new DebugUtil(plugin, DebugUtil.LogLevel.INFO);
+
+    // 默认线程池
     AsyncTaskManager manager = new AsyncTaskManager(plugin, logger);
+
+    // 自定义线程池与调度器
+    ExecutorService exec = Executors.newFixedThreadPool(4);
+    ScheduledExecutorService sched = Executors.newSingleThreadScheduledExecutor();
+    AsyncTaskManager custom = AsyncTaskManager
+            .newBuilder(plugin, logger)
+            .executor(exec)
+            .scheduler(sched)
+            .build();
 
     manager.submitAsync(() -> logger.info("run"));
     ```
+
+  * **Bukkit 调度器示例:** 可以封装 `BukkitScheduler` 实现 `ScheduledExecutorService`，
+    然后通过 `builder.scheduler()` 传入，实现与服务器主调度器的统一管理。
 
 **3. 公共API方法 (Public API Methods)**
 
