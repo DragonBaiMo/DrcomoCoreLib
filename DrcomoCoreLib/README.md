@@ -227,9 +227,26 @@ if (coreLib != null) {
 
 
 ### 动态条件判断
-- **功能描述**：解析并计算包含PAPI占位符、逻辑运算符（`&&`, `||`）和比较运算符（`>=`, `==`, `STR_CONTAINS`）的条件表达式。  
-- **查询文档**：[查看](./JavaDocs/hook/placeholder/parse/PlaceholderConditionEvaluator-JavaDoc.md)  
+- **功能描述**：解析并计算包含PAPI占位符、逻辑运算符（`&&`, `||`）和比较运算符（`>=`, `==`, `STR_CONTAINS`）的条件表达式。
+- **查询文档**：[查看](./JavaDocs/hook/placeholder/parse/PlaceholderConditionEvaluator-JavaDoc.md)
 - **关联查询**：[查看](./JavaDocs/hook/placeholder/parse/ParseException-JavaDoc.md)（表达式解析异常处理）
+
+```java
+// 创建 AsyncTaskManager 作为异步执行器
+AsyncTaskManager taskManager = new AsyncTaskManager(this, myLogger);
+PlaceholderConditionEvaluator evaluator = new PlaceholderConditionEvaluator(
+        this,
+        myLogger,
+        myPapiUtil,
+        taskManager
+);
+
+evaluator.parseAndEvaluateAsync("%player_level% >= 20", player).thenAccept(pass -> {
+    if (pass) {
+        player.sendMessage("满足条件!");
+    }
+});
+```
 
 
 ### 经济系统交互 (Vault / PlayerPoints)
