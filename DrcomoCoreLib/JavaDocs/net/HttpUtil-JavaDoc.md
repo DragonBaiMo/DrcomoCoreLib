@@ -35,3 +35,24 @@
 
 所有方法均在出现网络异常或超时后写入 `DebugUtil`，并在达到设置的最大重试次数后将异常
 通过 `CompletableFuture` 传递给调用方。
+
+**4. 构建器参数 (Builder Options)**
+
+| 方法 | 说明 |
+| --- | --- |
+| `logger(DebugUtil)` | 日志输出工具，必填 |
+| `proxy(String, int)` | 设置 HTTP 代理 |
+| `timeout(Duration)` | 请求超时时间 |
+| `retries(int)` | 最大重试次数 |
+| `client(HttpClient)` | 使用自定义 `HttpClient` 实例 |
+| `executor(Executor)` | 自定义执行器用于构建内部 `HttpClient` |
+
+**自定义 HttpClient 示例**
+
+```java
+ExecutorService pool = Executors.newFixedThreadPool(2);
+HttpUtil http = HttpUtil.newBuilder()
+        .logger(logger)
+        .executor(pool)
+        .build();
+```

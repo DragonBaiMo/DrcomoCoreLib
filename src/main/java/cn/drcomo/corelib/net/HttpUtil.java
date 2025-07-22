@@ -11,6 +11,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 /**
  * HTTP 请求工具类，使用 Java 11 {@link HttpClient} 实现异步网络访问。
@@ -118,6 +119,8 @@ public class HttpUtil {
         private ProxySelector proxy;
         private Duration timeout = Duration.ofSeconds(10);
         private int retries = 0;
+        private HttpClient client;
+        private Executor executor;
 
         /**
          * 设置日志工具。
@@ -135,6 +138,26 @@ public class HttpUtil {
          */
         public Builder proxy(String host, int port) {
             this.proxy = ProxySelector.of(new InetSocketAddress(host, port));
+            return this;
+        }
+
+        /**
+         * 使用自定义 HttpClient。
+         *
+         * @param client HttpClient 实例
+         */
+        public Builder client(HttpClient client) {
+            this.client = client;
+            return this;
+        }
+
+        /**
+         * 设置执行器，用于构建内部 HttpClient。
+         *
+         * @param executor 线程池或执行器
+         */
+        public Builder executor(Executor executor) {
+            this.executor = executor;
             return this;
         }
 
@@ -164,12 +187,18 @@ public class HttpUtil {
          * @return HttpUtil
          */
         public HttpUtil build() {
-            HttpClient.Builder cb = HttpClient.newBuilder();
-            if (proxy != null) {
-                cb.proxy(proxy);
+            HttpClient useClient = this.client;
+            if (useClient == null) {
+                HttpClient.Builder cb = HttpClient.newBuilder();
+                if (proxy != null) {
+                    cb.proxy(proxy);
+                }
+                if (executor != null) {
+                    cb.executor(executor);
+                }
+                useClient = cb.build();
             }
-            HttpClient client = cb.build();
-            return new HttpUtil(logger, client, timeout, retries);
+            return new HttpUtil(logger, useClient, timeout, retries);
         }
     }
 }
