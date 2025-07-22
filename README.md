@@ -160,6 +160,8 @@ AsyncTaskManager manager = AsyncTaskManager
         .executor(exec)
         .scheduler(sched) // 可替换为封装 BukkitScheduler 的实现
         .build();
+// 在插件 onDisable() 方法中调用以释放线程资源
+// manager.close();
 ```
 
 ### **自定义 HttpClient 示例**

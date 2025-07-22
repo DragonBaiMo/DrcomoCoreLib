@@ -15,8 +15,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 内部维护普通和定时两种线程池，用于执行和调度异步任务。
  * 所有回调中的异常都会被捕获并记录到提供的 {@link DebugUtil} 实例。
  * </p>
+ * 在插件关闭时应调用 {@link #close()} 以释放线程资源。
  */
-public class AsyncTaskManager {
+public class AsyncTaskManager implements AutoCloseable {
 
     private static final AtomicInteger THREAD_COUNTER = new AtomicInteger(1);
 
@@ -111,6 +112,15 @@ public class AsyncTaskManager {
     public void shutdown() {
         executor.shutdown();
         scheduler.shutdown();
+    }
+
+    /**
+     * 与 {@link #shutdown()} 功能相同，方便 try-with-resources
+     * 或在插件 {@code onDisable()} 中调用。
+     */
+    @Override
+    public void close() {
+        shutdown();
     }
 
     private Runnable wrap(Runnable task) {
