@@ -33,7 +33,7 @@ public class AsyncTaskManager implements AutoCloseable {
      * @param logger DebugUtil 日志工具
      */
     public AsyncTaskManager(Plugin plugin, DebugUtil logger) {
-        this(plugin, logger, createDefaultExecutor(plugin), createDefaultScheduler(plugin));
+        this(plugin, logger, createDefaultExecutor(plugin, 0, null), createDefaultScheduler(plugin, 1, null));
     }
 
     private AsyncTaskManager(Plugin plugin, DebugUtil logger,
@@ -144,20 +144,28 @@ public class AsyncTaskManager implements AutoCloseable {
         };
     }
 
-    private static ExecutorService createDefaultExecutor(Plugin plugin) {
-        return Executors.newCachedThreadPool(r -> {
+    private static ExecutorService createDefaultExecutor(Plugin plugin, int poolSize, ThreadFactory factory) {
+        ThreadFactory useFactory = factory != null ? factory : r -> {
             Thread t = new Thread(r, plugin.getName() + "-Async-" + THREAD_COUNTER.getAndIncrement());
             t.setDaemon(true);
             return t;
-        });
+        };
+        if (poolSize > 0) {
+            return Executors.newFixedThreadPool(poolSize, useFactory);
+        }
+        return Executors.newCachedThreadPool(useFactory);
     }
 
-    private static ScheduledExecutorService createDefaultScheduler(Plugin plugin) {
-        return Executors.newSingleThreadScheduledExecutor(r -> {
+    private static ScheduledExecutorService createDefaultScheduler(Plugin plugin, int poolSize, ThreadFactory factory) {
+        ThreadFactory useFactory = factory != null ? factory : r -> {
             Thread t = new Thread(r, plugin.getName() + "-Scheduler-" + THREAD_COUNTER.getAndIncrement());
             t.setDaemon(true);
             return t;
-        });
+        };
+        if (poolSize > 1) {
+            return Executors.newScheduledThreadPool(poolSize, useFactory);
+        }
+        return Executors.newSingleThreadScheduledExecutor(useFactory);
     }
 
     /**
@@ -175,6 +183,10 @@ public class AsyncTaskManager implements AutoCloseable {
         private final DebugUtil logger;
         private ExecutorService executor;
         private ScheduledExecutorService scheduler;
+        private int poolSize;
+        private int schedulerSize = 1;
+        private ThreadFactory threadFactory;
+        private ThreadFactory schedulerFactory;
 
         private Builder(Plugin plugin, DebugUtil logger) {
             this.plugin = plugin;
@@ -187,16 +199,40 @@ public class AsyncTaskManager implements AutoCloseable {
             return this;
         }
 
+        /** 设置默认线程池的大小 */
+        public Builder poolSize(int size) {
+            this.poolSize = Math.max(0, size);
+            return this;
+        }
+
+        /** 设置线程工厂 */
+        public Builder threadFactory(ThreadFactory factory) {
+            this.threadFactory = factory;
+            return this;
+        }
+
         /** 设置自定义调度线程池 */
         public Builder scheduler(ScheduledExecutorService scheduler) {
             this.scheduler = scheduler;
             return this;
         }
 
+        /** 设置调度线程数量 */
+        public Builder schedulerSize(int size) {
+            this.schedulerSize = Math.max(1, size);
+            return this;
+        }
+
+        /** 设置调度线程工厂 */
+        public Builder schedulerFactory(ThreadFactory factory) {
+            this.schedulerFactory = factory;
+            return this;
+        }
+
         /** 构建 AsyncTaskManager 实例 */
         public AsyncTaskManager build() {
-            ExecutorService ex = executor != null ? executor : createDefaultExecutor(plugin);
-            ScheduledExecutorService sch = scheduler != null ? scheduler : createDefaultScheduler(plugin);
+            ExecutorService ex = executor != null ? executor : createDefaultExecutor(plugin, poolSize, threadFactory);
+            ScheduledExecutorService sch = scheduler != null ? scheduler : createDefaultScheduler(plugin, schedulerSize, schedulerFactory);
             return new AsyncTaskManager(plugin, logger, ex, sch);
         }
     }
