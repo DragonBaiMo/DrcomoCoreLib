@@ -39,6 +39,7 @@ public class GUISessionManager {
     private final DebugUtil debug;
     private final MessageService msgSvc;
     private final Map<Player, GUISession> sessions = new HashMap<>();
+    private long sessionTimeout = DEFAULT_SESSION_TIMEOUT;
 
     /**
      * 构造方法，不自动注册任何事件。
@@ -48,9 +49,22 @@ public class GUISessionManager {
      * @param messageService 可选信息服务
      */
     public GUISessionManager(Plugin plugin, DebugUtil debug, MessageService messageService) {
+        this(plugin, debug, messageService, DEFAULT_SESSION_TIMEOUT);
+    }
+
+    /**
+     * 构造方法，可自定义会话过期时间。
+     *
+     * @param plugin         主插件实例
+     * @param debug          日志工具
+     * @param messageService 可选信息服务
+     * @param sessionTimeout 会话过期毫秒数
+     */
+    public GUISessionManager(Plugin plugin, DebugUtil debug, MessageService messageService, long sessionTimeout) {
         this.plugin = plugin;
         this.debug = debug;
         this.msgSvc = messageService;
+        this.sessionTimeout = sessionTimeout;
     }
 
     /**
@@ -73,7 +87,7 @@ public class GUISessionManager {
                 debug.warn("GUICreator 返回 null");
                 return false;
             }
-            GUISession session = new GUISession(sessionId, inv);
+            GUISession session = new GUISession(sessionId, inv, sessionTimeout);
             registerSession(player, session);
             player.openInventory(inv);
             debug.debug("open gui session: " + sessionId + " for " + player.getName());
@@ -192,22 +206,35 @@ public class GUISessionManager {
         }
     }
 
+    /**
+     * 设置新的会话过期时间（毫秒）。
+     *
+     * @param sessionTimeout 过期时间，单位毫秒
+     */
+    public void setSessionTimeout(long sessionTimeout) {
+        this.sessionTimeout = sessionTimeout;
+    }
+
     // ================== 内部类 ==================
     private static class GUISession {
         final String sessionId;
         final Inventory inventory;
         final long createTime;
-        GUISession(String id, Inventory inv) {
+        final long timeout;
+
+        GUISession(String id, Inventory inv, long timeout) {
             this.sessionId = id;
             this.inventory = inv;
+            this.timeout = timeout;
             this.createTime = System.currentTimeMillis();
         }
+
         boolean isExpired() {
-            return System.currentTimeMillis() - createTime > SESSION_TIMEOUT;
+            return System.currentTimeMillis() - createTime > timeout;
         }
     }
 
-    private static final long SESSION_TIMEOUT = 5 * 60 * 1000L;
+    private static final long DEFAULT_SESSION_TIMEOUT = 5 * 60 * 1000L;
 
     // ================== 私有助手 ==================
     private void registerSession(Player player, GUISession session) {
