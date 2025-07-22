@@ -36,7 +36,7 @@ public class SoundManager {
     /** 配置文件名（不含 .yml） */
     public final String configName;
     /** 全局音量倍率，用于统一调节音量 */
-    public final float volumeMultiplier;
+    private float volumeMultiplier;
     /** 是否在找不到音效键时输出警告 */
     public final boolean warnOnMissingKeys;
 
@@ -59,6 +59,15 @@ public class SoundManager {
         this.configName = configName;
         this.volumeMultiplier = volumeMultiplier;
         this.warnOnMissingKeys = warnOnMissingKeys;
+    }
+
+    /**
+     * 设置全局音量倍率。
+     *
+     * @param volumeMultiplier 新的音量倍率
+     */
+    public void setVolumeMultiplier(float volumeMultiplier) {
+        this.volumeMultiplier = volumeMultiplier;
     }
 
     // ===== 加载与重载 =====
@@ -321,10 +330,11 @@ public class SoundManager {
     private void playToWorld(Location loc, SoundEffectData data) {
         World world = loc.getWorld();
         if (world == null) return;
+        float vol = data.volume * volumeMultiplier;
         if (data.sound != null) {
-            world.playSound(loc, data.sound, data.volume, data.pitch);
+            world.playSound(loc, data.sound, vol, data.pitch);
         } else {
-            world.playSound(loc, data.name, data.volume, data.pitch);
+            world.playSound(loc, data.name, vol, data.pitch);
         }
     }
 
@@ -332,10 +342,11 @@ public class SoundManager {
      * 为玩家播放音效
      */
     private void playSoundForPlayer(Player player, Location location, SoundEffectData data) {
+        float vol = data.volume * volumeMultiplier;
         if (data.sound != null) {
-            player.playSound(location, data.sound, data.volume, data.pitch);
+            player.playSound(location, data.sound, vol, data.pitch);
         } else {
-            player.playSound(location, data.name, data.volume, data.pitch);
+            player.playSound(location, data.name, vol, data.pitch);
         }
     }
 
@@ -393,8 +404,7 @@ public class SoundManager {
                 }
             }
 
-            // 应用全局音量倍率
-            volume *= volumeMultiplier;
+
 
             // 尝试将无命名空间且无小数点的名称解析为枚举
             Sound enumSound = null;

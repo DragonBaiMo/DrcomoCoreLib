@@ -63,6 +63,8 @@ public class MyAwesomePlugin extends JavaPlugin {
             true            // 找不到音效时警告
         );
         mySoundManager.loadSounds(); // 手动加载音效
+        // 可随时调整全局音量倍率
+        mySoundManager.setVolumeMultiplier(1.2f);
         // 可在需要时自定义音量与音调
         // mySoundManager.play("level_up", player.getLocation(), 0.8f, 1.2f);
 
