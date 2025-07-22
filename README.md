@@ -128,7 +128,7 @@ public class MyAwesomePlugin extends JavaPlugin {
   * `DebugUtil`: 分级日志工具。
  * `YamlUtil`: YAML 配置文件管理器，可一次性加载目录内的多份配置。
  * `ConfigValidator`: 配置校验器，结合 `YamlUtil` 在加载或热重载配置时验证必填项与数据类型。
-  * `MessageService`: 支持多语言和 PlaceholderAPI 的消息管理器。
+  * `MessageService`: 支持多语言和 PlaceholderAPI 的消息管理器，可在运行时切换语言文件或调整键前缀，并允许自定义占位符解析规则。
   * `SoundManager`: 音效管理器。
   * `NBTUtil`: 物品 NBT 数据操作工具。
   * `JsonUtil`: 适用于保存或读取 JSON 文件、验证与美化 JSON 字符串。
