@@ -113,6 +113,8 @@ public class MyAwesomePlugin extends JavaPlugin {
         ArchiveUtil archiveUtil = new ArchiveUtil(myLogger);
         String zip = archiveUtil.archiveByDate("plugins/MyPlugin/data", "backups");
         archiveUtil.cleanupOldArchives("backups", 30);
+        // 若需更细粒度控制，可指定压缩级别
+        archiveUtil.compress("logs/latest.log", "logs.zip", 9);
 
 myLogger.info("我的插件已成功加载，并配置好了核心库工具！");
     }
@@ -142,7 +144,7 @@ myLogger.info("我的插件已成功加载，并配置好了核心库工具！")
   * `PlaceholderAPIUtil`: PlaceholderAPI 占位符注册与解析工具。
   * `EconomyProvider`: 经济插件（Vault, PlayerPoints）的统一接口。
   * `HttpUtil`: 异步 HTTP 请求工具，可配置代理、超时和重试。
-  * `ArchiveUtil`: 压缩、解压与日期归档管理工具。
+  * `ArchiveUtil`: 压缩、解压与日期归档管理工具，支持自定义压缩级别。
   * `AsyncTaskManager`: 统一管理异步任务与定时调度的工具。
   * `PerformanceUtil`: 获取 TPS、CPU、内存与 GC 数据的性能监控工具。
   * ... 以及其他位于 `cn.drcomo.corelib` 包下的工具。
