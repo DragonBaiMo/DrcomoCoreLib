@@ -7,8 +7,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import cn.drcomo.corelib.async.AsyncTaskManager;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 /**
  * ======================================================================
@@ -29,19 +31,61 @@ public class PlaceholderConditionEvaluator {
     private final DebugUtil debugger;
     // PlaceholderAPI 工具
     private final PlaceholderAPIUtil placeholderUtil;
+    // 可选的异步任务执行器
+    private final Executor asyncExecutor;
+    // 可选的 AsyncTaskManager
+    private final AsyncTaskManager taskManager;
 
     /**
-     * 创建条件解析器实例。
-     * @param pluginInstance Bukkit 插件实例
-     * @param debugger       已创建的 DebugUtil
+     * 创建条件解析器实例（默认异步执行器）。
+     *
+     * @param pluginInstance  Bukkit 插件实例
+     * @param debugger        已创建的 DebugUtil
      * @param placeholderUtil PlaceholderAPIUtil 实例
      */
     public PlaceholderConditionEvaluator(JavaPlugin pluginInstance,
                                          DebugUtil debugger,
                                          PlaceholderAPIUtil placeholderUtil) {
+        this(pluginInstance, debugger, placeholderUtil, (Executor) null);
+    }
+
+    /**
+     * 创建条件解析器实例，使用自定义 {@link Executor} 执行异步任务。
+     *
+     * @param pluginInstance  Bukkit 插件实例
+     * @param debugger        已创建的 DebugUtil
+     * @param placeholderUtil PlaceholderAPIUtil 实例
+     * @param executor        自定义异步执行器，可为 {@code null}
+     */
+    public PlaceholderConditionEvaluator(JavaPlugin pluginInstance,
+                                         DebugUtil debugger,
+                                         PlaceholderAPIUtil placeholderUtil,
+                                         Executor executor) {
         this.plugin = pluginInstance;
         this.debugger = debugger;
         this.placeholderUtil = placeholderUtil;
+        this.asyncExecutor = executor;
+        this.taskManager = null;
+        this.debugger.debug("PlaceholderConditionEvaluator 已初始化");
+    }
+
+    /**
+     * 创建条件解析器实例，使用 {@link AsyncTaskManager} 执行异步任务。
+     *
+     * @param pluginInstance  Bukkit 插件实例
+     * @param debugger        已创建的 DebugUtil
+     * @param placeholderUtil PlaceholderAPIUtil 实例
+     * @param manager         已创建的 AsyncTaskManager
+     */
+    public PlaceholderConditionEvaluator(JavaPlugin pluginInstance,
+                                         DebugUtil debugger,
+                                         PlaceholderAPIUtil placeholderUtil,
+                                         AsyncTaskManager manager) {
+        this.plugin = pluginInstance;
+        this.debugger = debugger;
+        this.placeholderUtil = placeholderUtil;
+        this.asyncExecutor = null;
+        this.taskManager = manager;
         this.debugger.debug("PlaceholderConditionEvaluator 已初始化");
     }
 
@@ -214,6 +258,14 @@ public class PlaceholderConditionEvaluator {
      * @param task 要执行的任务
      */
     private void runAsyncTask(Runnable task) {
+        if (taskManager != null) {
+            taskManager.submitAsync(task);
+            return;
+        }
+        if (asyncExecutor != null) {
+            asyncExecutor.execute(task);
+            return;
+        }
         new BukkitRunnable() {
             @Override
             public void run() {

@@ -7,25 +7,30 @@
 
 **2. 如何实例化 (Initialization)**
 
-  * **核心思想:** 该评估器依赖于多个核心库组件，其实例化过程完美体现了“依赖注入”模式。你需要先创建好 `DebugUtil` 和 `PlaceholderAPIUtil` 的实例，然后将它们连同你的插件实例一起，作为构造函数的参数传入。
-  * **构造函数:** `public PlaceholderConditionEvaluator(JavaPlugin pluginInstance, DebugUtil debugger, PlaceholderAPIUtil placeholderUtil)`
+  * **核心思想:** 该评估器依赖于多个核心库组件，其实例化过程完美体现了“依赖注入”模式。你需要先创建好 `DebugUtil`、`PlaceholderAPIUtil` 以及可选的异步执行器，然后将它们连同插件实例一起传入。
+  * **构造函数:**
+    * `public PlaceholderConditionEvaluator(JavaPlugin plugin, DebugUtil debugger, PlaceholderAPIUtil util)`
+    * `public PlaceholderConditionEvaluator(JavaPlugin plugin, DebugUtil debugger, PlaceholderAPIUtil util, Executor executor)`
+    * `public PlaceholderConditionEvaluator(JavaPlugin plugin, DebugUtil debugger, PlaceholderAPIUtil util, AsyncTaskManager manager)`
   * **代码示例:**
-    ```java
-    // 在你的子插件 onEnable() 方法中，确保已初始化好依赖项:
-    JavaPlugin myPlugin = this;
-    DebugUtil myLogger = new DebugUtil(myPlugin, DebugUtil.LogLevel.INFO);
-    PlaceholderAPIUtil myPapiUtil = new PlaceholderAPIUtil(myPlugin, "myplugin");
-    // (此处应有 myPapiUtil 的占位符注册代码)
+```java
+// 在你的子插件 onEnable() 方法中，确保已初始化好依赖项:
+JavaPlugin myPlugin = this;
+DebugUtil myLogger = new DebugUtil(myPlugin, DebugUtil.LogLevel.INFO);
+PlaceholderAPIUtil myPapiUtil = new PlaceholderAPIUtil(myPlugin, "myplugin");
+AsyncTaskManager taskManager = new AsyncTaskManager(myPlugin, myLogger);
+// (此处应有 myPapiUtil 的占位符注册代码)
 
-    // 现在，实例化条件评估器
-    PlaceholderConditionEvaluator conditionEvaluator = new PlaceholderConditionEvaluator(
-        myPlugin,
-        myLogger,
-        myPapiUtil
-    );
+// 现在，实例化条件评估器，可传入 AsyncTaskManager 或自定义 Executor
+PlaceholderConditionEvaluator conditionEvaluator = new PlaceholderConditionEvaluator(
+    myPlugin,
+    myLogger,
+    myPapiUtil,
+    taskManager
+);
 
-    myLogger.info("条件表达式评估器已准备就绪。");
-    ```
+myLogger.info("条件表达式评估器已准备就绪。");
+```
  
 **3. 公共API方法 (Public API Methods)**
 
@@ -82,7 +87,7 @@
   * #### `parseAndEvaluateAsync(String expression, Player player)`
 
       * **返回类型:** `CompletableFuture<Boolean>`
-      * **功能描述:** **异步**地解析并评估单个条件表达式。此方法会将解析和计算任务提交到 Bukkit 的异步线程池中执行，避免在主线程上进行耗时操作（特别是当占位符解析涉及IO时），最终通过 `CompletableFuture` 返回结果。
+      * **功能描述:** **异步**地解析并评估单个条件表达式。该方法会将任务交给构造函数中传入的 `Executor` 或 `AsyncTaskManager` 执行，若未提供则回退到 Bukkit 异步调度器，最终通过 `CompletableFuture` 返回结果。
       * **参数说明:**
           * `expression` (`String`): 单行条件表达式。
           * `player` (`Player`): PAPI 占位符的上下文玩家。
