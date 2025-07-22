@@ -25,7 +25,7 @@
         myYamlUtil,
         myLogger,
         soundConfigFileName, // 告诉管理器去哪里找音效配置
-        1.0f,                // 全局音量倍率，1.0f 代表不增不减
+        1.0f,                // 初始全局音量倍率
         true                 // 如果播放一个不存在的音效键，在控制台打印警告
     );
 
@@ -39,6 +39,9 @@
 
     // 最重要的一步：实例化后，必须调用 loadSounds() 来加载配置
     soundManager.loadSounds();
+
+    // 运行时可调整全局音量倍率
+    soundManager.setVolumeMultiplier(1.2f);
 
     myLogger.info("音效管理器已加载 " + soundManager.getCachedSoundCount() + " 个音效。");
     ```
@@ -75,6 +78,13 @@
       * **返回类型:** `Set<String>`
       * **功能描述:** 获取所有已成功加载的音效键的集合。
       * **参数说明:** 无。
+
+  * #### `setVolumeMultiplier(float volumeMultiplier)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 在运行时设置全局音量倍率，后续播放都会应用新的倍率。
+      * **参数说明:**
+          * `volumeMultiplier` (`float`): 新的音量倍率。
 
   * #### `playSound(Player player, String key)`
 
