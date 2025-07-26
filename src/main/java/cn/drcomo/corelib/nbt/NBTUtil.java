@@ -789,6 +789,35 @@ public class NBTUtil {
     }
 
     /**
+     * 从 {@code toPrettyString} 生成的字符串恢复 {@link ItemStack} 实例。
+     * <p>方法会在解析前移除所有不在引号中的空白字符，然后复用
+     * {@link #fromRawString(String)} 进行反序列化。</p>
+     *
+     * @param pretty 美化后的 SNBT 字符串
+     * @return 解析得到的 {@link ItemStack}
+     * @throws cn.drcomo.corelib.hook.placeholder.parse.ParseException
+     *         当解析失败或字符串为空时抛出
+     */
+    public ItemStack fromPrettyString(String pretty)
+            throws cn.drcomo.corelib.hook.placeholder.parse.ParseException {
+        if (pretty == null || pretty.isEmpty()) {
+            throw new cn.drcomo.corelib.hook.placeholder.parse.ParseException("NBT 字符串为空");
+        }
+        StringBuilder raw = new StringBuilder(pretty.length());
+        boolean inQuote = false;
+        for (char c : pretty.toCharArray()) {
+            if (c == '"') {
+                inQuote = !inQuote;
+            }
+            if (!inQuote && Character.isWhitespace(c)) {
+                continue;
+            }
+            raw.append(c);
+        }
+        return fromRawString(raw.toString());
+    }
+
+    /**
      * 仅导出符合本插件前缀的所有 NBT 数据（SNBT 字符串）。
      */
     public String exportPluginNbt(ItemStack item) {
