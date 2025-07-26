@@ -427,8 +427,8 @@ public class NBTUtil {
     /**
      * 获取 ItemStack 的完整 NBT 数据并序列化为字符串（SNBT 格式）。
      * <p>
-     * 该方法将使用 NBT-API 的 {@code toString()} 实现，返回类似 JSON 的 SNBT 字符串，
-     * 便于日志打印、问题排查与人工比对。
+     * 该方法内部通过 {@link NBT#itemStackToNBT(ItemStack)} 获取物品的 NBT
+     * 数据，再调用其 {@code toString()} 返回标准 SNBT 字符串，便于日志打印、问题排查与人工比对。
      * <pre>
      * String raw = nbtUtil.toRawString(item);
      * plugin.getLogger().info(raw);
@@ -441,10 +441,10 @@ public class NBTUtil {
     public String toRawString(ItemStack item) {
         if (item == null) return "{}";
         try {
-            final String[] result = {"{}"};
-            // 只读访问，无需克隆
-            NBT.get(item, (ReadableItemNBT nbt) -> result[0] = nbt.toString());
-            return result[0];
+            // NBT.itemStackToNBT 会返回包含 id 与 Count 的完整 NBT
+            ItemStack clone = item.clone();
+            ReadWriteNBT nbt = NBT.itemStackToNBT(clone);
+            return nbt.toString();
         } catch (Exception ex) {
             logger.log(LogLevel.DEBUG, "toRawString 异常: " + ex.getMessage());
             return "{}";

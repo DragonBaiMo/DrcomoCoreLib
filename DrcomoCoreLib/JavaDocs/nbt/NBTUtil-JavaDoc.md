@@ -199,6 +199,7 @@
           * 返回值为标准 SNBT（Stringified Named Binary Tag）格式，类似 JSON，但字段顺序、类型与 Minecraft NBT 规范一致。
           * 例如：`{id:"minecraft:diamond_sword",Count:1b,tag:{display:{Name:"\"神器\""},CustomModelData:1234}}`
           * 若物品无 NBT 或异常，返回 "{}"。
+          * 输出字符串始终包含 `id` 与 `Count` 字段，可直接传入 `fromRawString` 还原物品。
       * **典型用途:**
           * 适合直接打印日志、人工比对、与 NBTExplorer/NBT Exporter 等工具输出对照。
           * 输出结果可直接作为 `fromRawString` 的输入，恢复原物品。
