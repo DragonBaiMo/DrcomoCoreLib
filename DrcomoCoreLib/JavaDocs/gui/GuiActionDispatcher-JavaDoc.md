@@ -21,6 +21,15 @@
           * `where` (`SlotPredicate`): 槽位判断条件。
           * `action` (`ClickAction`): 点击回调。
 
+  * #### `registerOnce(String sessionId, SlotPredicate where, ClickAction action)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 注册单次执行的点击回调，首次触发后会自动从分发器中移除。
+      * **参数说明:**
+          * `sessionId` (`String`): 会话标识。
+          * `where` (`SlotPredicate`): 槽位判断条件。
+          * `action` (`ClickAction`): 点击回调。
+
   * #### `unregister(String sessionId)`
 
       * **返回类型:** `void`
@@ -73,6 +82,12 @@ public class MyListener implements Listener {
     public void onClick(InventoryClickEvent event) {
         ClickContext ctx = ClickContext.from(event, sessionMgr);
         dispatcher.handleClick(ctx, event);
+    }
+
+    public void openOnce(Player player, String sessionId) {
+        dispatcher.registerOnce(sessionId, slot -> slot == 13, ctx -> {
+            player.sendMessage("Clicked once!");
+        });
     }
 }
 ```
