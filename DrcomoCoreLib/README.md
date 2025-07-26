@@ -12,7 +12,7 @@ title: DrcomoCoreLib 子插件开发者指南
     depend: [DrcomoCoreLib]
     ```
 
-## **核心使用范例**
+## **核心使用范例** 
 
 `DrcomoCoreLib` 的所有工具类都不能直接使用，你必须在你的插件中通过 `new` 关键字创建它们的实例，并将依赖注入。
 
