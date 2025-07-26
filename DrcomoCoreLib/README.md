@@ -268,6 +268,7 @@ if (coreLib != null) {
 - **通用玩家会话**：[查看](./JavaDocs/session/PlayerSessionManager-JavaDoc.md) (创建、获取或销毁与玩家相关的临时数据，退出或超时后自动清理)
 - **关联查询 (数据载体)**：[查看](./JavaDocs/gui/ClickContext-JavaDoc.md) (用于在回调中获取点击类型、玩家等上下文信息)
 - **关联查询 (辅助工具)**：[查看](./JavaDocs/gui/GuiManager-JavaDoc.md) (用于安全播放音效、清理光标、检查危险点击等)
+- **分页界面基类**：[查看](./JavaDocs/gui/PaginatedGui-JavaDoc.md) (用于快速构建带翻页的GUI)
 
 
 ### 数据库操作 (SQLite)
