@@ -48,6 +48,19 @@ public class GuiActionDispatcher {
     }
 
     /**
+     * 注册单次执行的点击回调，首次触发后自动注销。
+     *
+     * @param sessionId 会话ID
+     * @param where     槽位条件
+     * @param action    回调
+     */
+    public void registerOnce(String sessionId, SlotPredicate where, ClickAction action) {
+        if (sessionId == null || where == null || action == null) return;
+        ActionRegistry reg = registries.computeIfAbsent(sessionId, k -> new ActionRegistry());
+        reg.addOnce(where, action);
+    }
+
+    /**
      * 注销会话的所有回调。
      *
      * @param sessionId 会话ID
@@ -86,16 +99,39 @@ public class GuiActionDispatcher {
      * 内部回调注册表。
      */
     private static class ActionRegistry {
-        private final List<Map.Entry<SlotPredicate, ClickAction>> actions = new ArrayList<>();
+        private static class Entry {
+            final SlotPredicate predicate;
+            final ClickAction action;
+
+            Entry(SlotPredicate predicate, ClickAction action) {
+                this.predicate = predicate;
+                this.action = action;
+            }
+        }
+
+        private final List<Entry> actions = new ArrayList<>();
 
         void add(SlotPredicate p, ClickAction a) {
-            actions.add(Map.entry(p, a));
+            actions.add(new Entry(p, a));
+        }
+
+        void addOnce(SlotPredicate p, ClickAction a) {
+            Entry[] ref = new Entry[1];
+            ClickAction wrapper = ctx -> {
+                try {
+                    a.execute(ctx);
+                } finally {
+                    actions.remove(ref[0]);
+                }
+            };
+            ref[0] = new Entry(p, wrapper);
+            actions.add(ref[0]);
         }
 
         void dispatch(ClickContext ctx) {
-            for (Map.Entry<SlotPredicate, ClickAction> e : actions) {
-                if (e.getKey().test(ctx.slot())) {
-                    e.getValue().execute(ctx);
+            for (Entry e : new ArrayList<>(actions)) {
+                if (e.predicate.test(ctx.slot())) {
+                    e.action.execute(ctx);
                 }
             }
         }
