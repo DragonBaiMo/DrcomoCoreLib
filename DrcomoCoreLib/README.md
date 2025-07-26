@@ -267,6 +267,7 @@ if (coreLib != null) {
 - **会话超时设置**：构造 `GUISessionManager` 时可传入自定义过期毫秒数，或稍后调用 `setSessionTimeout(long)` 动态调整。
 - **关联查询 (数据载体)**：[查看](./JavaDocs/gui/ClickContext-JavaDoc.md) (用于在回调中获取点击类型、玩家等上下文信息)
 - **关联查询 (辅助工具)**：[查看](./JavaDocs/gui/GuiManager-JavaDoc.md) (用于安全播放音效、清理光标、检查危险点击等)
+- **分页界面基类**：[查看](./JavaDocs/gui/PaginatedGui-JavaDoc.md) (用于快速构建带翻页的GUI)
 
 
 ### 数据库操作 (SQLite)
