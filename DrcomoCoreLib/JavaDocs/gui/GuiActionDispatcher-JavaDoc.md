@@ -7,8 +7,8 @@
 
 **2. 如何实例化 (Initialization)**
 
-  * **核心思想:** 分发器需要外部提供 `DebugUtil` 与 `GUISessionManager` 实例，以遵循控制反转原则。
-  * **构造函数:** `public GuiActionDispatcher(DebugUtil debug, GUISessionManager sessions)`
+  * **核心思想:** 分发器需要外部提供 `DebugUtil`、`GUISessionManager` 与 `GuiManager` 实例，以遵循控制反转原则。
+  * **构造函数:** `public GuiActionDispatcher(DebugUtil debug, GUISessionManager sessions, GuiManager guiManager)`
 
 **3. 公共API方法 (Public API Methods)**
 
@@ -60,11 +60,13 @@
 public class MyListener implements Listener {
     private final GuiActionDispatcher dispatcher;
     private final GUISessionManager sessionMgr;
+    private final GuiManager guiManager;
 
     public MyListener(Plugin plugin) {
         DebugUtil logger = new DebugUtil(plugin, DebugUtil.LogLevel.INFO);
         this.sessionMgr = new GUISessionManager(plugin, logger, null);
-        this.dispatcher = new GuiActionDispatcher(logger, sessionMgr);
+        this.guiManager = new GuiManager(plugin, logger);
+        this.dispatcher = new GuiActionDispatcher(logger, sessionMgr, guiManager);
     }
 
     @EventHandler
