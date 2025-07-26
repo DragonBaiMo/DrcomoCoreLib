@@ -19,9 +19,12 @@
   * #### `ItemStack fromUrl(String url)`
       * **功能描述:** 传入纹理 URL，返回带有该纹理的玩家头颅物品。
       * **参数说明:** `url` (`String`): 形如 `http://textures.minecraft.net/texture/...` 的地址。
+      * **返回类型:** `ItemStack` - 带自定义纹理的玩家头颅物品，若 URL 为空或异常则返回普通玩家头颅。
 
   * #### `ItemStack fromBase64(String base64)`
       * **功能描述:** 传入已编码的纹理 Base64 字符串，返回玩家头颅物品。
+      * **参数说明:** `base64` (`String`): 已编码的纹理 Base64 字符串。
+      * **返回类型:** `ItemStack` - 带自定义纹理的玩家头颅物品，若处理失败则返回普通玩家头颅。
 
 **4. 创建自定义头像示例 (Usage Example)**
 

@@ -1,4 +1,4 @@
-package cn.drcomo.corelib.session;
+package cn.drcomo.corelib.gui.session;
 
 import cn.drcomo.corelib.util.DebugUtil;
 import org.bukkit.Bukkit;

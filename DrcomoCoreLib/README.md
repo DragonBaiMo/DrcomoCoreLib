@@ -28,6 +28,10 @@ public class MyAwesomePlugin extends JavaPlugin {
     private YamlUtil myYamlUtil;
     private YamlUtil.ConfigWatchHandle configHandle;
     private SoundManager mySoundManager;
+    private SkullUtil skullUtil;
+    private GUISessionManager guiSessionManager;
+    private GuiActionDispatcher guiActionDispatcher;
+    private MyPaginatedGui myPaginatedGui;
 
     @Override
     public void onEnable() {
@@ -79,6 +83,20 @@ public class MyAwesomePlugin extends JavaPlugin {
         // 若需更细粒度控制，可指定压缩级别
         archiveUtil.compress("logs/latest.log", "logs.zip", 9);
 
+        // 6. 创建自定义头像工具
+        skullUtil = new SkullUtil(myLogger);
+        // 可通过 URL 或 Base64 创建自定义头颅
+        // String textureUrl = "http://textures.minecraft.net/texture/<texture-id>";
+        // ItemStack customSkull = skullUtil.fromUrl(textureUrl);
+
+        // 7. 创建 GUI 管理组件
+        guiSessionManager = new GUISessionManager(this, myLogger);
+        guiActionDispatcher = new GuiActionDispatcher(this, myLogger);
+        
+        // 8. 创建自定义分页 GUI（需要继承 PaginatedGui）
+        myPaginatedGui = new MyPaginatedGui(guiSessionManager, guiActionDispatcher);
+        // 使用示例：myPaginatedGui.open(player, "my-gui-session");
+
         myLogger.info("我的插件已成功加载，并配置好了核心库工具！");
     }
 
@@ -95,6 +113,56 @@ public class MyAwesomePlugin extends JavaPlugin {
         // }
         
         myLogger.info("插件已安全卸载");
+    }
+}
+}
+
+// MyPaginatedGui 实现示例
+class MyPaginatedGui extends PaginatedGui {
+    public MyPaginatedGui(GUISessionManager sessions, GuiActionDispatcher dispatcher) {
+        super(sessions, dispatcher, 45, 45, 53); // 每页45格，45和53为导航按钮槽位
+    }
+
+    @Override
+    protected int getTotalItemCount(Player player) {
+        // 返回要展示的物品总数
+        return getItemsForPlayer(player).size();
+    }
+
+    @Override
+    protected Inventory createInventory(Player player) {
+        return Bukkit.createInventory(player, 54, "我的物品列表");
+    }
+
+    @Override
+    protected void renderPage(Player player, Inventory inv, int page, int totalPages) {
+        List<ItemStack> items = getItemsForPlayer(player);
+        int from = page * getPageSize();
+        for (int i = 0; i < getPageSize(); i++) {
+            int index = from + i;
+            inv.setItem(i, index < items.size() ? items.get(index) : null);
+        }
+        
+        // 添加导航按钮
+        if (page > 0) {
+            inv.setItem(getPrevSlot(), createPrevButton());
+        }
+        if (page < totalPages - 1) {
+            inv.setItem(getNextSlot(), createNextButton());
+        }
+    }
+    
+    private List<ItemStack> getItemsForPlayer(Player player) {
+        // 实际实现中应该返回玩家的物品列表
+        return Arrays.asList(new ItemStack(Material.DIAMOND), new ItemStack(Material.GOLD_INGOT));
+    }
+    
+    private ItemStack createPrevButton() {
+        return new ItemStack(Material.ARROW); // 上一页按钮
+    }
+    
+    private ItemStack createNextButton() {
+        return new ItemStack(Material.ARROW); // 下一页按钮
     }
 }
 ```
@@ -257,7 +325,12 @@ if (coreLib != null) {
 - **查询文档**：[查看](./JavaDocs/sound/SoundManager-JavaDoc.md)
 
 
-### **GUI 创建与交互**
+### 自定义头像生成
+- **功能描述**：根据纹理 URL 或 Base64 字符串生成带自定义纹理的玩家头颅物品，支持异常处理和日志记录。
+- **查询文档**：[查看](./JavaDocs/util/SkullUtil-JavaDoc.md)
+
+
+### GUI 创建与交互
 - **功能描述**：构建交互式菜单、定义特定槽位的点击行为、管理GUI的打开与关闭、获取点击事件的详细信息或执行安全的GUI辅助操作。
 - **前置概念查询**：
     * [查看](./JavaDocs/gui/interfaces/ClickAction-JavaDoc.md) (理解定义 **“做什么”** 的回调)
@@ -265,20 +338,11 @@ if (coreLib != null) {
 - **核心逻辑查询 (事件分发)**：[查看](./JavaDocs/gui/GuiActionDispatcher-JavaDoc.md) (用于注册 `ClickAction` 与 `SlotPredicate` 的组合)
 - **关联查询 (会话管理)**：[查看](./JavaDocs/gui/GUISessionManager-JavaDoc.md) (用于打开、关闭、验证玩家的GUI会话)
 - **会话超时设置**：构造 `GUISessionManager` 时可传入自定义过期毫秒数，或稍后调用 `setSessionTimeout(long)` 动态调整。
-- **通用玩家会话**：[查看](./JavaDocs/session/PlayerSessionManager-JavaDoc.md) (创建、获取或销毁与玩家相关的临时数据，退出或超时后自动清理)
 - **关联查询 (数据载体)**：[查看](./JavaDocs/gui/ClickContext-JavaDoc.md) (用于在回调中获取点击类型、玩家等上下文信息)
 - **关联查询 (辅助工具)**：[查看](./JavaDocs/gui/GuiManager-JavaDoc.md) (用于安全播放音效、清理光标、检查危险点击等)
 - **分页界面基类**：[查看](./JavaDocs/gui/PaginatedGui-JavaDoc.md) (用于快速构建带翻页的GUI)
-
+- **通用玩家会话**：[查看](./JavaDocs/gui/session/PlayerSessionManager-JavaDoc.md) (创建、获取或销毁与玩家相关的临时数据，退出或超时后自动清理)
 
 ### 数据库操作 (SQLite)
 - **功能描述**：连接管理 SQLite 数据库，初始化表结构，执行增删改查（CRUD）、事务处理。内置 HikariCP 连接池并提供异步接口，适合并发环境。
 - **查询文档**：[查看](./JavaDocs/database)
-
-```java
-SQLiteDB db = new SQLiteDB(plugin, "data/db.sqlite", List.of("schema.sql"));
-db.getConfig()
-    .maximumPoolSize(20)
-    .connectionTestQuery("SELECT 1");
-db.connect();
-```

@@ -2,7 +2,7 @@
 
 **1. 概述 (Overview)**
 
-  * **完整路径:** `cn.drcomo.corelib.session.PlayerSessionManager`
+  * **完整路径:** `cn.drcomo.corelib.gui.session.PlayerSessionManager`
   * **核心职责:** 为玩家创建、检索和销毁自定义会话数据，并在超时或玩家离线时自动清理。
 
 **2. 如何实例化 (Initialization)**
