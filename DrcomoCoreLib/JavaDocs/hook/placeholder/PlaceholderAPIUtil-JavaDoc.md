@@ -8,48 +8,36 @@
 **2. 如何实例化 (Initialization)**
 
   * **核心思想:** 在插件的 `onEnable()` 方法中为你的插件创建一个全局唯一的 `PlaceholderAPIUtil` 实例。实例化时需要提供一个独特的“标识符”（identifier），这个标识符将作为你所有自定义占位符的前缀。
+  * **无 PAPI 情况:** 若服务器未安装 PlaceholderAPI，所有解析方法会直接返回输入文本，并且不会向 PAPI 注册扩展。
   * **构造函数:** `public PlaceholderAPIUtil(Plugin pluginInstance, String identifier)`
   * **代码示例:**
     ```java
     // 在你的子插件 onEnable() 方法中:
     Plugin myPlugin = this;
-    PlaceholderAPIUtil papiUtil = null;
+    String id = myPlugin.getName().toLowerCase();
+    PlaceholderAPIUtil papiUtil = new PlaceholderAPIUtil(myPlugin, id);
 
-    if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-        // 建议使用插件名的小写形式作为标识符
-        String myIdentifier = myPlugin.getName().toLowerCase();
+    // 即使服务器未安装 PlaceholderAPI，parse() 也会直接返回原文本
+    // 因此可以安全注册占位符，而无需额外判断
+    papiUtil.register("version", (player, rawArgs) -> {
+        return myPlugin.getDescription().getVersion();
+    });
 
-        papiUtil = new PlaceholderAPIUtil(myPlugin, myIdentifier);
+    papiUtil.register("location", (player, rawArgs) -> {
+        if (player == null) return "N/A";
+        switch (rawArgs.toLowerCase()) {
+            case "x": return String.valueOf(player.getLocation().getBlockX());
+            case "y": return String.valueOf(player.getLocation().getBlockY());
+            case "z": return String.valueOf(player.getLocation().getBlockZ());
+            default: return "无效坐标";
+        }
+    });
 
-        // --- 实例化后，立即注册你的占位符 ---
-
-        // 示例1：一个简单的无参数占位符 %myplugin_version%
-        papiUtil.register("version", (player, rawArgs) -> {
-            return myPlugin.getDescription().getVersion();
-        });
-
-        // 示例2：一个带参数的占位符 %myplugin_location_x% 或 %myplugin_location_y%
-        papiUtil.register("location", (player, rawArgs) -> {
-            if (player == null) return "N/A";
-            switch (rawArgs.toLowerCase()) {
-                case "x": return String.valueOf(player.getLocation().getBlockX());
-                case "y": return String.valueOf(player.getLocation().getBlockY());
-                case "z": return String.valueOf(player.getLocation().getBlockZ());
-                default: return "无效坐标";
-            }
-        });
-
-        // 示例3：一个使用 splitArgs 的多参数占位符 %myplugin_greet_Dragon_你好%
-        papiUtil.register("greet", (player, rawArgs) -> {
-            String[] args = PlaceholderAPIUtil.splitArgs(rawArgs); // 使用静态方法拆分
-            if (args.length < 2) return "参数不足";
-            // args[0] 是 "Dragon", args[1] 是 "你好"
-            return args[1] + ", " + args[0] + "!"; // 输出 "你好, Dragon!"
-        });
-
-    } else {
-        // 处理 PAPI 未安装的情况
-    }
+    papiUtil.register("greet", (player, rawArgs) -> {
+        String[] args = PlaceholderAPIUtil.splitArgs(rawArgs);
+        if (args.length < 2) return "参数不足";
+        return args[1] + ", " + args[0] + "!";
+    });
     ```
 
 **3. 公共API方法 (Public API Methods)**

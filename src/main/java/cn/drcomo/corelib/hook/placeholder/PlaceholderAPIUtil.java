@@ -2,6 +2,7 @@ package cn.drcomo.corelib.hook.placeholder;
 
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
@@ -37,6 +38,7 @@ public class PlaceholderAPIUtil {
     private final PlaceholderExpansion expansion;
     private final String authors;
     private final String version;
+    private final boolean papiEnabled;
 
     /**
      * 创建一个 PlaceholderAPIUtil 并立即注册到 PlaceholderAPI。
@@ -50,26 +52,32 @@ public class PlaceholderAPIUtil {
         this.authors = String.join("| ", plugin.getDescription().getAuthors());
         this.version = plugin.getDescription().getVersion();
 
-        this.expansion = new PlaceholderExpansion() {
-            @Override public boolean canRegister()       { return true; }
-            @Override public String getIdentifier()      { return PlaceholderAPIUtil.this.identifier; }
-            @Override public String getAuthor()          { return authors; }
-            @Override public String getVersion()         { return version; }
+        this.papiEnabled = Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI");
 
-            @Override
-            public String onPlaceholderRequest(Player player, String params) {
-                if (params == null) return "";
-                String[] pair = splitParams(params);
-                String key   = pair[0].toLowerCase();
-                String raw   = pair[1];
-                BiFunction<Player, String, String> fn = handlers.get(key);
-                String result = fn != null ? fn.apply(player, raw) : "";
-                return parseRecursive(player, result);
-            }
-        };
+        if (papiEnabled) {
+            this.expansion = new PlaceholderExpansion() {
+                @Override public boolean canRegister()       { return true; }
+                @Override public String getIdentifier()      { return PlaceholderAPIUtil.this.identifier; }
+                @Override public String getAuthor()          { return authors; }
+                @Override public String getVersion()         { return version; }
 
-        // 注册扩展
-        this.expansion.register();
+                @Override
+                public String onPlaceholderRequest(Player player, String params) {
+                    if (params == null) return "";
+                    String[] pair = splitParams(params);
+                    String key   = pair[0].toLowerCase();
+                    String raw   = pair[1];
+                    BiFunction<Player, String, String> fn = handlers.get(key);
+                    String result = fn != null ? fn.apply(player, raw) : "";
+                    return parseRecursive(player, result);
+                }
+            };
+
+            // 注册扩展
+            this.expansion.register();
+        } else {
+            this.expansion = null;
+        }
     }
 
     /**
@@ -101,6 +109,9 @@ public class PlaceholderAPIUtil {
      * @return 解析后文本
      */
     public String parse(Player player, String text) {
+        if (!papiEnabled) {
+            return text == null ? "" : text;
+        }
         return parseRecursive(player, text);
     }
 
@@ -128,6 +139,9 @@ public class PlaceholderAPIUtil {
     /** 递归解析占位符直到稳定 */
     private String parseRecursive(Player player, String text) {
         if (text == null) return "";
+        if (!papiEnabled) {
+            return text;
+        }
         String last, cur = text;
         do {
             last = cur;
