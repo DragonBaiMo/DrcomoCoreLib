@@ -22,6 +22,8 @@ title: DrcomoCoreLib 子插件开发者指南
 
 ```java
 // 在你的插件主类的 onEnable() 方法中
+import cn.drcomo.corelib.*;
+
 public class MyAwesomePlugin extends JavaPlugin {
 
     private DebugUtil myLogger;
@@ -238,15 +240,21 @@ if (coreLib != null) {
 
 ### 日志记录
 - **功能描述**：实现或管理控制台日志输出，如 `info`, `warn`, `error`，或动态设置日志级别。  
+- **包类路径**：`cn.drcomo.corelib.util.DebugUtil`
 - **查询文档**：[查看](./JavaDocs/util/DebugUtil-JavaDoc.md)
 
 
 ### 配置文件读写 (YAML)
 - **功能描述**：对 `.yml` 文件进行加载、重载、保存、读写键值、复制默认配置、获取配置节等操作。
+- **包类路径**：`cn.drcomo.corelib.config.YamlUtil`
 - **查询文档**：[查看](./JavaDocs/config/YamlUtil-JavaDoc.md)
 
 ### 配置校验
 - **功能描述**：在读取或重载配置后，验证必填项是否存在且类型正确，支持字符串、数值、枚举类型验证以及自定义校验规则。
+- **包类路径**：
+  - `cn.drcomo.corelib.config.ConfigValidator`（配置校验器主入口）
+  - `cn.drcomo.corelib.config.ValidatorBuilder`（链式校验规则构建器）
+  - `cn.drcomo.corelib.config.ValidationResult`（校验结果处理）
 - **核心查询**：[查看](./JavaDocs/config/ConfigValidator-JavaDoc.md)（配置校验器主入口）
 - **关联查询**：
   - [查看](./JavaDocs/config/ValidatorBuilder-JavaDoc.md)（链式校验规则构建器）
@@ -255,33 +263,47 @@ if (coreLib != null) {
 
 ### 文本颜色处理
 - **功能描述**：翻译（`&` → `§`）、转换（`&#RRGGBB`）或剥离字符串中的 Minecraft 颜色代码。  
+- **包类路径**：`cn.drcomo.corelib.color.ColorUtil`
 - **查询文档**：[查看](./JavaDocs/color/ColorUtil-JavaDoc.md)
 
 
 ### 发送消息与文本本地化
 - **功能描述**：发送游戏内消息（聊天、ActionBar、Title），解析多层级占位符（自定义、PAPI、内部），管理多语言文件。  
+- **包类路径**：`cn.drcomo.corelib.message.MessageService`
 - **查询文档**：[查看](./JavaDocs/message/MessageService-JavaDoc.md)
 
 
 ### 物品NBT数据操作
 - **功能描述**：在 `ItemStack` 上附加、读取、修改、删除或批量保留自定义数据标签。  
+- **包类路径**：
+  - `cn.drcomo.corelib.nbt.NbtKeyHandler`（NBT键名安全策略）
+  - `cn.drcomo.corelib.nbt.NBTUtil`（具体NBT操作API）
 - **前置查询**：[查看](./JavaDocs/nbt/NbtKeyHandler-JavaDoc.md)（NBT键名安全策略）  
 - **核心查询**：[查看](./JavaDocs/nbt/NBTUtil-JavaDoc.md)（具体NBT操作API）
 
 
 ### PlaceholderAPI (PAPI) 集成
 - **功能描述**：注册自定义PAPI占位符（如 `%myplugin_level%`）或解析含PAPI占位符的字符串。  
+- **包类路径**：`cn.drcomo.corelib.hook.placeholder.PlaceholderAPIUtil`
 - **查询文档**：[查看](./JavaDocs/hook/placeholder/PlaceholderAPIUtil-JavaDoc.md)
 
 
 ### 动态条件判断
 - **功能描述**：解析并计算包含PAPI占位符、逻辑运算符（`&&`, `||`）和比较运算符（`>=`, `==`, `STR_CONTAINS`）的条件表达式。
+- **包类路径**：
+  - `cn.drcomo.corelib.hook.placeholder.parse.PlaceholderConditionEvaluator`
+  - `cn.drcomo.corelib.hook.placeholder.parse.ParseException`（表达式解析异常处理）
 - **查询文档**：[查看](./JavaDocs/hook/placeholder/parse/PlaceholderConditionEvaluator-JavaDoc.md)
 - **关联查询**：[查看](./JavaDocs/hook/placeholder/parse/ParseException-JavaDoc.md)（表达式解析异常处理）
 
 
 ### 经济系统交互 (Vault / PlayerPoints)
 - **功能描述**：查询玩家余额、扣款、存款、格式化货币等操作。  
+- **包类路径**：
+  - `cn.drcomo.corelib.hook.economy.EconomyProvider`（通用经济接口）
+  - `cn.drcomo.corelib.hook.economy.provider.VaultEconomyProvider`（Vault对接实现）
+  - `cn.drcomo.corelib.hook.economy.provider.PlayerPointsEconomyProvider`（PlayerPoints对接实现）
+  - `cn.drcomo.corelib.hook.economy.EconomyResponse`（经济操作返回对象）
 - **查询文档 1 (接口)**：[查看](./JavaDocs/hook/economy/EconomyProvider-JavaDoc.md)（通用经济接口）  
 - **查询文档 2 (实现)**：  
   - Vault 对接：[查看](./JavaDocs/hook/economy/provider/VaultEconomyProvider-JavaDoc.md)  
@@ -291,50 +313,70 @@ if (coreLib != null) {
 
 ### 数学公式计算
 - **功能描述**：计算字符串形式的数学表达式（支持变量）。  
+- **包类路径**：`cn.drcomo.corelib.math.FormulaCalculator`
 - **查询文档**：[查看](./JavaDocs/math/FormulaCalculator-JavaDoc.md)
 
 
 ### 异步任务管理
 - **功能描述**：管理异步任务执行，支持任务提交、延迟执行、定时调度、批量处理等，内置异常捕获和日志记录。通过 Builder 可调整线程池大小及线程工厂。
+- **包类路径**：`cn.drcomo.corelib.async.AsyncTaskManager`
 - **查询文档**：[查看](./JavaDocs/async/AsyncTaskManager-JavaDoc.md)
 
 
 ### 性能监控
 - **功能描述**：实时获取服务器TPS、CPU使用率、内存使用情况和GC统计信息，支持Paper和Spigot服务器。
+- **包类路径**：
+  - `cn.drcomo.corelib.performance.PerformanceUtil`（性能采集工具）
+  - `cn.drcomo.corelib.performance.PerformanceSnapshot`（性能快照数据）
 - **查询文档**：[查看](./JavaDocs/performance/PerformanceUtil-JavaDoc.md)（性能采集工具）
 - **关联查询**：[查看](./JavaDocs/performance/PerformanceSnapshot-JavaDoc.md)（性能快照数据）
 
 
 ### JSON序列化工具
 - **功能描述**：基于Gson的JSON序列化与反序列化工具，支持对象转JSON、JSON转对象、文件读写和复杂泛型类型解析。
+- **包类路径**：`cn.drcomo.corelib.json.JsonUtil`
 - **查询文档**：[查看](./JavaDocs/json/JsonUtil-JavaDoc.md)
 
 
 ### HTTP网络请求
 - **功能描述**：基于Java 11 HttpClient的异步HTTP工具，支持GET/POST请求、文件上传、代理配置、超时设置和重试机制。
+- **包类路径**：`cn.drcomo.corelib.net.HttpUtil`
 - **查询文档**：[查看](./JavaDocs/net/HttpUtil-JavaDoc.md)
 
 
 ### 文件归档与压缩
 - **功能描述**：压缩或解压文件/目录，并可按日期归档和清理旧文件。
+- **包类路径**：`cn.drcomo.corelib.archive.ArchiveUtil`
 - **查询文档**：[查看](./JavaDocs/archive/ArchiveUtil-JavaDoc.md)
 
 
 ### 音效管理
 - **功能描述**：从配置文件加载音效并通过键名（key）播放。  
+- **包类路径**：`cn.drcomo.corelib.sound.SoundManager`
 - **查询文档**：[查看](./JavaDocs/sound/SoundManager-JavaDoc.md)
 
 
 ### 自定义头像生成
 - **功能描述**：根据纹理 URL 或 Base64 字符串生成带自定义纹理的玩家头颅物品，支持异常处理和日志记录。
+- **包类路径**：`cn.drcomo.corelib.util.SkullUtil`
 - **查询文档**：[查看](./JavaDocs/util/SkullUtil-JavaDoc.md)
 
 
 ### GUI 创建与交互
 - **功能描述**：构建交互式菜单、定义特定槽位的点击行为、管理GUI的打开与关闭、获取点击事件的详细信息或执行安全的GUI辅助操作。
+- **包类路径**：
+  - `cn.drcomo.corelib.gui.interfaces.ClickAction`（定义"做什么"的回调）
+  - `cn.drcomo.corelib.gui.interfaces.SlotPredicate`（定义"在哪里生效"的条件）
+  - `cn.drcomo.corelib.gui.GuiActionDispatcher`（事件分发器）
+  - `cn.drcomo.corelib.gui.GUISessionManager`（会话管理）
+  - `cn.drcomo.corelib.gui.ClickContext`（点击上下文数据载体）
+  - `cn.drcomo.corelib.gui.GuiManager`（GUI辅助工具）
+  - `cn.drcomo.corelib.gui.PaginatedGui`（分页界面基类）
+  - `cn.drcomo.corelib.gui.session.PlayerSessionManager`（通用玩家会话）
+  - `cn.drcomo.corelib.gui.ClickTypeUtil`（点击类型工具）
 - **前置概念查询**：
-    * [查看](./JavaDocs/gui/interfaces/ClickAction-JavaDoc.md) (理解定义 **“做什么”** 的回调)
-    * [查看](./JavaDocs/gui/interfaces/SlotPredicate-JavaDoc.md) (理解定义 **“在哪里生效”** 的条件)
+    * [查看](./JavaDocs/gui/interfaces/ClickAction-JavaDoc.md) (理解定义 **"做什么"** 的回调)
+    * [查看](./JavaDocs/gui/interfaces/SlotPredicate-JavaDoc.md) (理解定义 **"在哪里生效"** 的条件)
 - **核心逻辑查询 (事件分发)**：[查看](./JavaDocs/gui/GuiActionDispatcher-JavaDoc.md) (用于注册 `ClickAction` 与 `SlotPredicate` 的组合)
 - **关联查询 (会话管理)**：[查看](./JavaDocs/gui/GUISessionManager-JavaDoc.md) (用于打开、关闭、验证玩家的GUI会话)
 - **会话超时设置**：构造 `GUISessionManager` 时可传入自定义过期毫秒数，或稍后调用 `setSessionTimeout(long)` 动态调整。
@@ -345,4 +387,5 @@ if (coreLib != null) {
 
 ### 数据库操作 (SQLite)
 - **功能描述**：连接管理 SQLite 数据库，初始化表结构，执行增删改查（CRUD）、事务处理。内置 HikariCP 连接池并提供异步接口，适合并发环境。
+- **包类路径**：`cn.drcomo.corelib.database.SQLiteDB`
 - **查询文档**：[查看](./JavaDocs/database)
