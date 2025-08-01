@@ -1,5 +1,6 @@
 package cn.drcomo.corelib.config;
 
+import cn.drcomo.corelib.math.NumberUtil;
 import org.bukkit.configuration.Configuration;
 
 import java.util.ArrayList;
@@ -67,11 +68,8 @@ public class ValidatorBuilder {
                 break;
             case NUMBER:
                 if (!(value instanceof Number)) {
-                    // 尝试将字符串解析为数字
                     if (value instanceof String) {
-                        try {
-                            Double.parseDouble((String) value);
-                        } catch (NumberFormatException e) {
+                        if (!NumberUtil.isNumeric((String) value)) {
                             errors.add("配置 '" + path + "' 不是有效数字");
                             return;
                         }

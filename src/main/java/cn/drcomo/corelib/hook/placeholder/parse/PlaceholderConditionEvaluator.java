@@ -1,13 +1,13 @@
 package cn.drcomo.corelib.hook.placeholder.parse;
 
-import cn.drcomo.corelib.math.FormulaCalculator;
+import cn.drcomo.corelib.async.AsyncTaskManager;
 import cn.drcomo.corelib.hook.placeholder.PlaceholderAPIUtil;
+import cn.drcomo.corelib.math.FormulaCalculator;
+import cn.drcomo.corelib.math.NumberUtil;
 import cn.drcomo.corelib.util.DebugUtil;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
-
-import cn.drcomo.corelib.async.AsyncTaskManager;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -381,8 +381,8 @@ public class PlaceholderConditionEvaluator {
          */
         private boolean evaluateComparison(String left, String right, Cmp op) {
             if (isNumericOp(op)) {
-                Double a = parseNumber(left);
-                Double b = parseNumber(right);
+                Double a = NumberUtil.isNumeric(left) ? Double.parseDouble(left.trim()) : null;
+                Double b = NumberUtil.isNumeric(right) ? Double.parseDouble(right.trim()) : null;
                 if (a != null && b != null) {
                     return numericCompare(a, b, op);
                 }
@@ -396,14 +396,6 @@ public class PlaceholderConditionEvaluator {
 
         private static boolean isNumericOp(Cmp op) {
             return op == Cmp.GT || op == Cmp.GE || op == Cmp.LT || op == Cmp.LE;
-        }
-
-        private static Double parseNumber(String s) {
-            try {
-                return Double.parseDouble(s.trim());
-            } catch (NumberFormatException e) {
-                return null;
-            }
         }
 
         private static boolean numericCompare(double a, double b, Cmp op) {

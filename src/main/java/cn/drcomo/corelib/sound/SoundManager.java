@@ -2,6 +2,7 @@ package cn.drcomo.corelib.sound;
 
 import cn.drcomo.corelib.config.YamlUtil;
 import cn.drcomo.corelib.util.DebugUtil;
+import cn.drcomo.corelib.math.NumberUtil;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -389,16 +390,16 @@ public class SoundManager {
 
             if (first >= 0) {
                 String volStr = second < 0 ? soundString.substring(first + 1) : soundString.substring(first + 1, second);
-                try {
+                if (NumberUtil.isNumeric(volStr)) {
                     volume = Float.parseFloat(volStr);
-                } catch (NumberFormatException e) {
+                } else {
                     logger.warn("音量解析失败: " + soundString);
                 }
                 if (second >= 0) {
                     String pitStr = soundString.substring(second + 1);
-                    try {
+                    if (NumberUtil.isNumeric(pitStr)) {
                         pitch = Float.parseFloat(pitStr);
-                    } catch (NumberFormatException e) {
+                    } else {
                         logger.warn("音调解析失败: " + soundString);
                     }
                 }
