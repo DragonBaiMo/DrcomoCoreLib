@@ -1,5 +1,6 @@
 package cn.drcomo.corelib.color;
 
+import cn.drcomo.corelib.math.NumberUtil;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -105,10 +106,9 @@ public class ColorUtil {
         String v = server.getBukkitVersion();
         Matcher m = VERSION_PATTERN.matcher(v);
         if (m.find()) {
-            try {
-                return Integer.parseInt(m.group(1));
-            } catch (NumberFormatException ignored) {
-                // ignore and fall through
+            String major = m.group(1);
+            if (NumberUtil.isNumeric(major)) {
+                return Integer.parseInt(major);
             }
         }
         return 8; // 默认当作低版本

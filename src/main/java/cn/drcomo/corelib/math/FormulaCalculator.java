@@ -41,11 +41,8 @@ public final class FormulaCalculator {
         // 预处理公式
         String processedFormula = preprocessFormula(formula.trim());
         
-        try {
-            // 如果是纯数字，直接返回
+        if (NumberUtil.isNumeric(processedFormula)) {
             return Double.parseDouble(processedFormula);
-        } catch (NumberFormatException e) {
-            // 继续处理复杂表达式
         }
 
         try {
@@ -81,11 +78,8 @@ public final class FormulaCalculator {
         String processedFormula = preprocessFormula(formula.trim());
         processedFormula = replaceVariables(processedFormula, variables);
         
-        try {
-            // 如果是纯数字，直接返回
+        if (NumberUtil.isNumeric(processedFormula)) {
             return Double.parseDouble(processedFormula);
-        } catch (NumberFormatException e) {
-            // 继续处理复杂表达式
         }
 
         try {
