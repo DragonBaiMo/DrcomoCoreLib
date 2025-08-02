@@ -20,7 +20,8 @@ import java.util.function.Function;
  *    2. 暴露 {@link #register(String, BiFunction)} 及 {@link #registerSpecial(String, Function)} 供子插件注册自定义占位符；
  *    3. 提供 {@link #parse(Player, String)} 递归解析工具；
  *    4. 提供 {@link #parse(Player, String, Map)} 带自定义占位符预替换的解析工具；
- *    5. 提供 {@link #splitArgs(String)} 多参数拆分工具。<br><br>
+ *    5. 提供 {@link #splitArgs(String)} 多参数拆分工具；
+ *    6. 提供 {@link #convertOuterCharsToPercent(String, char, char)} 外层符号转百分号工具。<br><br>
  *
  *  ◎ 使用方式<br>
  *    1. onEnable() 中调用 {@link #initialize(Plugin, String)};<br>
@@ -170,6 +171,52 @@ public class PlaceholderAPIUtil {
             return new String[0];
         }
         return rawArgs.split("_", -1);
+    }
+
+    /**
+     * 将最外层指定符号对替换为 "%"，内部层级的同符号保持不变。
+     *
+     * @param input     待处理的原始字符串
+     * @param openChar  外层左符号，如 '{'
+     * @param closeChar 外层右符号，如 '}'
+     * @return 处理后的字符串；当输入为 null 或空串时返回空串；若首尾不存在成对符号或结构不匹配，则直接返回原字符串
+     */
+    public static String convertOuterCharsToPercent(String input, char openChar, char closeChar) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+        if (input.charAt(0) != openChar || input.charAt(input.length() - 1) != closeChar) {
+            return input;
+        }
+        int depth = 0;
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            if (c == openChar) {
+                depth++;
+            } else if (c == closeChar) {
+                depth--;
+                if (depth == 0 && i != input.length() - 1) {
+                    return input;
+                }
+                if (depth < 0) {
+                    return input;
+                }
+            }
+        }
+        if (depth != 0) {
+            return input;
+        }
+        return '%' + input.substring(1, input.length() - 1) + '%';
+    }
+
+    /**
+     * 将最外层的 "{" 与 "}" 替换为 "%"，内部的花括号保持不变。
+     *
+     * @param input 待处理的原始字符串
+     * @return 处理后的字符串；当输入为 null 或空串时返回空串；若首尾不存在成对花括号或结构不匹配，则直接返回原字符串
+     */
+    public static String convertOuterBracesToPercent(String input) {
+        return convertOuterCharsToPercent(input, '{', '}');
     }
 
     // === 示例模板 Javadoc Markdown 操作文档里必须有示例 ===
