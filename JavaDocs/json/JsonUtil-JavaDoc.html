@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>JsonUtil-JavaDoc</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">JsonUtil-JavaDoc</h1>
+</header>
+<h3 id="jsonutil.java"><code>JsonUtil.java</code></h3>
+<p><strong>1. 概述 (Overview)</strong></p>
+<ul>
+<li><strong>完整路径:</strong>
+<code>cn.drcomo.corelib.json.JsonUtil</code></li>
+<li><strong>核心职责:</strong> 一个封装了 Gson 的通用 JSON
+工具类，提供对象与 JSON
+字符串的相互转换，以及文件读写、校验与格式化等功能。</li>
+</ul>
+<p><strong>2. 如何实例化 (Initialization)</strong></p>
+<ul>
+<li><p><strong>核心思想:</strong> 每个插件应创建自己的
+<code>JsonUtil</code> 实例，通过构造函数注入
+<code>DebugUtil</code>，可选地传入自定义 <code>Gson</code>。</p></li>
+<li><p><strong>构造函数:</strong>
+<code>public JsonUtil(DebugUtil logger)</code><br />
+<code>public JsonUtil(DebugUtil logger, Gson gson)</code></p></li>
+<li><p><strong>代码示例:</strong></p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>DebugUtil logger <span class="op">=</span> <span class="kw">new</span> <span class="fu">DebugUtil</span><span class="op">(</span><span class="kw">this</span><span class="op">,</span> DebugUtil<span class="op">.</span><span class="fu">LogLevel</span><span class="op">.</span><span class="fu">DEBUG</span><span class="op">);</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>JsonUtil jsonUtil <span class="op">=</span> <span class="kw">new</span> <span class="fu">JsonUtil</span><span class="op">(</span>logger<span class="op">);</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="bu">Map</span><span class="op">&lt;</span><span class="bu">String</span><span class="op">,</span> <span class="bu">Object</span><span class="op">&gt;</span> data <span class="op">=</span> <span class="bu">Map</span><span class="op">.</span><span class="fu">of</span><span class="op">(</span><span class="st">&quot;name&quot;</span><span class="op">,</span> <span class="st">&quot;DrComo&quot;</span><span class="op">,</span> <span class="st">&quot;level&quot;</span><span class="op">,</span> <span class="dv">99</span><span class="op">);</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>Path file <span class="op">=</span> Paths<span class="op">.</span><span class="fu">get</span><span class="op">(</span><span class="fu">getDataFolder</span><span class="op">().</span><span class="fu">toString</span><span class="op">(),</span> <span class="st">&quot;data.json&quot;</span><span class="op">);</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>jsonUtil<span class="op">.</span><span class="fu">writeJsonFile</span><span class="op">(</span>file<span class="op">,</span> data<span class="op">);</span></span></code></pre></div></li>
+</ul>
+<p><strong>3. 公共API方法 (Public API Methods)</strong></p>
+<ul>
+<li><h4 id="tojsonobject-obj"><code>toJson(Object obj)</code></h4>
+<ul>
+<li><strong>返回类型:</strong> <code>String</code></li>
+<li><strong>功能描述:</strong> 将对象序列化为 JSON 字符串。</li>
+</ul></li>
+<li><h4
+id="fromjsonstring-json-classt-clazz"><code>fromJson(String json, Class&lt;T&gt; clazz)</code></h4>
+<ul>
+<li><strong>返回类型:</strong> <code>&lt;T&gt; T</code></li>
+<li><strong>功能描述:</strong> 按给定类解析 JSON 字符串。</li>
+</ul></li>
+<li><h4
+id="fromjsonstring-json-typetokent-type"><code>fromJson(String json, TypeToken&lt;T&gt; type)</code></h4>
+<ul>
+<li><strong>返回类型:</strong> <code>&lt;T&gt; T</code></li>
+<li><strong>功能描述:</strong> 使用 <code>TypeToken</code>
+解析带泛型的复杂对象。</li>
+</ul></li>
+<li><h4
+id="readjsonfilepath-path-classt-clazz"><code>readJsonFile(Path path, Class&lt;T&gt; clazz)</code></h4>
+<ul>
+<li><strong>返回类型:</strong> <code>&lt;T&gt; T</code></li>
+<li><strong>功能描述:</strong> 从文件读取 JSON 并解析成指定类型。</li>
+</ul></li>
+<li><h4
+id="readjsonfilepath-path-typetokent-type"><code>readJsonFile(Path path, TypeToken&lt;T&gt; type)</code></h4>
+<ul>
+<li><strong>返回类型:</strong> <code>&lt;T&gt; T</code></li>
+<li><strong>功能描述:</strong> 读取文件并按 <code>TypeToken</code>
+解析。</li>
+</ul></li>
+<li><h4
+id="writejsonfilepath-path-object-obj"><code>writeJsonFile(Path path, Object obj)</code></h4>
+<ul>
+<li><strong>返回类型:</strong> <code>void</code></li>
+<li><strong>功能描述:</strong> 将对象以 JSON
+形式写入文件，自动创建缺失的目录。</li>
+</ul></li>
+<li><h4
+id="isvalidjsonstring-json"><code>isValidJson(String json)</code></h4>
+<ul>
+<li><strong>返回类型:</strong> <code>boolean</code></li>
+<li><strong>功能描述:</strong> 判断字符串是否是合法 JSON。</li>
+</ul></li>
+<li><h4
+id="prettyprintstring-json"><code>prettyPrint(String json)</code></h4>
+<ul>
+<li><strong>返回类型:</strong> <code>String</code></li>
+<li><strong>功能描述:</strong> 以缩进格式返回更易阅读的 JSON
+字符串。</li>
+</ul></li>
+</ul>
+<p><strong>4. 典型用法 (Typical Usage)</strong></p>
+<ul>
+<li>在插件加载时创建 <code>JsonUtil</code>
+实例，配合其他工具持久化数据；</li>
+<li>当解析或写入失败时，通过 <code>DebugUtil</code>
+输出详细日志，方便排查问题。</li>
+</ul>
+</body>
+</html>
