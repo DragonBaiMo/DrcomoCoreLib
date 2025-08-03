@@ -45,11 +45,11 @@ public class MessageService {
     // private final Plugin plugin;
 
     private final DebugUtil logger;
-    private final YamlUtil  yamlUtil;
+    private final YamlUtil yamlUtil;
     private final PlaceholderAPIUtil placeholderUtil;
 
     /** 语言文件中的原始键值缓存 */
-    private final Map<String, String> messages         = new HashMap<>();
+    private final Map<String, String> messages = new HashMap<>();
     /** 上下文 -> 消息缓存 */
     private final Map<Object, List<String>> contextMessages = new HashMap<>();
     /** 内部占位符处理器 {key[:args]} */
@@ -77,11 +77,11 @@ public class MessageService {
                           String keyPrefix) {
 
         // this.plugin = plugin;
-        this.logger          = logger;
-        this.yamlUtil        = yamlUtil;
+        this.logger = logger;
+        this.yamlUtil = yamlUtil;
         this.placeholderUtil = placeholderUtil;
-        this.langConfigPath  = langConfigPath;
-        this.keyPrefix       = keyPrefix == null ? "" : keyPrefix;
+        this.langConfigPath = langConfigPath;
+        this.keyPrefix = keyPrefix == null ? "" : keyPrefix;
 
         yamlUtil.loadConfig(langConfigPath);
         loadMessages(langConfigPath);
@@ -145,7 +145,7 @@ public class MessageService {
     /** 取得原始字符串（无占位符处理） */
     public String getRaw(String key) {
         String actual = resolveKey(key);
-        String raw    = messages.get(actual);
+        String raw = messages.get(actual);
         if (raw == null) {
             logger.warn("未找到原始消息，键: " + actual);
         }
@@ -215,12 +215,29 @@ public class MessageService {
     }
 
     public void send(CommandSender target, String key, Map<String, String> custom) {
-        Player p  = asPlayer(target);
+        Player p = asPlayer(target);
         String msg = parse(key, p, custom);
         if (msg != null) sendColorizedRaw(target, msg);
     }
 
     /* -------- 列表 -------- */
+    /**
+     * 聊天多行发送，自定义占位符解析。
+     */
+    public void sendList(CommandSender target,
+                         List<String> templates,
+                         Map<String, String> custom,
+                         String prefix,
+                         String suffix) {
+        if (templates == null || templates.isEmpty()) return;
+        Player p = asPlayer(target);
+        List<String> parsed = new ArrayList<>(templates.size());
+        for (String t : templates) {
+            parsed.add(processPlaceholdersWithDelimiter(p, t, custom, prefix, suffix));
+        }
+        sendColorizedList(target, parsed);
+    }
+
     public void sendList(CommandSender target, String key) {
         Player p = asPlayer(target);
         sendColorizedList(target, parseList(key, p, Collections.emptyMap()));
@@ -251,26 +268,152 @@ public class MessageService {
     }
 
     public void sendStagedActionBar(Player player, List<String> messages) {
+        if (messages == null) return;
         messages.forEach(m -> sendActionBarRaw(player, m));
     }
 
     public void sendTitle(Player player, String titleKey, String subKey, Map<String, String> custom) {
         String title = parse(titleKey, player, custom);
-        String sub   = parse(subKey, player, custom);
+        String sub = parse(subKey, player, custom);
         if (title != null && sub != null) sendTitleRaw(player, title, sub);
     }
 
     public void sendStagedTitle(Player player, List<String> titles, List<String> subtitles) {
+        if (titles == null || subtitles == null) return;
         int n = Math.min(titles.size(), subtitles.size());
         for (int i = 0; i < n; i++) {
             sendTitleRaw(player, titles.get(i), subtitles.get(i));
         }
     }
 
+    /* -------- 直接模板发送 (Chat / ActionBar / Title) -------- */
+
+    /**
+     * 使用 "{}" 顺序占位符替换。
+     * 若占位符数量 < args.length，多余参数将被忽略；若占位符数量不足，则保持原样。
+     */
+    private String replaceBraces(String template, Object... args) {
+        if (template == null) return null;
+        String result = template;
+        for (Object arg : args) {
+            result = result.replaceFirst("\\{\\}", Matcher.quoteReplacement(String.valueOf(arg)));
+        }
+        return result;
+    }
+
+    /**
+     * 聊天发送，支持 "{}" 占位符顺序替换。
+     * @param player   目标玩家
+     * @param template 消息模板，使用 "{}" 表示占位符
+     * @param args     需要替换的参数
+     */
+    /**
+     * 通过聊天渠道发送，自定义占位符解析。
+     */
+    public void send(Player player,
+                     String template,
+                     Map<String, String> custom,
+                     String prefix,
+                     String suffix) {
+        if (player == null || template == null) return;
+        String parsed = processPlaceholdersWithDelimiter(player, template, custom, prefix, suffix);
+        sendColorizedRaw(player, ColorUtil.translateColors(parsed));
+    }
+
+    /**
+     * 直接格式化聊天（保留旧 {} 替换方式）。
+     */
+    public void sendChat(Player player, String template, Object... args) {
+        if (player == null || template == null) return;
+        sendColorizedRaw(player, replaceBraces(template, args));
+    }
+
+    /**
+     * ActionBar 发送，支持 "{}" 占位符顺序替换。
+     * @param player   目标玩家
+     * @param template 消息模板
+     * @param args     参数列表
+     */
+    /**
+     * 通过 ActionBar 发送，自定义占位符解析。
+     */
+    public void sendActionBar(Player player,
+                              String template,
+                              Map<String, String> custom,
+                              String prefix,
+                              String suffix) {
+        if (player == null || template == null) return;
+        String parsed = processPlaceholdersWithDelimiter(player, template, custom, prefix, suffix);
+        sendActionBarRaw(player, ColorUtil.translateColors(parsed));
+    }
+
+    public void sendActionBar(Player player, String template, Object... args) {
+        if (player == null || template == null) return;
+        sendActionBarRaw(player, replaceBraces(template, args));
+    }
+
+    /**
+     * Title/SubTitle 发送，支持 "{}" 占位符顺序替换。
+     * @param player         目标玩家
+     * @param titleTemplate  主标题模板
+     * @param subTemplate    副标题模板
+     * @param args           参数列表（同时作用于主/副标题）
+     */
+    /**
+     * 通过 Title/SubTitle 发送，自定义占位符解析。
+     */
+    public void sendTitle(Player player,
+                          String titleTemplate,
+                          String subTemplate,
+                          Map<String, String> custom,
+                          String prefix,
+                          String suffix) {
+        if (player == null) return;
+        String title = titleTemplate == null ? "" : processPlaceholdersWithDelimiter(player, titleTemplate, custom, prefix, suffix);
+        String sub = subTemplate == null ? "" : processPlaceholdersWithDelimiter(player, subTemplate, custom, prefix, suffix);
+        sendTitleRaw(player, ColorUtil.translateColors(title), ColorUtil.translateColors(sub));
+    }
+
+    public void sendTitle(Player player, String titleTemplate, String subTemplate, Object... args) {
+        if (player == null) return;
+        String title = titleTemplate == null ? "" : replaceBraces(titleTemplate, args);
+        String sub = subTemplate == null ? "" : replaceBraces(subTemplate, args);
+        sendTitleRaw(player, title, sub);
+    }
+
     /* -------- 广播 -------- */
     public void broadcast(String key) {
         String msg = parse(key, null, Collections.emptyMap());
         if (msg != null) Bukkit.broadcastMessage(msg);
+    }
+
+    /**
+     * 全服广播，自定义占位符解析（不依赖语言文件）。
+     * @param template  原始模板，可包含自定义占位符
+     * @param custom    自定义占位符 map
+     * @param prefix    占位符前缀
+     * @param suffix    占位符后缀
+     */
+    public void broadcast(String template,
+                          Map<String, String> custom,
+                          String prefix,
+                          String suffix) {
+        String parsed = processPlaceholdersWithDelimiter(null, template, custom, prefix, suffix);
+        Bukkit.broadcastMessage(ColorUtil.translateColors(parsed));
+    }
+
+    /**
+     * 权限过滤广播，自定义占位符解析。
+     */
+    public void broadcast(String template,
+                          Map<String, String> custom,
+                          String prefix,
+                          String suffix,
+                          String permission) {
+        broadcastToPlayersWithPerm(permission, p -> {
+            String m = processPlaceholdersWithDelimiter(p, template, custom, prefix, suffix);
+            sendColorizedRaw(p, ColorUtil.translateColors(m));
+        });
     }
 
     public void broadcast(String key, Map<String, String> custom, String permission) {
@@ -314,10 +457,10 @@ public class MessageService {
         if (list.isEmpty()) return;
 
         switch (channel.toLowerCase()) {
-            case "chat"      -> sendOptimizedChat(player, list);
+            case "chat" -> sendOptimizedChat(player, list);
             case "actionbar" -> sendStagedActionBar(player, list);
-            case "title"     -> sendStagedTitle(player, list, Collections.emptyList());
-            default          -> logger.warn("未知渠道: " + channel);
+            case "title" -> sendStagedTitle(player, list, Collections.emptyList());
+            default -> logger.warn("未知渠道: " + channel);
         }
         contextMessages.remove(context);
     }
@@ -356,19 +499,19 @@ public class MessageService {
 
         String result = msg;
 
-        /* —— 1. 自定义占位符 —— */
+        // —— 1. 自定义占位符 ——
         if (custom != null && !custom.isEmpty()) {
             for (var e : custom.entrySet()) {
                 result = result.replace(prefix + e.getKey() + suffix, e.getValue());
             }
         }
 
-        /* —— 2. 内部 {key[:args]} —— */
+        // —— 2. 内部 {key[:args]} ——
         if (!internalHandlers.isEmpty()) {
             Matcher m = internalPlaceholderPattern.matcher(result);
             StringBuffer sb = new StringBuffer();
             while (m.find()) {
-                String k    = m.group(1).toLowerCase();
+                String k = m.group(1).toLowerCase();
                 String args = m.group(2) == null ? "" : m.group(2);
                 BiFunction<Player, String, String> fn = internalHandlers.get(k);
                 m.appendReplacement(sb, Matcher.quoteReplacement(
@@ -378,7 +521,7 @@ public class MessageService {
             result = sb.toString();
         }
 
-        /* —— 3. 额外正则规则 —— */
+        // —— 3. 额外正则规则 ——
         for (var e : extraPlaceholderRules.entrySet()) {
             Matcher m = e.getKey().matcher(result);
             StringBuffer sb = new StringBuffer();
@@ -390,11 +533,9 @@ public class MessageService {
             result = sb.toString();
         }
 
-        /* —— 4. PlaceholderAPI —— */
+        // —— 4. PlaceholderAPI ——
         return placeholderUtil.parse(player, result);
     }
-
-    /* -------------------- 发送封装 -------------------- */
 
     /** 始终确保通过 ColorUtil 转换颜色再发送 */
     private void sendColorizedRaw(CommandSender target, String msg) {
@@ -403,15 +544,18 @@ public class MessageService {
     }
 
     private void sendColorizedList(CommandSender target, List<String> list) {
+        if (list == null) return;
         list.forEach(m -> sendColorizedRaw(target, m));
     }
 
     private void sendActionBarRaw(Player player, String msg) {
+        if (player == null || msg == null) return;
         player.spigot().sendMessage(ChatMessageType.ACTION_BAR,
                 new TextComponent(ColorUtil.translateColors(msg)));
     }
 
     private void sendTitleRaw(Player player, String title, String sub) {
+        if (player == null) return;
         player.sendTitle(ColorUtil.translateColors(title),
                          ColorUtil.translateColors(sub),
                          10, 70, 20);
@@ -419,6 +563,7 @@ public class MessageService {
 
     /** 根据权限批量广播 */
     private void broadcastToPlayersWithPerm(String permission, Consumer<Player> action) {
+        if (permission == null || action == null) return;
         for (Player p : Bukkit.getOnlinePlayers()) {
             if (p.hasPermission(permission)) action.accept(p);
         }
