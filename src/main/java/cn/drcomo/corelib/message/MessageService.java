@@ -187,14 +187,39 @@ public class MessageService {
      * 2. 自定义 %placeholder%
      * 3. 内部 {key[:args]}
      * 4. PlaceholderAPI %plugin_key%
+     * 5. 颜色代码转换
+     * 
+     * @deprecated 请使用 {@link #parseWithDelimiter(String, Player, Map, String, String)} 方法，支持自定义占位符分隔符
      */
+    @Deprecated
     public String parse(String key, Player player, Map<String, String> custom) {
+        return parseWithDelimiter(key, player, custom, "%", "%");
+    }
+    
+    /**
+     * 使用自定义分隔符解析消息并替换占位符。
+     * 1. String.format
+     * 2. 自定义占位符（支持自定义前后缀）
+     * 3. 内部 {key[:args]}
+     * 4. PlaceholderAPI %plugin_key%
+     * 5. 颜色代码转换
+     * 
+     * @param key 消息键
+     * @param player 玩家，可为 null
+     * @param custom 自定义占位符映射
+     * @param prefix 占位符前缀，如 "{" 或 "%"
+     * @param suffix 占位符后缀，如 "}" 或 "%"
+     * @return 解析后的消息，如果键不存在则返回 null
+     */
+    public String parseWithDelimiter(String key, Player player, Map<String, String> custom, String prefix, String suffix) {
         String msg = get(key);
         if (msg == null) {
             logger.warn("解析失败，消息为 null，键: " + key);
             return null;
         }
-        return processPlaceholders(player, msg, custom);
+        String result = processPlaceholdersWithDelimiter(player, msg, custom, prefix, suffix);
+        // 应用颜色转换
+        return ColorUtil.translateColors(result);
     }
 
     /** 获取原始字符串列表。 */
@@ -387,11 +412,16 @@ public class MessageService {
      *  自定义占位符 -> 内部占位符 -> PlaceholderAPI 占位符
      */
     private String processPlaceholders(Player player, String msg, Map<String, String> custom) {
+        return processPlaceholdersWithDelimiter(player, msg, custom, "%", "%");
+    }
+    
+    private String processPlaceholdersWithDelimiter(Player player, String msg, Map<String, String> custom, String prefix, String suffix) {
         String result = msg;
-        // 自定义 %key%
-        if (custom != null) {
+        // 自定义占位符
+        if (custom != null && !custom.isEmpty()) {
             for (Map.Entry<String, String> e : custom.entrySet()) {
-                result = result.replace("%" + e.getKey() + "%", e.getValue());
+                String placeholder = prefix + e.getKey() + suffix;
+                result = result.replace(placeholder, e.getValue());
             }
         }
         // 内部 {key:args}
@@ -430,8 +460,8 @@ public class MessageService {
         if (msg == null || msg.trim().isEmpty()) {
             return;
         }
-        String col = ColorUtil.translateColors(msg);
-        target.sendMessage(col);
+        // 消息已经在 parseWithDelimiter 中处理过颜色代码
+        target.sendMessage(msg);
     }
 
     /** 发送带颜色的消息列表 */

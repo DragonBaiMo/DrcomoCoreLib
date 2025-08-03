@@ -73,6 +73,19 @@ public class SQLiteDB {
      * 关闭并释放连接池资源。
      * 如果已关闭则忽略。
      */
+    /**
+     * 从连接池获取一个新的数据库连接。调用方使用完毕后应自行关闭。
+     *
+     * @return Connection 连接对象
+     * @throws SQLException 获取失败时抛出
+     */
+    public Connection getConnection() throws SQLException {
+        if (dataSource == null) {
+            throw new SQLException("数据源未初始化，请先调用 connect()。");
+        }
+        return dataSource.getConnection();
+    }
+
     public void disconnect() {
         if (dataSource != null) {
             dataSource.close();

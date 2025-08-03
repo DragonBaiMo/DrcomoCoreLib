@@ -111,23 +111,51 @@
         // formattedMsg -> "Steve 加入了服务器，在线人数: 15"
         ```
 
-  * #### `parse(String key, Player player, Map<String, String> custom)`
+  * #### `parseWithDelimiter(String key, Player player, Map<String, String> custom, String prefix, String suffix)`
 
       * **返回类型:** `String`
-      * **功能描述:** 对指定键的消息执行完整的、多阶段的占位符解析流程。解析顺序为：1. 自定义占位符 (`%key%`) -\> 2. 内部占位符 (`{key:args}`) -\> 3. PAPI 占位符。这是最常用的消息获取和处理方法。
+      * **功能描述:** 对指定键的消息执行完整的、多阶段的占位符解析流程。支持自定义占位符分隔符，可以灵活处理各种占位符格式。
+      * **解析流程:**
+          1. **字符串格式化**: 使用 `String.format` 处理 `%s`, `%d` 等标准 Java 格式化占位符
+          2. **自定义占位符替换**: 替换用户定义的自定义占位符，如 `{var}` 或 `%var%`
+          3. **内部占位符处理**: 处理格式为 `{key:args}` 的内部占位符
+          4. **PAPI 占位符解析**: 解析 PlaceholderAPI 占位符，如 `%player_name%`
+          5. **颜色代码转换**: 将 `&` 开头的颜色代码转换为 Minecraft 格式
       * **参数说明:**
           * `key` (`String`): 消息的键。
           * `player` (`Player`): PAPI 和部分内部占位符所需的上下文玩家，可以为 `null`。
-          * `custom` (`Map<String, String>`): 一个包含自定义占位符及其替换值的 Map。键是不带 `%` 的占位符名称。
+          * `custom` (`Map<String, String>`): 一个包含自定义占位符及其替换值的 Map。
+          * `prefix` (`String`): 占位符的前缀，例如 `"{"` 或 `"%"`。
+          * `suffix` (`String`): 占位符的后缀，例如 `"}"` 或 `"%"`。
       * **使用示例:**
         ```java
-        // yml中: 'welcome: "&a欢迎, %rank% %player_name%！你的余额是: {money}。"'
-        Map<String, String> customPlaceholders = new HashMap<>();
-        customPlaceholders.put("rank", "[VIP]");
+        // yml中: 'welcome: "&a欢迎, {rank} {player_name}！你的余额是: {money}。"'
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("rank", "[VIP]");
 
-        String welcomeMsg = messageService.parse("welcome", player, customPlaceholders);
-        // 最终消息可能是: "欢迎, [VIP] Steve！你的余额是: $1,234.56。"
+        // 使用 {placeholder} 格式
+        String welcomeMsg = messageService.parseWithDelimiter("welcome", player, placeholders, "{", "}");
+        // 输出: "§a欢迎, [VIP] Steve！你的余额是: $1,234.56。"
+        
+        // 使用 %placeholder% 格式
+        // yml中: 'greeting: "&e你好, %player_name%！今天是 %day_of_week%。"'
+        Map<String, String> timePlaceholders = new HashMap<>();
+        timePlaceholders.put("day_of_week", "星期一");
+        String greeting = messageService.parseWithDelimiter("greeting", player, timePlaceholders, "%", "%");
+        // 输出: "§e你好, Steve！今天是 星期一。"
+        
+        // 使用自定义内部占位符
+        // 注册一个内部占位符处理器
+        messageService.registerInternalPlaceholder("online", (p, args) -> 
+            String.valueOf(Bukkit.getOnlinePlayers().size())
+        );
+        
+        // yml中: 'status: "&a在线玩家: {online} 人"'
+        String status = messageService.parseWithDelimiter("status", player, null, "{", "}");
+        // 输出: "§a在线玩家: 15 人"
         ```
+        
+        **注意:** 如果 `prefix` 和 `suffix` 都设置为 `%`，则该方法的行为与已弃用的 `parse` 方法完全相同。
 
   * #### `getList(String key)`
 
