@@ -206,7 +206,8 @@ public class SoundManager {
     public void playSoundInRadius(Location center, String key, double radius) {
         SoundEffectData data = soundCache.get(key);
         if (data != null) {
-            playToPlayersInRadius(center, data, radius);
+            double radiusSquared = radius * radius; // 预先计算半径平方
+            playToPlayersInRadius(center, data, radiusSquared);
             logger.debug("在 " + center + " 半径 " + radius + " 范围内播放音效: " + key);
         } else if (warnOnMissingKeys) {
             logger.warn("找不到音效键: " + key);
@@ -237,7 +238,8 @@ public class SoundManager {
     public void playSoundFromStringInRadius(Location center, String soundString, double radius) {
         SoundEffectData data = parseSoundString(soundString);
         if (data != null) {
-            playToPlayersInRadius(center, data, radius);
+            double radiusSquared = radius * radius; // 预先计算半径平方
+            playToPlayersInRadius(center, data, radiusSquared);
             logger.debug("在 " + center + " 半径 " + radius + " 范围内播放音效字符串: " + soundString);
         } else if (warnOnMissingKeys) {
             logger.warn("音效字符串格式无效: " + soundString);
@@ -354,11 +356,11 @@ public class SoundManager {
     /**
      * 在指定半径范围内向所有玩家播放音效
      */
-    private void playToPlayersInRadius(Location center, SoundEffectData data, double radius) {
+    private void playToPlayersInRadius(Location center, SoundEffectData data, double radiusSquared) {
         World world = center.getWorld();
         if (world == null) return;
         for (Player player : world.getPlayers()) {
-            if (player.getLocation().distance(center) <= radius) {
+            if (player.getLocation().distanceSquared(center) <= radiusSquared) {
                 playSoundForPlayer(player, center, data);
             }
         }
