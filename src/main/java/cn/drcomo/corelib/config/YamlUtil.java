@@ -20,6 +20,7 @@ import java.nio.file.ClosedWatchServiceException;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,6 +42,8 @@ public class YamlUtil {
     private final String jarPath;
     /** 已创建的配置文件监听器 */
     private final Set<ConfigWatchHandle> watchHandles = new HashSet<>();
+    /** JAR 条目缓存：记录各目录下的条目列表 */
+    private final Map<String, List<JarEntry>> jarEntryCache = new HashMap<>();
     /** 默认配置文件名 */
     private static final String DEFAULT_FILE = "config";
 
@@ -448,6 +451,14 @@ public class YamlUtil {
             }
         }
         watchHandles.clear();
+        clearJarCache();
+    }
+
+    /**
+     * 清空 JAR 内条目缓存，释放内存。
+     */
+    public void clearJarCache() {
+        jarEntryCache.clear();
     }
 
     public static class ConfigWatchHandle implements AutoCloseable {
@@ -511,14 +522,24 @@ public class YamlUtil {
     }
 
     private void traverseJar(String folder, JarEntryConsumer consumer) throws Exception {
+        List<JarEntry> cache = jarEntryCache.get(folder);
+        if (cache != null) {
+            for (JarEntry entry : cache) {
+                consumer.accept(entry, null);
+            }
+            return;
+        }
         try (JarFile jar = new JarFile(jarPath)) {
             Enumeration<JarEntry> entries = jar.entries();
+            List<JarEntry> list = new ArrayList<>();
             while (entries.hasMoreElements()) {
                 JarEntry entry = entries.nextElement();
                 if (entry.getName().startsWith(folder)) {
+                    list.add(entry);
                     consumer.accept(entry, jar);
                 }
             }
+            jarEntryCache.put(folder, list);
         }
     }
 
