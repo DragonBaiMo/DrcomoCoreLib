@@ -501,9 +501,16 @@ public class MessageService {
 
         // —— 1. 自定义占位符 ——
         if (custom != null && !custom.isEmpty()) {
-            for (var e : custom.entrySet()) {
-                result = result.replace(prefix + e.getKey() + suffix, e.getValue());
+            Pattern pattern = Pattern.compile(prefix + "(?<key>[^" + suffix + "]+)" + suffix);
+            Matcher matcher = pattern.matcher(result);
+            StringBuffer sb = new StringBuffer();
+            while (matcher.find()) {
+                String key = matcher.group("key");
+                String value = custom.getOrDefault(key, matcher.group(0));
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(value));
             }
+            matcher.appendTail(sb);
+            result = sb.toString();
         }
 
         // —— 2. 内部 {key[:args]} ——
