@@ -9,11 +9,29 @@ import org.bukkit.inventory.meta.SkullMeta;
 import java.lang.reflect.Field;
 import java.util.Base64;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * 玩家头像工具类，用于生成带自定义纹理的头颅物品。
  */
 public class SkullUtil {
+    /**
+     * 通过反射缓存 SkullMeta 的 profile 字段，避免重复获取。
+     */
+    private static final Field PROFILE_FIELD;
+    private static final Logger STATIC_LOGGER = Logger.getLogger(SkullUtil.class.getName());
+
+    static {
+        Field field = null;
+        try {
+            field = SkullMeta.class.getDeclaredField("profile");
+            field.setAccessible(true);
+        } catch (NoSuchFieldException e) {
+            STATIC_LOGGER.log(Level.SEVERE, "未找到 SkullMeta 的 profile 字段", e);
+        }
+        PROFILE_FIELD = field;
+    }
 
     private final DebugUtil logger;
 
@@ -53,9 +71,9 @@ public class SkullUtil {
             SkullMeta meta = (SkullMeta) skull.getItemMeta();
             GameProfile profile = new GameProfile(UUID.randomUUID(), null);
             profile.getProperties().put("textures", new Property("textures", base64));
-            Field field = meta.getClass().getDeclaredField("profile");
-            field.setAccessible(true);
-            field.set(meta, profile);
+            if (PROFILE_FIELD != null) {
+                PROFILE_FIELD.set(meta, profile);
+            }
             skull.setItemMeta(meta);
             return skull;
         } catch (Exception e) {
