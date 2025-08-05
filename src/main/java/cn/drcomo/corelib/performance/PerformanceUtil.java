@@ -18,6 +18,10 @@ public class PerformanceUtil {
     private final DebugUtil logger;
     private final boolean tpsSupported;
     private final Method getTpsMethod;
+    /**
+     * 垃圾收集器管理接口列表，缓存以避免重复创建。
+     */
+    private final List<GarbageCollectorMXBean> garbageCollectors;
 
     /**
      * 通过构造函数注入依赖，并检测 TPS 功能支持情况。
@@ -44,6 +48,8 @@ public class PerformanceUtil {
         
         this.getTpsMethod = tpsMethod;
         this.tpsSupported = supported;
+        // 缓存垃圾收集器列表，避免每次调用都重新获取
+        this.garbageCollectors = ManagementFactory.getGarbageCollectorMXBeans();
     }
 
     /**
@@ -108,8 +114,7 @@ public class PerformanceUtil {
     private long[] getGarbageCollectionInfo() {
         long count = 0;
         long time = 0;
-        List<GarbageCollectorMXBean> list = ManagementFactory.getGarbageCollectorMXBeans();
-        for (GarbageCollectorMXBean b : list) {
+        for (GarbageCollectorMXBean b : garbageCollectors) {
             long c = b.getCollectionCount();
             long t = b.getCollectionTime();
             if (c > 0) count += c;
