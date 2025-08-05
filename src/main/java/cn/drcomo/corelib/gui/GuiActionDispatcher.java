@@ -129,9 +129,15 @@ public class GuiActionDispatcher {
         }
 
         void dispatch(ClickContext ctx) {
-            for (Entry e : new ArrayList<>(actions)) {
+            // 按索引顺序遍历；若一次性回调执行后移除自身，回退索引以防跳过后续动作
+            for (int i = 0; i < actions.size(); i++) {
+                Entry e = actions.get(i);
                 if (e.predicate.test(ctx.slot())) {
+                    int before = actions.size();
                     e.action.execute(ctx);
+                    if (actions.size() < before) {
+                        i--;
+                    }
                 }
             }
         }
