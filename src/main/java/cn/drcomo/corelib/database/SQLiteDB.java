@@ -14,7 +14,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -262,13 +261,23 @@ public class SQLiteDB {
      */
     private void executeSqlScript(Connection conn, InputStream in) throws IOException, SQLException {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(in))) {
-            String sql = reader.lines().collect(Collectors.joining("\n"));
-            for (String stmt : sql.split(";")) {
-                String trimmed = stmt.trim();
-                if (!trimmed.isEmpty()) {
-                    try (PreparedStatement ps = conn.prepareStatement(trimmed)) {
-                        ps.executeUpdate();
+            StringBuilder buffer = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+                buffer.append(trimmed).append(' ');
+                if (trimmed.endsWith(";")) {
+                    String stmt = buffer.substring(0, buffer.lastIndexOf(";"));
+                    stmt = stmt.trim();
+                    if (!stmt.isEmpty()) {
+                        try (PreparedStatement ps = conn.prepareStatement(stmt)) {
+                            ps.executeUpdate();
+                        }
                     }
+                    buffer.setLength(0);
                 }
             }
         }
