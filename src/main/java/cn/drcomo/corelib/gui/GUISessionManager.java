@@ -10,6 +10,7 @@ import cn.drcomo.corelib.util.DebugUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -246,15 +247,13 @@ public class GUISessionManager {
     }
 
     private void cleanExpiredSessions() {
-        List<Player> expired = new ArrayList<>();
-        for (Map.Entry<Player, GUISession> e : sessions.entrySet()) {
-            if (e.getValue().isExpired()) {
-                expired.add(e.getKey());
-            }
-        }
-        for (Player p : expired) {
-            GUISession s = sessions.get(p);
-            if (s != null) {
+        Iterator<Map.Entry<Player, GUISession>> it = sessions.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<Player, GUISession> entry = it.next();
+            if (entry.getValue().isExpired()) {
+                Player p = entry.getKey();
+                GUISession s = entry.getValue();
+                it.remove();
                 safeClose(p, s);
             }
         }
