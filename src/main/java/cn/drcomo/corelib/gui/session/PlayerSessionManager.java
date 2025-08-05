@@ -117,15 +117,13 @@ public class PlayerSessionManager<T> implements Listener {
     // ================== 私有助手 ==================
     private void cleanExpired() {
         if (sessionTimeout <= 0) return;
-        List<UUID> expired = new ArrayList<>();
         long now = System.currentTimeMillis();
-        for (Map.Entry<UUID, Session<T>> e : sessions.entrySet()) {
+        Iterator<Map.Entry<UUID, Session<T>>> it = sessions.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<UUID, Session<T>> e = it.next();
             if (e.getValue().isExpired(now)) {
-                expired.add(e.getKey());
+                it.remove();
             }
-        }
-        for (UUID id : expired) {
-            sessions.remove(id);
         }
     }
 
