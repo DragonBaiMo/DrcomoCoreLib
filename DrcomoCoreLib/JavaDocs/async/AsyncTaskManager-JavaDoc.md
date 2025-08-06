@@ -60,3 +60,9 @@
   * #### `void shutdown()`
       * **返回类型:** `void`
       * **功能描述:** 关闭内部线程池，停止接受新任务。
+  * #### `ExecutorService getExecutor()`
+      * **返回类型:** `ExecutorService`
+      * **功能描述:** 获取内部执行线程池实例。
+  * #### `ScheduledExecutorService getScheduler()`
+      * **返回类型:** `ScheduledExecutorService`
+      * **功能描述:** 获取内部调度线程池实例。
