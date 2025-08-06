@@ -115,6 +115,24 @@ public class AsyncTaskManager implements AutoCloseable {
     }
 
     /**
+     * 获取内部执行线程池。
+     *
+     * @return ExecutorService 实例
+     */
+    public ExecutorService getExecutor() {
+        return executor;
+    }
+
+    /**
+     * 获取内部调度线程池。
+     *
+     * @return ScheduledExecutorService 实例
+     */
+    public ScheduledExecutorService getScheduler() {
+        return scheduler;
+    }
+
+    /**
      * 关闭线程池，停止接受新任务。
      */
     public void shutdown() {
