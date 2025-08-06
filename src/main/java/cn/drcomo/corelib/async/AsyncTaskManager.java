@@ -49,6 +49,24 @@ public class AsyncTaskManager implements AutoCloseable {
     //================ public API =================
 
     /**
+     * 获取内部执行线程池。
+     *
+     * @return ExecutorService 实例
+     */
+    public ExecutorService getExecutor() {
+        return executor;
+    }
+
+    /**
+     * 获取内部调度线程池。
+     *
+     * @return ScheduledExecutorService 实例
+     */
+    public ScheduledExecutorService getScheduler() {
+        return scheduler;
+    }
+
+    /**
      * 提交一个异步任务。
      *
      * @param task 任务
