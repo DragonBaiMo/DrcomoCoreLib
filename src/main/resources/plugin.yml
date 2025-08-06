@@ -8,6 +8,10 @@ main: cn.drcomo.corelib.DrcomoCoreLib
 description: 一个面向开发者的多功能核心库，提供配置、消息、音效、NBT等常用工具集。
 # 插件所构建的API版本，确保与目标服务器版本兼容
 api-version: '1.18'
+libraries:
+  - com.zaxxer:HikariCP:6.2.1
+  - com.google.code.gson:gson:2.10.1
+  - org.xerial:sqlite-jdbc:3.42.0.1
 # 插件作者
 authors: [ BaiMo_ ]
 # 软依赖列表：这些插件不是必需的，但如果它们存在，本插件会提供额外的集成功能。
