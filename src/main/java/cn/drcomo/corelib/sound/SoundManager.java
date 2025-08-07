@@ -6,6 +6,7 @@ import cn.drcomo.corelib.math.NumberUtil;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
@@ -354,14 +355,33 @@ public class SoundManager {
     }
 
     /**
-     * 在指定半径范围内向所有玩家播放音效
+     * 在指定半径范围内向所有玩家播放音效。
+     * <p>优先使用 {@link World#getNearbyEntities(Location, double, double, double)} 构造以中心点为
+     * 核心的立方体边界获取候选实体，仅筛选玩家以提升性能；若运行环境不支持该 API，则回退
+     * 遍历世界中的全部玩家。</p>
+     *
+     * @param center        中心位置
+     * @param data          音效数据
+     * @param radiusSquared 半径平方，用于距离判断
      */
     private void playToPlayersInRadius(Location center, SoundEffectData data, double radiusSquared) {
         World world = center.getWorld();
         if (world == null) return;
-        for (Player player : world.getPlayers()) {
-            if (player.getLocation().distanceSquared(center) <= radiusSquared) {
-                playSoundForPlayer(player, center, data);
+        double radius = Math.sqrt(radiusSquared);
+        try {
+            for (Entity entity : world.getNearbyEntities(center, radius, radius, radius)) {
+                if (entity instanceof Player player) {
+                    if (player.getLocation().distanceSquared(center) <= radiusSquared) {
+                        playSoundForPlayer(player, center, data);
+                    }
+                }
+            }
+        } catch (NoSuchMethodError ignored) {
+            // 旧版本无 getNearbyEntities，退回遍历所有玩家
+            for (Player player : world.getPlayers()) {
+                if (player.getLocation().distanceSquared(center) <= radiusSquared) {
+                    playSoundForPlayer(player, center, data);
+                }
             }
         }
     }
