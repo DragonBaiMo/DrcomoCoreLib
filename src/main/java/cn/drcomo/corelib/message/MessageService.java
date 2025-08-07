@@ -564,7 +564,9 @@ public class MessageService {
             String cacheKey = prefix + suffix;
             Pattern pattern = delimiterPatternCache.get(cacheKey);
             if (pattern == null) {
-                pattern = Pattern.compile(prefix + "(?<key>[^" + suffix + "]+)" + suffix);
+                // 使用 Pattern.quote() 来转义 prefix 和 suffix，并使用非贪婪匹配来正确处理各种分界符
+                String regex = Pattern.quote(prefix) + "(?<key>.+?)" + Pattern.quote(suffix);
+                pattern = Pattern.compile(regex);
                 delimiterPatternCache.put(cacheKey, pattern);
             }
             Matcher matcher = pattern.matcher(result);
