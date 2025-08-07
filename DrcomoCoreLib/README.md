@@ -394,4 +394,6 @@ if (coreLib != null) {
 ### 数据库操作 (SQLite)
 - **功能描述**：连接管理 SQLite 数据库，初始化表结构，执行增删改查（CRUD）、事务处理。内置 HikariCP 连接池并提供异步接口，适合并发环境。
 - **包类路径**：`cn.drcomo.corelib.database.SQLiteDB`
-- **查询文档**：[查看](./JavaDocs/database)
+- **查询文档 1（核心 API）**：[查看](./JavaDocs/database/SQLiteDB-JavaDoc.md)
+- **查询文档 2（连接池状态）**：[查看](./JavaDocs/database/ConnectionPoolStatus-JavaDoc.md)
+- **查询文档 3（执行统计）**：[查看](./JavaDocs/database/DatabaseMetrics-JavaDoc.md)

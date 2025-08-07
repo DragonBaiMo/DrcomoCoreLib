@@ -3,6 +3,7 @@ package cn.drcomo.corelib.database;
 import org.bukkit.plugin.Plugin;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import com.zaxxer.hikari.HikariPoolMXBean;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -14,8 +15,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 /**
  * SQLite 数据库工具，管理连接、初始化表结构以及基础 CRUD 操作。
@@ -30,6 +34,9 @@ public class SQLiteDB {
     private HikariDataSource dataSource;
     private final ThreadLocal<Connection> txConnection = new ThreadLocal<>();
     private final SQLiteDBConfig config = new SQLiteDBConfig();
+    private final AtomicLong borrowedConnections = new AtomicLong();
+    private final AtomicLong executedStatements = new AtomicLong();
+    private final AtomicLong totalExecutionTime = new AtomicLong();
 
     /**
      * 构造方法。
@@ -93,6 +100,44 @@ public class SQLiteDB {
     }
 
     /**
+     * 获取连接池当前状态。
+     *
+     * @return 连接池状态信息
+     */
+    public ConnectionPoolStatus getPoolStatus() {
+        if (dataSource == null) {
+            return new ConnectionPoolStatus(0, 0, 0);
+        }
+        HikariPoolMXBean bean = dataSource.getHikariPoolMXBean();
+        return new ConnectionPoolStatus(bean.getTotalConnections(), bean.getActiveConnections(), bean.getIdleConnections());
+    }
+
+    /**
+     * 获取数据库运行统计信息。
+     *
+     * @return 当前统计信息
+     */
+    public DatabaseMetrics getMetrics() {
+        return new DatabaseMetrics(borrowedConnections.get(), executedStatements.get(), totalExecutionTime.get());
+    }
+
+    /**
+     * 检查当前数据源连接是否有效。
+     *
+     * @return 如果连接可用返回 {@code true}
+     */
+    public boolean isConnectionValid() {
+        if (dataSource == null) {
+            return false;
+        }
+        try (Connection conn = dataSource.getConnection()) {
+            return conn.isValid(2);
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    /**
      * 执行构造时传入的 SQL 脚本，用于初始化或升级 schema。
      * 不存在的脚本将被跳过，并在最后提交事务（如果手动提交模式）。
      *
@@ -124,11 +169,13 @@ public class SQLiteDB {
      * @throws SQLException 执行失败时抛出
      */
     public int executeUpdate(String sql, Object... params) throws SQLException {
+        long start = System.currentTimeMillis();
         Connection conn = borrowConnection();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             setParams(ps, params);
             int rows = ps.executeUpdate();
             commitIfNeeded(conn);
+            recordExecution(start, 1);
             return rows;
         } finally {
             returnConnection(conn);
@@ -146,6 +193,7 @@ public class SQLiteDB {
      * @throws SQLException 执行期间失败时抛出
      */
     public <T> T queryOne(String sql, ResultSetHandler<T> handler, Object... params) throws SQLException {
+        long start = System.currentTimeMillis();
         Connection conn = borrowConnection();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             setParams(ps, params);
@@ -153,6 +201,7 @@ public class SQLiteDB {
                 return rs.next() ? handler.handle(rs) : null;
             }
         } finally {
+            recordExecution(start, 1);
             returnConnection(conn);
         }
     }
@@ -168,6 +217,7 @@ public class SQLiteDB {
      * @throws SQLException 执行期间失败时抛出
      */
     public <T> List<T> queryList(String sql, ResultSetHandler<T> handler, Object... params) throws SQLException {
+        long start = System.currentTimeMillis();
         List<T> list = new ArrayList<>();
         Connection conn = borrowConnection();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -178,6 +228,7 @@ public class SQLiteDB {
                 }
             }
         } finally {
+            recordExecution(start, 1);
             returnConnection(conn);
         }
         return list;
@@ -190,13 +241,16 @@ public class SQLiteDB {
      * @throws SQLException 事务中出现错误时抛出
      */
     public void transaction(SQLRunnable callback) throws SQLException {
+        long start = System.currentTimeMillis();
         try (Connection conn = dataSource.getConnection()) {
+            borrowedConnections.incrementAndGet();
             txConnection.set(conn);
             boolean oldAutoCommit = conn.getAutoCommit();
             conn.setAutoCommit(false);
             try {
                 callback.run(this);
                 conn.commit();
+                recordExecution(start, 1);
             } catch (SQLException e) {
                 conn.rollback();
                 throw e;
@@ -233,7 +287,114 @@ public class SQLiteDB {
         return runAsync(() -> { transaction(callback); return null; });
     }
 
+    /**
+     * 批量执行更新语句。
+     *
+     * @param sql        更新 SQL
+     * @param paramsList 参数集合
+     * @return 执行结果数组
+     */
+    public CompletableFuture<int[]> batchUpdate(String sql, List<Object[]> paramsList) {
+        return runAsync(() -> doBatchUpdate(sql, paramsList));
+    }
+
+    /**
+     * 批量插入数据。
+     *
+     * @param table    表名
+     * @param dataList 数据列表
+     * @return 异步完成通知
+     */
+    public CompletableFuture<Void> batchInsert(String table, List<Map<String, Object>> dataList) {
+        return runAsync(() -> {
+            if (dataList == null || dataList.isEmpty()) {
+                return null;
+            }
+            Map<String, Object> first = dataList.get(0);
+            List<String> columns = new ArrayList<>(first.keySet());
+            String columnPart = String.join(",", columns);
+            StringBuilder placeholder = new StringBuilder();
+            for (int i = 0; i < columns.size(); i++) {
+                placeholder.append("?");
+                if (i < columns.size() - 1) {
+                    placeholder.append(",");
+                }
+            }
+            String sql = "INSERT INTO " + table + " (" + columnPart + ") VALUES (" + placeholder + ")";
+            List<Object[]> paramsList = new ArrayList<>();
+            for (Map<String, Object> map : dataList) {
+                Object[] arr = new Object[columns.size()];
+                for (int i = 0; i < columns.size(); i++) {
+                    arr[i] = map.get(columns.get(i));
+                }
+                paramsList.add(arr);
+            }
+            doBatchUpdate(sql, paramsList);
+            return null;
+        });
+    }
+
+    /**
+     * 在事务中执行指定逻辑并返回结果。
+     *
+     * @param op 事务内操作
+     * @param <T> 返回类型
+     * @return 操作结果
+     */
+    public <T> CompletableFuture<T> executeInTransaction(Function<Connection, T> op) {
+        return runAsync(() -> {
+            try (Connection conn = dataSource.getConnection()) {
+                borrowedConnections.incrementAndGet();
+                boolean oldAuto = conn.getAutoCommit();
+                conn.setAutoCommit(false);
+                long start = System.currentTimeMillis();
+                try {
+                    T result = op.apply(conn);
+                    conn.commit();
+                    recordExecution(start, 1);
+                    return result;
+                } catch (Exception e) {
+                    conn.rollback();
+                    throw e;
+                } finally {
+                    conn.setAutoCommit(oldAuto);
+                }
+            }
+        });
+    }
+
     /* ------- 私有方法 & 辅助类 ------- */
+
+    /**
+     * 执行批量更新的同步逻辑。
+     */
+    private int[] doBatchUpdate(String sql, List<Object[]> paramsList) throws SQLException {
+        if (paramsList == null || paramsList.isEmpty()) {
+            return new int[0];
+        }
+        long start = System.currentTimeMillis();
+        Connection conn = borrowConnection();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (Object[] params : paramsList) {
+                setParams(ps, params);
+                ps.addBatch();
+            }
+            int[] result = ps.executeBatch();
+            commitIfNeeded(conn);
+            recordExecution(start, paramsList.size());
+            return result;
+        } finally {
+            returnConnection(conn);
+        }
+    }
+
+    /**
+     * 记录执行耗时与语句数量。
+     */
+    private void recordExecution(long start, int count) {
+        executedStatements.addAndGet(count);
+        totalExecutionTime.addAndGet(System.currentTimeMillis() - start);
+    }
 
     /**
      * 通用异步执行封装，自动捕获异常并封装为 CompletionException。
@@ -295,7 +456,11 @@ public class SQLiteDB {
     /** 获取连接：如果在事务中返回同一连接，否则从池中获取新连接 */
     private Connection borrowConnection() throws SQLException {
         Connection conn = txConnection.get();
-        return (conn != null) ? conn : dataSource.getConnection();
+        if (conn != null) {
+            return conn;
+        }
+        borrowedConnections.incrementAndGet();
+        return dataSource.getConnection();
     }
 
     /** 归还连接：若非事务连接则关闭 */
