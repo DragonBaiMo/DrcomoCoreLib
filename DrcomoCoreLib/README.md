@@ -327,6 +327,8 @@ if (coreLib != null) {
 - **功能描述**：管理异步任务执行，支持任务提交、延迟执行、定时调度、批量处理等，内置异常捕获和日志记录。通过 Builder 可调整线程池大小及线程工厂。
 - **包类路径**：`cn.drcomo.corelib.async.AsyncTaskManager`
 - **查询文档**：[查看](./JavaDocs/async/AsyncTaskManager-JavaDoc.md)
+- **关联查询 1**：[查看](./JavaDocs/async/TaskPriority-JavaDoc.md)（任务优先级枚举）
+- **关联查询 2**：[查看](./JavaDocs/async/TaskQueueStatus-JavaDoc.md)（队列状态对象）
 
 
 ### 性能监控
