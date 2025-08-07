@@ -68,7 +68,7 @@ public class NBTUtil {
             });
             return result[0];
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "getInt 异常: " + ex.getMessage());
+            logger.debug("getInt 异常: " + ex.getMessage(), ex);
             return def;
         }
     }
@@ -91,7 +91,7 @@ public class NBTUtil {
             });
             return clone;
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "setInt 异常: " + ex.getMessage());
+            logger.debug("setInt 异常: " + ex.getMessage(), ex);
             return item;
         }
     }
@@ -114,7 +114,7 @@ public class NBTUtil {
             });
             return result[0];
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "getString 异常: " + ex.getMessage());
+            logger.debug("getString 异常: " + ex.getMessage(), ex);
             return def;
         }
     }
@@ -137,7 +137,7 @@ public class NBTUtil {
             });
             return clone;
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "setString 异常: " + ex.getMessage());
+            logger.debug("setString 异常: " + ex.getMessage(), ex);
             return item;
         }
     }
@@ -159,7 +159,7 @@ public class NBTUtil {
             });
             return exists[0];
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "hasKey 异常: " + ex.getMessage());
+            logger.debug("hasKey 异常: " + ex.getMessage(), ex);
             return false;
         }
     }
@@ -181,7 +181,7 @@ public class NBTUtil {
             });
             return clone;
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "removeKey 异常: " + ex.getMessage());
+            logger.debug("removeKey 异常: " + ex.getMessage(), ex);
             return item;
         }
     }
@@ -207,7 +207,7 @@ public class NBTUtil {
                 }
             });
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "scanPluginNBTKeys 异常: " + ex.getMessage());
+            logger.debug("scanPluginNBTKeys 异常: " + ex.getMessage(), ex);
         }
         return keys;
     }
@@ -266,7 +266,7 @@ public class NBTUtil {
                 });
             });
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "batchPreserve 异常: " + ex.getMessage());
+            logger.debug("batchPreserve 异常: " + ex.getMessage(), ex);
             return dst;
         }
         return clone;
@@ -420,7 +420,7 @@ public class NBTUtil {
                     break;
             }
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "copyNBTTag 失败 [" + key + "]: " + ex.getMessage());
+            logger.debug("copyNBTTag 失败 [" + key + "]: " + ex.getMessage(), ex);
         }
     }
 
@@ -446,7 +446,7 @@ public class NBTUtil {
             ReadWriteNBT nbt = NBT.itemStackToNBT(clone);
             return nbt.toString();
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "toRawString 异常: " + ex.getMessage());
+            logger.debug("toRawString 异常: " + ex.getMessage(), ex);
             return "{}";
         }
     }
@@ -475,7 +475,7 @@ public class NBTUtil {
             });
             return result[0];
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "getRawCompound 异常: " + ex.getMessage());
+            logger.debug("getRawCompound 异常: " + ex.getMessage(), ex);
             return null;
         }
     }
@@ -502,7 +502,7 @@ public class NBTUtil {
             ReadWriteNBT nbt = NBT.parseNBT(nbtString);
             return NBT.itemStackFromNBT(nbt);
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "fromRawString 解析失败: " + ex.getMessage());
+            logger.debug("fromRawString 解析失败: " + ex.getMessage(), ex);
             throw new cn.drcomo.corelib.hook.placeholder.parse.ParseException("NBT 解析失败: " + ex.getMessage());
         }
     }
@@ -527,7 +527,7 @@ public class NBTUtil {
             ReadWriteNBT nbt = NBT.itemStackToNBT(item);
             convertNBTToMap(nbt, result);
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "getAllNbt 异常: " + ex.getMessage());
+            logger.debug("getAllNbt 异常: " + ex.getMessage(), ex);
         }
         return result;
     }
@@ -604,7 +604,7 @@ public class NBTUtil {
         try {
             NBT.modify(clone, (ReadWriteItemNBT nbt) -> applyMapToNBT(nbt, nbtMap));
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "setAllNbt 异常: " + ex.getMessage());
+            logger.debug("setAllNbt 异常: " + ex.getMessage(), ex);
             return item;
         }
         return clone;
@@ -722,7 +722,7 @@ public class NBTUtil {
                 return null;
             });
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "getRaw 异常: " + ex.getMessage());
+            logger.debug("getRaw 异常: " + ex.getMessage(), ex);
             return null;
         }
     }
@@ -751,7 +751,7 @@ public class NBTUtil {
             });
             return clone;
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "setRaw 异常: " + ex.getMessage());
+            logger.debug("setRaw 异常: " + ex.getMessage(), ex);
             return item;
         }
     }
@@ -833,7 +833,7 @@ public class NBTUtil {
             });
             return out.toString();
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "exportPluginNbt 异常: " + ex.getMessage());
+            logger.debug("exportPluginNbt 异常: " + ex.getMessage(), ex);
             return "{}";
         }
     }
@@ -918,7 +918,7 @@ public class NBTUtil {
                     logger.log(LogLevel.WARN, "copyTagGeneric 未支持类型: " + type);
             }
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "copyTagGeneric 异常:" + ex.getMessage());
+            logger.debug("copyTagGeneric 异常:" + ex.getMessage(), ex);
         }
     }
 
@@ -941,7 +941,7 @@ public class NBTUtil {
             });
             return clone;
         } catch (Exception ex) {
-            logger.log(LogLevel.DEBUG, "importPluginNbt 失败: " + ex.getMessage());
+            logger.debug("importPluginNbt 失败: " + ex.getMessage(), ex);
             throw new cn.drcomo.corelib.hook.placeholder.parse.ParseException("导入插件 NBT 失败: " + ex.getMessage());
         }
     }

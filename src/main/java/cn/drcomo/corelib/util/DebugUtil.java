@@ -98,6 +98,12 @@ public class DebugUtil {
 
     // 简化方法
     public void debug(String msg)    { log(LogLevel.DEBUG, msg); }
+    /**
+     * 调试日志并附带异常信息
+     * @param msg 日志内容
+     * @param t   异常对象
+     */
+    public void debug(String msg, Throwable t) { log(LogLevel.DEBUG, msg, t); }
     public void info(String msg)     { log(LogLevel.INFO,  msg); }
     public void warn(String msg)     { log(LogLevel.WARN,  msg); }
     public void error(String msg)    { log(LogLevel.ERROR, msg); }
