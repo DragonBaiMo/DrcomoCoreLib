@@ -279,9 +279,13 @@ if (coreLib != null) {
 
 
 ### 发送消息与文本本地化
-- **功能描述**：发送游戏内消息（聊天、ActionBar、Title），解析多层级占位符（自定义、PAPI、内部），管理多语言文件。  
-- **包类路径**：`cn.drcomo.corelib.message.MessageService`
-- **查询文档**：[查看](./JavaDocs/message/MessageService-JavaDoc.md)
+- **功能描述**：发送游戏内消息（聊天、ActionBar、Title），解析多层级占位符（自定义、PAPI、内部），管理多语言文件。
+- **包类路径**：
+  - `cn.drcomo.corelib.message.MessageService`
+  - `cn.drcomo.corelib.message.PlaceholderResolver`
+- **查询文档**：
+  - [MessageService](./JavaDocs/message/MessageService-JavaDoc.md)
+  - [PlaceholderResolver](./JavaDocs/message/PlaceholderResolver-JavaDoc.md)
 
 
 ### 物品NBT数据操作
