@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -545,22 +546,19 @@ public class YamlUtil {
             while (!Thread.currentThread().isInterrupted()) {
                 WatchKey key;
                 try {
-                    key = sharedWatcher.take();
+                    // 使用带超时的轮询，避免额外休眠，同时汇聚短时间内的变更
+                    key = sharedWatcher.poll(50, TimeUnit.MILLISECONDS);
                 } catch (InterruptedException | ClosedWatchServiceException e) {
                     Thread.currentThread().interrupt();
                     break;
                 }
+                if (key == null) {
+                    // 超时未收到事件，继续下一轮
+                    continue;
+                }
 
                 Path dir = watchKeyMap.get(key);
                 if (dir == null) continue;
-
-                // 延迟一小段时间，避免短时间内多次修改（如编辑器保存）触发多次重载
-                try {
-                    Thread.sleep(50);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
 
                 for (WatchEvent<?> event : key.pollEvents()) {
                     if (event.kind() != StandardWatchEventKinds.ENTRY_MODIFY) {
