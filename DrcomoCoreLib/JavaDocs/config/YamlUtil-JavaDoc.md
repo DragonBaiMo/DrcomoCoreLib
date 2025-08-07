@@ -159,6 +159,22 @@
           * `fileName` (`String`): 文件名。
           * `path` (`String`): 路径。
 
+  * #### `setDefaults(String configKey, Map<String, Object> defaults)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 为指定配置文件批量写入默认值，仅在路径不存在时才会设置对应的默认值。
+      * **参数说明:**
+          * `configKey` (`String`): 配置文件名（不含 `.yml`）。
+          * `defaults` (`Map<String, Object>`): 键为配置路径、值为默认值的映射。
+
+  * #### `validateConfig(String configKey, ConfigSchema schema)`
+
+      * **返回类型:** `ValidationResult`
+      * **功能描述:** 使用 `ConfigSchema` 声明的规则对指定配置文件进行结构校验，返回包含错误列表的 `ValidationResult`。
+      * **参数说明:**
+          * `configKey` (`String`): 配置文件名（不含 `.yml`）。
+          * `schema` (`ConfigSchema`): 配置结构声明接口，实现后在其中配置校验规则。
+
 * #### `watchConfig(String configName, Consumer<YamlConfiguration> onChange)`
 
     * **返回类型:** `YamlUtil.ConfigWatchHandle`
@@ -177,6 +193,21 @@
     // 在插件关闭或不再需要时停止监听
     handle.close();
     ```
+
+  * #### `enableFileWatcher(String configKey, FileChangeListener listener)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 启用指定配置文件的变更监听，内部复用 `watchConfig` 并在文件修改时回调 `FileChangeListener`。
+      * **参数说明:**
+          * `configKey` (`String`): 配置文件名（不含 `.yml`）。
+          * `listener` (`FileChangeListener`): 变更回调，提供变更类型与最新配置。
+
+  * #### `disableFileWatcher(String configKey)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 关闭指定配置文件的监听，内部调用 `stopWatching` 清理资源。
+      * **参数说明:**
+          * `configKey` (`String`): 配置文件名（不含 `.yml`）。
 
   * #### `stopAllWatches()`
 
