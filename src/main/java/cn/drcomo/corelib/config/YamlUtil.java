@@ -39,9 +39,20 @@ public class YamlUtil {
     private final Plugin plugin;
     private final DebugUtil logger;
     private final Map<String, YamlConfiguration> configs = new HashMap<>();
+    private final Set<String> dirtyConfigs = new HashSet<>(); // 记录被修改过的配置
     private final String jarPath;
     /** 已创建的配置文件监听器 */
-    private final Set<ConfigWatchHandle> watchHandles = new HashSet<>();
+    // private final Set<ConfigWatchHandle> watchHandles = new HashSet<>(); // 被新的监听机制取代
+    /** 共享的配置文件监听服务 */
+    private WatchService sharedWatcher;
+    /** 共享的监听服务后台线程 */
+    private Thread sharedWatcherThread;
+    /** 监听key与目录路径的映射 */
+    private final Map<WatchKey, Path> watchKeyMap = new HashMap<>();
+    /** 被监听的文件路径 -> 配置文件名 的映射 */
+    private final Map<Path, String> watchedFileMap = new HashMap<>();
+    /** 配置文件名 -> 回调 的映射 */
+    private final Map<String, Consumer<YamlConfiguration>> callbackMap = new HashMap<>();
     /** JAR 条目缓存：记录各目录下的条目列表 */
     private final Map<String, List<JarEntry>> jarEntryCache = new HashMap<>();
     /** 默认配置文件名 */
@@ -151,8 +162,8 @@ public class YamlUtil {
         ensureDirectory("");
         File file = getConfigFile(fileName);
         if (!file.exists()) {
-            logger.debug("未找到配置，复制默认: " + fileName);
-            copyDefaults("", "");
+            logger.debug("未找到配置，将从 JAR 中复制默认文件: " + fileName + ".yml");
+            plugin.saveResource(fileName + ".yml", false);
         }
         try {
             YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
@@ -215,11 +226,25 @@ public class YamlUtil {
     }
 
     /**
-     * 保存缓存中的配置到磁盘
+     * 保存缓存中的配置到磁盘（如果它被标记为“脏”）。
      *
      * @param fileName 文件名（不含 .yml）
      */
     public void saveConfig(String fileName) {
+        saveConfig(fileName, false);
+    }
+
+    /**
+     * 保存缓存中的配置到磁盘。
+     *
+     * @param fileName 文件名（不含 .yml）
+     * @param force    是否强制保存，即使未被标记为“脏”
+     */
+    public void saveConfig(String fileName, boolean force) {
+        if (!force && !dirtyConfigs.contains(fileName)) {
+            return; // 未修改，不保存
+        }
+
         YamlConfiguration cfg = configs.get(fileName);
         if (cfg == null) {
             logger.warn("无可保存配置: " + fileName);
@@ -227,10 +252,28 @@ public class YamlUtil {
         }
         try {
             cfg.save(getConfigFile(fileName));
+            dirtyConfigs.remove(fileName); // 保存后移除脏标记
             logger.debug("Saved config: " + fileName);
         } catch (IOException e) {
             logger.error("保存配置失败: " + fileName, e);
         }
+    }
+
+    /**
+     * 保存所有被标记为“脏”的配置文件。
+     * 建议在插件 onDisable 时调用。
+     */
+    public void saveAllDirtyConfigs() {
+        if (dirtyConfigs.isEmpty()) {
+            return;
+        }
+        logger.info("正在保存 " + dirtyConfigs.size() + " 个已修改的配置文件...");
+        // 创建副本以避免在迭代时修改
+        Set<String> dirtySnapshot = new HashSet<>(dirtyConfigs);
+        for (String fileName : dirtySnapshot) {
+            saveConfig(fileName, true); // 强制保存
+        }
+        logger.info("所有已修改的配置文件保存完毕。");
     }
 
     /**
@@ -285,7 +328,7 @@ public class YamlUtil {
     public void setValue(String fileName, String path, Object value) {
         YamlConfiguration cfg = getConfig(fileName);
         cfg.set(path, value);
-        saveConfig(fileName);
+        dirtyConfigs.add(fileName); // 标记为脏
         logger.debug("Set value: " + path + " = " + value + " in " + fileName);
     }
 
@@ -322,7 +365,7 @@ public class YamlUtil {
         Object val = cfg.get(path);
         if (val == null || !type.isInstance(val)) {
             cfg.set(path, defaultValue);
-            saveConfig(DEFAULT_FILE);
+            dirtyConfigs.add(DEFAULT_FILE); // 标记为脏
             logger.debug("Set typed default: " + path + " = " + defaultValue);
             return defaultValue;
         }
@@ -361,97 +404,103 @@ public class YamlUtil {
     }
 
     /**
+     * 监听指定配置文件，并允许自定义执行器和监听的事件类型。
+     *
+     * @param configName 配置文件名（不含 .yml）
+     * @param onChange   文件变更后的回调，提供最新的 YamlConfiguration
+     * @param executor   执行监听任务的线程池（此参数在新实现中被忽略）。
+     * @param kinds      要监听的事件类型（此参数在新实现中被忽略）。
+     * @return 监听句柄，可通过 {@link ConfigWatchHandle#close()} 停止监听。
+     * @deprecated 此方法为每个监听器创建一个新线程，效率低下。请改用 {@link #watchConfig(String, Consumer)}，它使用一个共享的、资源高效的监听线程。
+     */
+    @Deprecated
+    public ConfigWatchHandle watchConfig(String configName, Consumer<YamlConfiguration> onChange,
+                                         ExecutorService executor, WatchEvent.Kind<?>... kinds) {
+        logger.warn("正在调用已弃用的 watchConfig 方法。executor 和 kinds 参数将被忽略。请迁移到新的 watchConfig(String, Consumer) 方法。");
+        return watchConfig(configName, onChange);
+    }
+
+    /**
      * 监听指定配置文件，一旦文件被修改则自动重载并触发回调。
+     * 使用共享的后台线程，避免为每个监听器创建新线程。
      *
      * @param configName 配置文件名（不含 .yml）
      * @param onChange   文件变更后的回调，提供最新的 YamlConfiguration
      * @return 监听句柄，可通过 {@link ConfigWatchHandle#close()} 停止监听
      */
     public ConfigWatchHandle watchConfig(String configName, Consumer<YamlConfiguration> onChange) {
-        return watchConfig(configName, onChange, null, StandardWatchEventKinds.ENTRY_MODIFY);
+        try {
+            startWatcherThread(); // 确保监听线程已启动
+        } catch (IOException e) {
+            logger.error("无法初始化文件监听服务", e);
+            return null;
+        }
+
+        File configFile = getConfigFile(configName);
+        Path filePath = configFile.toPath();
+        Path dirPath = filePath.getParent();
+
+        // 如果目录未被监听，则注册
+        if (watchKeyMap.values().stream().noneMatch(p -> p.equals(dirPath))) {
+            try {
+                WatchKey key = dirPath.register(sharedWatcher, StandardWatchEventKinds.ENTRY_MODIFY);
+                watchKeyMap.put(key, dirPath);
+                logger.info("开始监听目录: " + dirPath);
+            } catch (IOException e) {
+                logger.error("监听目录失败: " + dirPath, e);
+                return null;
+            }
+        }
+
+        // 存储文件和回调的映射关系
+        watchedFileMap.put(filePath, configName);
+        callbackMap.put(configName, onChange);
+
+        logger.info("已设置对 " + configFile.getName() + " 的修改监听。");
+        return new ConfigWatchHandle(this, configName);
     }
 
     /**
-     * 监听指定配置文件，并允许自定义执行器和监听的事件类型。
-     *
-     * @param configName 配置文件名（不含 .yml）
-     * @param onChange   文件变更后的回调，提供最新的 YamlConfiguration
-     * @param executor   执行监听任务的线程池，传入 {@code null} 时将创建守护线程
-     * @param kinds      要监听的事件类型，如 {@link StandardWatchEventKinds#ENTRY_MODIFY}
-     * @return 监听句柄，可通过 {@link ConfigWatchHandle#close()} 停止监听
+     * 停止监听指定的配置文件。
+     * @param configName 要停止监听的配置文件名
      */
-    public ConfigWatchHandle watchConfig(String configName, Consumer<YamlConfiguration> onChange,
-                                         ExecutorService executor, WatchEvent.Kind<?>... kinds) {
-        if (kinds == null || kinds.length == 0) {
-            kinds = new WatchEvent.Kind<?>[]{StandardWatchEventKinds.ENTRY_MODIFY};
-        }
-        File file = getConfigFile(configName);
-        Path dir = file.getParentFile().toPath();
-        try {
-            WatchService service = FileSystems.getDefault().newWatchService();
-            WatchKey key = dir.register(service, kinds);
-            Runnable task = () -> {
-                while (!Thread.currentThread().isInterrupted()) {
-                    WatchKey wk;
-                    try {
-                        wk = service.take();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    } catch (ClosedWatchServiceException e) {
-                        break;
-                    }
-                    for (WatchEvent<?> event : wk.pollEvents()) {
-                        Path changed = dir.resolve((Path) event.context());
-                        if (changed.equals(file.toPath())) {
-                            reloadConfig(configName);
-                            onChange.accept(getConfig(configName));
-                        }
-                    }
-                    if (!wk.reset()) {
-                        break;
-                    }
-                }
-                try {
-                    service.close();
-                } catch (IOException ignore) {
-                }
-                logger.info("停止监听配置文件: " + file.getName());
-            };
-
-            ConfigWatchHandle handle;
-            if (executor == null) {
-                Thread watcher = new Thread(task, "YamlUtil-Watch-" + configName);
-                watcher.setDaemon(true);
-                watcher.start();
-                logger.info("开始监听配置文件: " + file.getName());
-                handle = new ConfigWatchHandle(watcher, null, key, service);
-            } else {
-                Future<?> future = executor.submit(task);
-                logger.info("开始监听配置文件: " + file.getName());
-                handle = new ConfigWatchHandle(null, future, key, service);
+    public void stopWatching(String configName) {
+        callbackMap.remove(configName);
+        Path toRemove = null;
+        for (Map.Entry<Path, String> entry : watchedFileMap.entrySet()) {
+            if (entry.getValue().equals(configName)) {
+                toRemove = entry.getKey();
+                break;
             }
-            watchHandles.add(handle);
-            return handle;
-        } catch (IOException e) {
-            logger.error("监听配置文件失败: " + file.getName(), e);
-            return null;
         }
+        if (toRemove != null) {
+            watchedFileMap.remove(toRemove);
+            logger.info("已停止监听配置文件: " + configName);
+        }
+        // 注意：为简化，即使一个目录下的所有文件都不再被监听，我们也不注销目录的 WatchKey。
     }
 
     /**
      * 停止并关闭所有正在监听的配置文件。
      */
     public void stopAllWatches() {
-        for (ConfigWatchHandle handle : new HashSet<>(watchHandles)) {
-            try {
-                handle.close();
-            } catch (Exception e) {
-                logger.error("关闭配置监听失败", e);
-            }
+        if (sharedWatcherThread != null) {
+            sharedWatcherThread.interrupt();
+            sharedWatcherThread = null;
         }
-        watchHandles.clear();
+        if (sharedWatcher != null) {
+            try {
+                sharedWatcher.close();
+            } catch (IOException e) {
+                logger.error("关闭 WatchService 失败", e);
+            }
+            sharedWatcher = null;
+        }
+        watchKeyMap.clear();
+        watchedFileMap.clear();
+        callbackMap.clear();
         clearJarCache();
+        logger.info("所有文件监听已停止。");
     }
 
     /**
@@ -461,33 +510,92 @@ public class YamlUtil {
         jarEntryCache.clear();
     }
 
-    public static class ConfigWatchHandle implements AutoCloseable {
-        private final Thread thread;
-        private final Future<?> future;
-        private final WatchKey key;
-        private final WatchService service;
+    /**
+     * 监听句柄，用于停止对单个配置文件的监听。
+     */
+    public class ConfigWatchHandle implements AutoCloseable {
+        private final YamlUtil self;
+        private final String configName;
+        private boolean closed = false;
 
-        private ConfigWatchHandle(Thread thread, Future<?> future, WatchKey key, WatchService service) {
-            this.thread = thread;
-            this.future = future;
-            this.key = key;
-            this.service = service;
+        private ConfigWatchHandle(YamlUtil self, String configName) {
+            this.self = self;
+            this.configName = configName;
         }
 
         @Override
         public void close() {
-            key.cancel();
-            if (thread != null) {
-                thread.interrupt();
-            }
-            if (future != null) {
-                future.cancel(true);
-            }
-            try {
-                service.close();
-            } catch (IOException ignored) {
+            if (!closed) {
+                self.stopWatching(configName);
+                closed = true;
             }
         }
+    }
+
+    private void startWatcherThread() throws IOException {
+        if (sharedWatcherThread != null && sharedWatcherThread.isAlive()) {
+            return; // 已经启动
+        }
+
+        if (sharedWatcher == null) {
+            sharedWatcher = FileSystems.getDefault().newWatchService();
+        }
+
+        this.sharedWatcherThread = new Thread(() -> {
+            while (!Thread.currentThread().isInterrupted()) {
+                WatchKey key;
+                try {
+                    key = sharedWatcher.take();
+                } catch (InterruptedException | ClosedWatchServiceException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+
+                Path dir = watchKeyMap.get(key);
+                if (dir == null) continue;
+
+                // 延迟一小段时间，避免短时间内多次修改（如编辑器保存）触发多次重载
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+
+                for (WatchEvent<?> event : key.pollEvents()) {
+                    if (event.kind() != StandardWatchEventKinds.ENTRY_MODIFY) {
+                        continue;
+                    }
+
+                    Path changedFile = dir.resolve((Path) event.context());
+                    String configName = watchedFileMap.get(changedFile);
+
+                    if (configName != null) {
+                        Consumer<YamlConfiguration> callback = callbackMap.get(configName);
+                        if (callback != null) {
+                            logger.info("检测到配置文件修改，正在重载: " + configName);
+                            // 在 Bukkit 主线程中执行重载和回调，以确保线程安全
+                            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                                reloadConfig(configName);
+                                callback.accept(getConfig(configName));
+                            });
+                        }
+                    }
+                }
+
+                if (!key.reset()) {
+                    watchKeyMap.remove(key);
+                    if (watchKeyMap.isEmpty()) {
+                        logger.info("所有监听目录均失效，监听线程退出。");
+                        break;
+                    }
+                }
+            }
+            logger.info("文件监听线程已停止。");
+        }, "YamlUtil-Shared-Watcher");
+
+        this.sharedWatcherThread.setDaemon(true);
+        this.sharedWatcherThread.start();
     }
 
     // ---------------- private 辅助方法 ----------------
@@ -499,7 +607,7 @@ public class YamlUtil {
     private void setDefaultIfAbsent(YamlConfiguration cfg, String fileName, String path, Object def) {
         if (!cfg.contains(path)) {
             cfg.set(path, def);
-            saveConfig(fileName);
+            dirtyConfigs.add(fileName); // 标记为脏
             logger.debug("Set default value: " + path + " = " + def + " in " + fileName);
         }
     }

@@ -19,8 +19,8 @@ import org.bukkit.Server;
 public class ColorUtil {
     // 匹配 &#RRGGBB 格式
     private static final Pattern HEX_PATTERN = Pattern.compile("&#([A-Fa-f0-9]{6})");
-    // 匹配所有颜色代码
-    private static final Pattern COLOR_PATTERN = Pattern.compile("(?i)[§&].");
+    // 优化：合并为一个正则表达式，一次性移除所有颜色代码
+    private static final Pattern STRIP_COLOR_PATTERN = Pattern.compile("&#[a-fA-F0-9]{6}|(?i)[§&][0-9a-fk-or]");
     // 缓存 Bukkit 版本号解析正则
     private static final Pattern VERSION_PATTERN = Pattern.compile("1\\.(\\d+)");
 
@@ -37,30 +37,48 @@ public class ColorUtil {
      * @return 转换后可直接发送给玩家的文本
      */
     public static String translateColors(String text) {
-        if (text == null) return "";
-
-        // 先处理 &#RRGGBB
-        Matcher matcher = HEX_PATTERN.matcher(text);
-        StringBuffer sb = new StringBuffer();
-        while (matcher.find()) {
-            String hex = matcher.group(1);
-            String replacement;
-            if (getMajorVersion() >= 16) {
-                // §x§R§R§G§G§B§B
-                StringBuilder rep = new StringBuilder("§x");
-                for (char c : hex.toCharArray()) {
-                    rep.append('§').append(c);
-                }
-                replacement = rep.toString();
-            } else {
-                // 低版本则降级为最接近的传统色
-                replacement = nearestLegacy(hex);
-            }
-            matcher.appendReplacement(sb, replacement);
+        if (text == null || text.isEmpty()) {
+            return "";
         }
-        matcher.appendTail(sb);
 
-        // 再处理 & 颜色码
+        // 优化：单次遍历处理HEX颜色，避免在循环中重复创建StringBuilder
+        Matcher matcher = HEX_PATTERN.matcher(text);
+        if (!matcher.find()) {
+            // 如果没有HEX颜色，直接使用原生方法，这是最快的
+            return ChatColor.translateAlternateColorCodes('&', text);
+        }
+
+        StringBuilder sb = new StringBuilder(text.length());
+        int lastEnd = 0;
+
+        // 重置匹配器以从头开始
+        matcher.reset();
+
+        while (matcher.find()) {
+            // 追加上一次匹配到本次匹配之间的文本
+            sb.append(text, lastEnd, matcher.start());
+
+            // 获取HEX并进行转换
+            String hex = matcher.group(1);
+            if (getMajorVersion() >= 16) {
+                // 1.16+ 直接构造 §x§R§R§G§G§B§B 格式
+                sb.append(ChatColor.COLOR_CHAR).append('x');
+                for (char c : hex.toCharArray()) {
+                    sb.append(ChatColor.COLOR_CHAR).append(c);
+                }
+            } else {
+                // 低版本降级为最接近的传统色
+                sb.append(nearestLegacy(hex));
+            }
+            lastEnd = matcher.end();
+        }
+
+        // 追加最后一次匹配到字符串末尾的文本
+        if (lastEnd < text.length()) {
+            sb.append(text, lastEnd, text.length());
+        }
+
+        // 最后统一处理 & 颜色码
         return ChatColor.translateAlternateColorCodes('&', sb.toString());
     }
     /**
@@ -71,13 +89,11 @@ public class ColorUtil {
      * <p>注意：用的上才用,用不上请忽略该方法</p>
      */
     public static String stripColorCodes(String text) {
-        if (text == null) return "";
-        
-        // 先处理 &#RRGGBB
-        String result = HEX_PATTERN.matcher(text).replaceAll("");
-        
-        // 再处理 & 和 § 颜色码
-        return COLOR_PATTERN.matcher(result).replaceAll("");
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        // 优化：使用单一正则表达式一次性替换所有颜色代码
+        return STRIP_COLOR_PATTERN.matcher(text).replaceAll("");
     }
 
     /**
