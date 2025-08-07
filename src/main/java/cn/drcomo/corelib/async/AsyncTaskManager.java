@@ -120,6 +120,20 @@ public class AsyncTaskManager implements AutoCloseable {
     }
 
     /**
+     * 取消正在调度或执行中的任务。
+     * <p>
+     * 若任务尚未开始执行，则会从队列中移除；
+     * 若任务正在运行，则根据语义尝试取消，但不强制中断正在执行的线程。
+     * </p>
+     *
+     * @param future 任务句柄 {@link Future}
+     * @return true 表示成功取消，false 表示任务已完成、已取消或句柄为空
+     */
+    public boolean cancelTask(Future<?> future) {
+        return future != null && !future.isCancelled() && future.cancel(false);
+    }
+
+    /**
      * 使用 CompletableFuture 执行 Supplier 异步任务。
      *
      * @param supplier 任务提供者

@@ -71,7 +71,8 @@ public class MessageService {
 
     /* -------------------- 构造函数 -------------------- */
 
-    public MessageService(DebugUtil logger,
+    public MessageService(Plugin plugin,
+                          DebugUtil logger,
                           YamlUtil yamlUtil,
                           PlaceholderAPIUtil placeholderUtil,
                           String langConfigPath,

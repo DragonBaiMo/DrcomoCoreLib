@@ -39,5 +39,74 @@ public final class NumberUtil {
     public static double add(double a, double b) {
         return a + b;
     }
+    /**
+     * 解析整数。
+     *
+     * @param input        待解析的字符串
+     * @param defaultValue 解析失败时返回的默认值
+     * @return 解析后的整数；若输入为空或解析失败则返回 {@code defaultValue}
+     */
+    public static int parseInt(String input, int defaultValue) {
+        if (input == null) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(input.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    /**
+     * 解析双精度浮点数。
+     *
+     * @param input        待解析的字符串
+     * @param defaultValue 解析失败时返回的默认值
+     * @return 解析后的双精度浮点数；若输入为空或解析失败则返回 {@code defaultValue}
+     */
+    public static double parseDouble(String input, double defaultValue) {
+        if (input == null) {
+            return defaultValue;
+        }
+        try {
+            return Double.parseDouble(input.trim());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    /**
+     * 解析整数，如果解析失败则返回 null。
+     *
+     * @param input 待解析的字符串
+     * @return 解析后的整数；若输入为空或解析失败则返回 {@code null}
+     */
+    public static Integer parseInt(String input) {
+        if (input == null) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(input.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * 解析双精度浮点数，如果解析失败则返回 null。
+     *
+     * @param input 待解析的字符串
+     * @return 解析后的双精度浮点数；若输入为空或解析失败则返回 {@code null}
+     */
+    public static Double parseDouble(String input) {
+        if (input == null) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(input.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 }
 
