@@ -249,16 +249,27 @@ if (coreLib != null) {
 - **包类路径**：`cn.drcomo.corelib.config.YamlUtil`
 - **查询文档**：[查看](./JavaDocs/config/YamlUtil-JavaDoc.md)
 
+### 配置文件变更监听
+- **功能描述**：监听配置文件的创建、修改、删除并触发自定义回调。
+- **包类路径**：
+  - `cn.drcomo.corelib.config.FileChangeListener`（回调接口）
+  - `cn.drcomo.corelib.config.FileChangeType`（变更类型枚举）
+- **查询文档**：
+  - [查看](./JavaDocs/config/FileChangeListener-JavaDoc.md)（回调接口）
+  - [查看](./JavaDocs/config/FileChangeType-JavaDoc.md)（变更类型枚举）
+
 ### 配置校验
 - **功能描述**：在读取或重载配置后，验证必填项是否存在且类型正确，支持字符串、数值、枚举类型验证以及自定义校验规则。
 - **包类路径**：
   - `cn.drcomo.corelib.config.ConfigValidator`（配置校验器主入口）
   - `cn.drcomo.corelib.config.ValidatorBuilder`（链式校验规则构建器）
   - `cn.drcomo.corelib.config.ValidationResult`（校验结果处理）
+  - `cn.drcomo.corelib.config.ConfigSchema`（配置结构声明接口）
 - **核心查询**：[查看](./JavaDocs/config/ConfigValidator-JavaDoc.md)（配置校验器主入口）
 - **关联查询**：
   - [查看](./JavaDocs/config/ValidatorBuilder-JavaDoc.md)（链式校验规则构建器）
   - [查看](./JavaDocs/config/ValidationResult-JavaDoc.md)（校验结果处理）
+  - [查看](./JavaDocs/config/ConfigSchema-JavaDoc.md)（配置结构声明接口）
 
 
 ### 文本颜色处理

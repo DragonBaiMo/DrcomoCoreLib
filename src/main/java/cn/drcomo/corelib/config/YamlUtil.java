@@ -374,6 +374,36 @@ public class YamlUtil {
     }
 
     /**
+     * 为指定配置文件批量设置默认值。
+     * 若路径不存在，则写入对应默认值。
+     *
+     * @param configKey 配置文件名（不含 .yml）
+     * @param defaults  默认值映射，键为配置路径
+     */
+    public void setDefaults(String configKey, Map<String, Object> defaults) {
+        if (defaults == null || defaults.isEmpty()) {
+            return;
+        }
+        YamlConfiguration cfg = getConfig(configKey);
+        for (Map.Entry<String, Object> e : defaults.entrySet()) {
+            setDefaultIfAbsent(cfg, configKey, e.getKey(), e.getValue());
+        }
+    }
+
+    /**
+     * 校验指定配置文件的结构是否符合给定模式。
+     *
+     * @param configKey 配置文件名（不含 .yml）
+     * @param schema    配置结构声明
+     * @return 校验结果
+     */
+    public ValidationResult validateConfig(String configKey, ConfigSchema schema) {
+        ConfigValidator validator = new ConfigValidator(this, logger);
+        schema.configure(validator);
+        return validator.validate(getConfig(configKey));
+    }
+
+    /**
      * 若目标目录不存在，则创建并从资源中一次性复制全部文件（含子目录、所有文件）。
      *
      * @param resourceFolder 资源文件夹相对于 JAR 根的路径，如 "templates" 或 "assets/lang"
@@ -479,6 +509,29 @@ public class YamlUtil {
             logger.info("已停止监听配置文件: " + configName);
         }
         // 注意：为简化，即使一个目录下的所有文件都不再被监听，我们也不注销目录的 WatchKey。
+    }
+
+    /**
+     * 开启指定配置文件的监听。
+     *
+     * @param configKey 配置文件名（不含 .yml）
+     * @param listener  文件变更回调
+     */
+    public void enableFileWatcher(String configKey, FileChangeListener listener) {
+        watchConfig(configKey, cfg -> {
+            if (listener != null) {
+                listener.onChange(configKey, FileChangeType.MODIFY, cfg);
+            }
+        });
+    }
+
+    /**
+     * 关闭指定配置文件的监听。
+     *
+     * @param configKey 配置文件名（不含 .yml）
+     */
+    public void disableFileWatcher(String configKey) {
+        stopWatching(configKey);
     }
 
     /**
