@@ -25,8 +25,8 @@
 
     // 2. 从 JAR 包的 resources 目录下复制默认配置
     // 假设你的 JAR 中有 /resources/config.yml 和 /resources/messages.yml
-    // 这行代码会将它们复制到 /plugins/YourPlugin/ 目录下（如果文件尚不存在）
-    myYamlUtil.copyDefaults("", ""); // 第一个参数是JAR内目录，第二个是插件数据文件夹内目录
+    // 首次运行时会将它们整体复制到 /plugins/YourPlugin/ 目录下，目录存在则跳过
+    yamlUtil.copyDefaults("", "", new String[0]); // 默认排除 plugin.yml 与 .sql，可传入额外排除文件名
 
     // 3. 加载一个配置文件到内存缓存
     yamlUtil.loadConfig("config"); // 加载 config.yml
@@ -40,13 +40,14 @@
 
 **3. 公共API方法 (Public API Methods)**
 
-  * #### `ensureFolderAndCopyDefaults(String resourceFolder, String relativePath)`
+  * #### `ensureFolderAndCopyDefaults(String resourceFolder, String relativePath, String... excludedNames)`
 
       * **返回类型:** `void`
-      * **功能描述:** 若插件数据文件夹内某目标目录不存在，则创建该目录，并从 JAR 内指定资源文件夹复制其全部文件及层级结构到该目录，实现一次性批量初始化。（通常用于**首次使用该插件**）
+      * **功能描述:** 若插件数据文件夹内某目标目录不存在，则创建该目录，并从 JAR 内指定资源文件夹复制其全部文件及层级结构到该目录，实现一次性批量初始化。默认会跳过 `plugin.yml` 与所有 `.sql` 文件，可通过 `excludedNames` 追加排除项。（通常用于**首次使用该插件**）
       * **参数说明:**
           * `resourceFolder` (`String`): JAR 内资源文件夹路径，例如 `"templates"` 或 `"assets/lang"`。
           * `relativePath` (`String`): 数据文件夹内目标目录，相对插件根目录，空字符串表示根目录。
+          * `excludedNames` (`String...`): 额外需要排除的文件名。
 
   * #### `ensureDirectory(String relativePath)`
 
@@ -55,13 +56,14 @@
       * **参数说明:**
           * `relativePath` (`String`): 相对于插件数据文件夹的路径，例如 `"data"` 或 `"logs/archive"`。
 
-  * #### `copyDefaults(String resourceFolder, String relativePath)`
+  * #### `copyDefaults(String resourceFolder, String relativePath, String... excludedNames)`
 
       * **返回类型:** `void`
-      * **功能描述:** 从插件 JAR 内指定的资源文件夹（包含其子目录）复制所有 `.yml` 文件到插件数据文件夹中的目标目录，并保留原有目录层级。仅当目标文件不存在时才会执行复制。
+      * **功能描述:** 从插件 JAR 内指定的资源文件夹（包含其子目录）复制所有 `.yml` 文件到插件数据文件夹中的目标目录。若目标目录不存在，则整体复制；若目录已存在，则保持不变。默认会跳过 `plugin.yml` 与所有 `.sql` 文件，可通过 `excludedNames` 追加排除项。
       * **参数说明:**
           * `resourceFolder` (`String`): JAR 包内的源文件夹路径（如 `"config"`，空字符串表示 JAR 根目录）。
           * `relativePath` (`String`): 插件数据文件夹内的目标文件夹路径，可为空字符串表示插件根目录。
+          * `excludedNames` (`String...`): 额外需要排除的文件名。
 
   * #### `copyYamlFile(String resourcePath, String relativePath)`
 

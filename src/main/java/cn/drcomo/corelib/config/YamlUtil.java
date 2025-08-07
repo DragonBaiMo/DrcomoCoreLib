@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -103,32 +104,48 @@ public class YamlUtil {
     }
 
     /**
-     * 从插件 JAR 内指定资源文件夹（含其子目录）复制所有 .yml 文件到数据文件夹下的目标目录，仅在目标文件不存在时才复制。
+     * 从插件 JAR 内指定资源文件夹（含其子目录）复制所有 {@code .yml} 文件到数据文件夹下的目标目录。
+     * 若目标目录不存在，则复制整个文件夹内容；若目标目录已存在，则保持不变。
+     * 默认排除 {@code plugin.yml} 与所有 {@code .sql} 文件，可通过参数额外指定排除项。
      *
      * @param resourceFolder 资源文件夹相对于 JAR 根的路径，如 "config" 或 "" 表示根目录
      * @param relativePath   数据文件夹内的目标相对路径，可为空字符串
+     * @param excludedNames  额外要排除的文件名
      */
-    public void copyDefaults(String resourceFolder, String relativePath) {
+    public void copyDefaults(String resourceFolder, String relativePath, String... excludedNames) {
         String folder = normalizeFolder(resourceFolder);
+        File targetDir = new File(plugin.getDataFolder(), relativePath);
+        if (targetDir.exists()) {
+            logger.debug("目标目录已存在，跳过初始化: " + targetDir.getPath());
+            return;
+        }
         ensureDirectory(relativePath);
+        Set<String> excludes = buildExcludeSet(excludedNames);
         try {
             traverseJar(folder, (entry, jar) -> {
-                if (entry.getName().endsWith(".yml") && !entry.isDirectory()) {
+                if (entry.getName().endsWith(".yml") && !entry.isDirectory()
+                        && !shouldSkip(entry.getName(), excludes)) {
                     String subPath = entry.getName().substring(folder.length());
-                    File dest = new File(plugin.getDataFolder(),
-                            relativePath + File.separator + subPath.replace("/", File.separator));
+                    File dest = new File(targetDir, subPath.replace("/", File.separator));
                     ensureParentDir(dest);
-                    if (!dest.exists()) {
-                        logger.debug("复制默认配置: " + entry.getName() + " -> " + dest.getPath());
-                        copyResourceToFile(entry.getName(), dest);
-                    } else {
-                        logger.debug("跳过已存在文件: " + dest.getPath());
-                    }
+                    logger.debug("初始化复制: " + entry.getName() + " -> " + dest.getPath());
+                    copyResourceToFile(entry.getName(), dest);
                 }
             });
         } catch (Exception e) {
             logger.error("复制默认文件失败: " + resourceFolder, e);
         }
+    }
+
+    /**
+     * 兼容旧版的配置复制方法。
+     *
+     * @deprecated 保留旧签名，避免破坏已依赖的调用。
+     *             请改用 {@link #copyDefaults(String, String, String...)}。
+     */
+    @Deprecated
+    public void copyDefaults(String resourceFolder, String relativePath) {
+        copyDefaults(resourceFolder, relativePath, new String[0]);
     }
 
     /**
@@ -375,11 +392,13 @@ public class YamlUtil {
 
     /**
      * 若目标目录不存在，则创建并从资源中一次性复制全部文件（含子目录、所有文件）。
+     * 默认排除 {@code plugin.yml} 与所有 {@code .sql} 文件，可通过参数额外指定排除项。
      *
      * @param resourceFolder 资源文件夹相对于 JAR 根的路径，如 "templates" 或 "assets/lang"
      * @param relativePath   数据文件夹内的目标目录，相对插件根目录
+     * @param excludedNames  额外要排除的文件名
      */
-    public void ensureFolderAndCopyDefaults(String resourceFolder, String relativePath) {
+    public void ensureFolderAndCopyDefaults(String resourceFolder, String relativePath, String... excludedNames) {
         File targetDir = new File(plugin.getDataFolder(), relativePath);
         if (targetDir.exists()) {
             logger.debug("目标目录已存在，跳过初始化: " + targetDir.getPath());
@@ -387,9 +406,10 @@ public class YamlUtil {
         }
         ensureDirectory(relativePath);
         String folder = normalizeFolder(resourceFolder);
+        Set<String> excludes = buildExcludeSet(excludedNames);
         try {
             traverseJar(folder, (entry, jar) -> {
-                if (!entry.isDirectory()) {
+                if (!entry.isDirectory() && !shouldSkip(entry.getName(), excludes)) {
                     String subPath = entry.getName().substring(folder.length());
                     File dest = new File(targetDir, subPath.replace("/", File.separator));
                     ensureParentDir(dest);
@@ -402,6 +422,17 @@ public class YamlUtil {
         } catch (Exception e) {
             logger.error("初始化复制文件夹失败: " + resourceFolder, e);
         }
+    }
+
+    /**
+     * 兼容旧版的一次性复制方法。
+     *
+     * @deprecated 保留旧签名，避免破坏已依赖的调用。
+     *             请改用 {@link #ensureFolderAndCopyDefaults(String, String, String...)}。
+     */
+    @Deprecated
+    public void ensureFolderAndCopyDefaults(String resourceFolder, String relativePath) {
+        ensureFolderAndCopyDefaults(resourceFolder, relativePath, new String[0]);
     }
 
     /**
@@ -620,6 +651,23 @@ public class YamlUtil {
         if (parent != null && !parent.exists() && parent.mkdirs()) {
             logger.debug("创建父目录: " + parent.getPath());
         }
+    }
+
+    private Set<String> buildExcludeSet(String... extras) {
+        Set<String> set = new HashSet<>();
+        set.add("plugin.yml");
+        if (extras != null) {
+            set.addAll(Arrays.asList(extras));
+        }
+        return set;
+    }
+
+    private boolean shouldSkip(String entryName, Set<String> excludes) {
+        String name = new File(entryName).getName();
+        if (name.endsWith(".sql")) {
+            return true;
+        }
+        return excludes.contains(name);
     }
 
     @FunctionalInterface
