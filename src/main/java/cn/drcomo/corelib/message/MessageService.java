@@ -61,9 +61,9 @@ public class MessageService {
 
     /** 默认内部占位符正则：{key} / {key:args} */
     private static final Pattern DEFAULT_INTERNAL_PLACEHOLDER_PATTERN =
-            Pattern.compile("\\{([a-zA-Z0-9_]+)(?::([^}]*))?\\}");
-
+            Pattern.compile("\\{([a-zA-Z0-9_]+)(?::([^}]*))?}");
     private Pattern internalPlaceholderPattern = DEFAULT_INTERNAL_PLACEHOLDER_PATTERN;
+
     /** 额外占位符扩展规则 */
     private final Map<Pattern, BiFunction<Player, Matcher, String>> extraPlaceholderRules = new LinkedHashMap<>();
     /** prefix+suffix 对应的正则缓存 */
@@ -71,14 +71,11 @@ public class MessageService {
 
     /* -------------------- 构造函数 -------------------- */
 
-    public MessageService(Plugin plugin,
-                          DebugUtil logger,
+    public MessageService(DebugUtil logger,
                           YamlUtil yamlUtil,
                           PlaceholderAPIUtil placeholderUtil,
                           String langConfigPath,
                           String keyPrefix) {
-
-        // this.plugin = plugin;
         this.logger = logger;
         this.yamlUtil = yamlUtil;
         this.placeholderUtil = placeholderUtil;
@@ -157,7 +154,8 @@ public class MessageService {
         if (key == null || resolver == null) {
             return;
         }
-        registerInternalPlaceholder(key, (player, args) -> resolver.apply(player, args.length > 0 ? args[0] : ""));
+        registerInternalPlaceholder(key,
+                (PlaceholderResolver) (player, args) -> resolver.apply(player, args.length > 0 ? args[0] : ""));
     }
 
     /**
@@ -171,6 +169,10 @@ public class MessageService {
         }
         internalHandlers.remove(key.toLowerCase());
     }
+
+    /* ==================================================
+     *               消息获取与格式化
+     * ================================================== */
 
     /**
      * 解析完整键（自动拼接统一前缀）
@@ -224,10 +226,8 @@ public class MessageService {
                                      Map<String, String> custom,
                                      String prefix,
                                      String suffix) {
-
         String msg = get(key);
         if (msg == null) return null;
-
         String result = processPlaceholdersWithDelimiter(player, msg, custom, prefix, suffix);
         return ColorUtil.translateColors(result);
     }
@@ -245,7 +245,7 @@ public class MessageService {
         List<String> raw = getList(key);
         List<String> out = new ArrayList<>(raw.size());
         for (String line : raw) {
-            out.add(processPlaceholders(player, line, custom));
+            out.add(processPlaceholdersWithDelimiter(player, line, custom, "%", "%"));
         }
         return out;
     }
@@ -255,6 +255,7 @@ public class MessageService {
      * ================================================== */
 
     /* -------- 单行 -------- */
+
     public void send(Player player, String key) {
         String msg = parse(key, player, Collections.emptyMap());
         if (msg != null) sendColorizedRaw(player, msg);
@@ -267,6 +268,7 @@ public class MessageService {
     }
 
     /* -------- 列表 -------- */
+
     /**
      * 聊天多行发送，自定义占位符解析。
      */
@@ -295,6 +297,7 @@ public class MessageService {
     }
 
     /* -------- 直接原文 -------- */
+
     public void sendRaw(CommandSender target, String rawMessage) {
         sendColorizedRaw(target, rawMessage);
     }
@@ -304,6 +307,7 @@ public class MessageService {
     }
 
     /* -------- ActionBar / Title -------- */
+
     public void sendOptimizedChat(Player player, List<String> messages) {
         sendColorizedList(player, messages);
     }
@@ -341,14 +345,12 @@ public class MessageService {
     private String replaceBraces(String template, Object... args) {
         if (template == null) return null;
         StringBuilder sb = new StringBuilder();
-        int idx = 0;
-        int len = template.length();
-        // 使用索引遍历模板，遇到"{}"按顺序替换
+        int idx = 0, len = template.length();
         for (int i = 0; i < len; i++) {
             char c = template.charAt(i);
             if (c == '{' && i + 1 < len && template.charAt(i + 1) == '}') {
                 if (idx < args.length) {
-                    sb.append(String.valueOf(args[idx++]));
+                    sb.append(args[idx++]);
                 } else {
                     sb.append("{}");
                 }
@@ -362,11 +364,6 @@ public class MessageService {
 
     /**
      * 聊天发送，支持 "{}" 占位符顺序替换。
-     * @param player   目标玩家
-     * @param template 消息模板，使用 "{}" 表示占位符
-     * @param args     需要替换的参数
-     */
-    /**
      * 通过聊天渠道发送，自定义占位符解析。
      */
     public void send(Player player,
@@ -375,8 +372,7 @@ public class MessageService {
                      String prefix,
                      String suffix) {
         if (player == null || template == null) return;
-        String parsed = processPlaceholdersWithDelimiter(player, template, custom, prefix, suffix);
-        sendColorizedRaw(player, ColorUtil.translateColors(parsed));
+        sendColorizedRaw(player, parseTranslate(player, template, custom, prefix, suffix));
     }
 
     /**
@@ -389,11 +385,6 @@ public class MessageService {
 
     /**
      * ActionBar 发送，支持 "{}" 占位符顺序替换。
-     * @param player   目标玩家
-     * @param template 消息模板
-     * @param args     参数列表
-     */
-    /**
      * 通过 ActionBar 发送，自定义占位符解析。
      */
     public void sendActionBar(Player player,
@@ -402,8 +393,7 @@ public class MessageService {
                               String prefix,
                               String suffix) {
         if (player == null || template == null) return;
-        String parsed = processPlaceholdersWithDelimiter(player, template, custom, prefix, suffix);
-        sendActionBarRaw(player, ColorUtil.translateColors(parsed));
+        sendActionBarRaw(player, parseTranslate(player, template, custom, prefix, suffix));
     }
 
     public void sendActionBar(Player player, String template, Object... args) {
@@ -413,12 +403,6 @@ public class MessageService {
 
     /**
      * Title/SubTitle 发送，支持 "{}" 占位符顺序替换。
-     * @param player         目标玩家
-     * @param titleTemplate  主标题模板
-     * @param subTemplate    副标题模板
-     * @param args           参数列表（同时作用于主/副标题）
-     */
-    /**
      * 通过 Title/SubTitle 发送，自定义占位符解析。
      */
     public void sendTitle(Player player,
@@ -428,9 +412,9 @@ public class MessageService {
                           String prefix,
                           String suffix) {
         if (player == null) return;
-        String title = titleTemplate == null ? "" : processPlaceholdersWithDelimiter(player, titleTemplate, custom, prefix, suffix);
-        String sub = subTemplate == null ? "" : processPlaceholdersWithDelimiter(player, subTemplate, custom, prefix, suffix);
-        sendTitleRaw(player, ColorUtil.translateColors(title), ColorUtil.translateColors(sub));
+        String title = titleTemplate == null ? "" : parseTranslate(player, titleTemplate, custom, prefix, suffix);
+        String sub = subTemplate == null ? "" : parseTranslate(player, subTemplate, custom, prefix, suffix);
+        sendTitleRaw(player, title, sub);
     }
 
     public void sendTitle(Player player, String titleTemplate, String subTemplate, Object... args) {
@@ -441,6 +425,7 @@ public class MessageService {
     }
 
     /* -------- 广播 -------- */
+
     public void broadcast(String key) {
         String msg = parse(key, null, Collections.emptyMap());
         if (msg != null) Bukkit.broadcastMessage(msg);
@@ -448,10 +433,11 @@ public class MessageService {
 
     /**
      * 全服广播，自定义占位符解析（不依赖语言文件）。
-     * @param template  原始模板，可包含自定义占位符
-     * @param custom    自定义占位符 map
-     * @param prefix    占位符前缀
-     * @param suffix    占位符后缀
+     *
+     * @param template 原始模板，可包含自定义占位符
+     * @param custom   自定义占位符 map
+     * @param prefix   占位符前缀
+     * @param suffix   占位符后缀
      */
     public void broadcast(String template,
                           Map<String, String> custom,
@@ -499,7 +485,7 @@ public class MessageService {
 
     public void storeMessageList(Object context, String key, Map<String, String> custom) {
         contextMessages.computeIfAbsent(context, k -> new ArrayList<>())
-                       .addAll(parseList(key, null, custom));
+                .addAll(parseList(key, null, custom));
     }
 
     public boolean hasMessages(Object context) {
@@ -545,71 +531,95 @@ public class MessageService {
         logger.info("加载语言文件: " + path + " | 共 " + messages.size() + " 条");
     }
 
-    /** 占位符完整处理（自定义 → 内部 → 额外正则 → PlaceholderAPI） */
-    private String processPlaceholders(Player player, String msg, Map<String, String> custom) {
-        return processPlaceholdersWithDelimiter(player, msg, custom, "%", "%");
-    }
-
+    /**
+     * 核心处理：按顺序应用自定义、内部、额外正则、PlaceholderAPI 解析
+     */
     private String processPlaceholdersWithDelimiter(Player player,
                                                     String msg,
                                                     Map<String, String> custom,
                                                     String prefix,
                                                     String suffix) {
-
         String result = msg;
+        result = applyCustomPlaceholders(player, result, custom, prefix, suffix);
+        result = applyInternalPlaceholders(player, result);
+        result = applyExtraPlaceholderRules(player, result);
+        return applyPlaceholderAPI(player, result);
+    }
 
-        // —— 1. 自定义占位符 ——
-        if (custom != null && !custom.isEmpty()) {
-            // 使用 prefix+suffix 缓存编译后的正则，避免重复构建
-            String cacheKey = prefix + suffix;
-            Pattern pattern = delimiterPatternCache.get(cacheKey);
-            if (pattern == null) {
-                // 使用 Pattern.quote() 来转义 prefix 和 suffix，并使用非贪婪匹配来正确处理各种分界符
-                String regex = Pattern.quote(prefix) + "(?<key>.+?)" + Pattern.quote(suffix);
-                pattern = Pattern.compile(regex);
-                delimiterPatternCache.put(cacheKey, pattern);
-            }
-            Matcher matcher = pattern.matcher(result);
-            StringBuffer sb = new StringBuffer();
-            while (matcher.find()) {
-                String key = matcher.group("key");
-                String value = custom.getOrDefault(key, matcher.group(0));
-                matcher.appendReplacement(sb, Matcher.quoteReplacement(value));
-            }
-            matcher.appendTail(sb);
-            result = sb.toString();
+    /** 应用自定义占位符解析 */
+    private String applyCustomPlaceholders(Player player,
+                                           String msg,
+                                           Map<String, String> custom,
+                                           String prefix,
+                                           String suffix) {
+        if (custom == null || custom.isEmpty()) return msg;
+        Pattern pattern = getDelimiterPattern(prefix, suffix);
+        Matcher matcher = pattern.matcher(msg);
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find()) {
+            String key = matcher.group("key");
+            String value = custom.getOrDefault(key, matcher.group(0));
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(value));
         }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
 
-        // —— 2. 内部 {key[:args]} ——
-        if (!internalHandlers.isEmpty()) {
-            Matcher m = internalPlaceholderPattern.matcher(result);
-            StringBuffer sb = new StringBuffer();
+    /** 获取或缓存 prefix+suffix 对应的正则 */
+    private Pattern getDelimiterPattern(String prefix, String suffix) {
+        String cacheKey = prefix + suffix;
+        return delimiterPatternCache.computeIfAbsent(cacheKey, k -> {
+            String regex = Pattern.quote(prefix) + "(?<key>.+?)" + Pattern.quote(suffix);
+            return Pattern.compile(regex);
+        });
+    }
+
+    /** 应用内部 {key[:args]} 占位符解析 */
+    private String applyInternalPlaceholders(Player player, String msg) {
+        if (internalHandlers.isEmpty()) return msg;
+        Matcher m = internalPlaceholderPattern.matcher(msg);
+        StringBuilder sb = new StringBuilder();
+        while (m.find()) {
+            String key = m.group(1).toLowerCase();
+            String argStr = m.group(2);
+            String[] args = (argStr == null || argStr.isEmpty()) ? new String[0] : argStr.split(":");
+            PlaceholderResolver resolver = internalHandlers.get(key);
+            String replacement = resolver != null ? resolver.resolve(player, args) : m.group(0);
+            m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    /** 应用额外正则占位符规则 */
+    private String applyExtraPlaceholderRules(Player player, String msg) {
+        String result = msg;
+        for (var entry : extraPlaceholderRules.entrySet()) {
+            Matcher m = entry.getKey().matcher(result);
+            StringBuilder sb = new StringBuilder();
             while (m.find()) {
-                String k = m.group(1).toLowerCase();
-                String argStr = m.group(2);
-                String[] args = (argStr == null || argStr.isEmpty()) ? new String[0] : argStr.split(":");
-                PlaceholderResolver resolver = internalHandlers.get(k);
-                m.appendReplacement(sb, Matcher.quoteReplacement(
-                        resolver != null ? resolver.resolve(player, args) : m.group(0)));
+                String replacement = entry.getValue().apply(player, m);
+                m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
             }
             m.appendTail(sb);
             result = sb.toString();
         }
+        return result;
+    }
 
-        // —— 3. 额外正则规则 ——
-        for (var e : extraPlaceholderRules.entrySet()) {
-            Matcher m = e.getKey().matcher(result);
-            StringBuffer sb = new StringBuffer();
-            while (m.find()) {
-                m.appendReplacement(sb, Matcher.quoteReplacement(
-                        e.getValue().apply(player, m)));
-            }
-            m.appendTail(sb);
-            result = sb.toString();
-        }
+    /** 应用 PlaceholderAPI 解析 */
+    private String applyPlaceholderAPI(Player player, String msg) {
+        return placeholderUtil.parse(player, msg);
+    }
 
-        // —— 4. PlaceholderAPI ——
-        return placeholderUtil.parse(player, result);
+    /** 快捷解析并翻译颜色 */
+    private String parseTranslate(Player player,
+                                  String template,
+                                  Map<String, String> custom,
+                                  String prefix,
+                                  String suffix) {
+        String processed = processPlaceholdersWithDelimiter(player, template, custom, prefix, suffix);
+        return ColorUtil.translateColors(processed);
     }
 
     /** 始终确保通过 ColorUtil 转换颜色再发送 */
@@ -632,8 +642,8 @@ public class MessageService {
     private void sendTitleRaw(Player player, String title, String sub) {
         if (player == null) return;
         player.sendTitle(ColorUtil.translateColors(title),
-                         ColorUtil.translateColors(sub),
-                         10, 70, 20);
+                ColorUtil.translateColors(sub),
+                10, 70, 20);
     }
 
     /** 根据权限批量广播 */

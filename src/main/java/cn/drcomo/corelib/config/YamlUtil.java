@@ -4,7 +4,6 @@ import org.bukkit.plugin.Plugin;
 import cn.drcomo.corelib.util.DebugUtil;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.configuration.ConfigurationSection;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.jar.JarEntry;
@@ -33,35 +31,30 @@ import java.util.jar.JarFile;
 
 /**
  * 工具类：管理 Bukkit 插件的 YAML 配置文件。
- * 提供目录创建、JAR 内资源复制、配置加载/重载/保存、以及带默认值写入的读取方法，附加详细日志。
+ * 提供目录创建、JAR 内资源复制、配置加载/重载/保存、读取带默认值的方法，以及文件变动监听。
  */
 public class YamlUtil {
-
     private final Plugin plugin;
     private final DebugUtil logger;
     private final Map<String, YamlConfiguration> configs = new HashMap<>();
     private final Set<String> dirtyConfigs = new HashSet<>(); // 记录被修改过的配置
     private final String jarPath;
-    /** 已创建的配置文件监听器 */
-    // private final Set<ConfigWatchHandle> watchHandles = new HashSet<>(); // 被新的监听机制取代
-    /** 共享的配置文件监听服务 */
+
+    /** 共享的文件监听服务与线程，以及相关映射 */
     private WatchService sharedWatcher;
-    /** 共享的监听服务后台线程 */
     private Thread sharedWatcherThread;
-    /** 监听key与目录路径的映射 */
     private final Map<WatchKey, Path> watchKeyMap = new HashMap<>();
-    /** 被监听的文件路径 -> 配置文件名 的映射 */
     private final Map<Path, String> watchedFileMap = new HashMap<>();
-    /** 配置文件名 -> 回调 的映射 */
     private final Map<String, Consumer<YamlConfiguration>> callbackMap = new HashMap<>();
+
     /** JAR 条目缓存：记录各目录下的条目列表 */
     private final Map<String, List<JarEntry>> jarEntryCache = new HashMap<>();
+
     /** 默认配置文件名 */
     private static final String DEFAULT_FILE = "config";
 
     /**
      * 构造函数
-     *
      * @param plugin 插件实例
      * @param logger DebugUtil 实例，用于日志输出
      */
@@ -71,11 +64,11 @@ public class YamlUtil {
         String path;
         try {
             path = plugin.getClass()
-                          .getProtectionDomain()
-                          .getCodeSource()
-                          .getLocation()
-                          .toURI()
-                          .getPath();
+                    .getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation()
+                    .toURI()
+                    .getPath();
         } catch (Exception e) {
             path = "";
             logger.error("获取 JAR 路径失败", e);
@@ -83,9 +76,10 @@ public class YamlUtil {
         this.jarPath = path;
     }
 
+    // ======================= 目录与资源复制 =======================
+
     /**
      * 确保插件数据文件夹下的指定目录存在
-     *
      * @param relativePath 相对路径
      */
     public void ensureDirectory(String relativePath) {
@@ -103,17 +97,16 @@ public class YamlUtil {
     }
 
     /**
-     * 从插件 JAR 内指定资源文件夹（含其子目录）复制所有 .yml 文件到数据文件夹下的目标目录，仅在目标文件不存在时才复制。
-     *
-     * @param resourceFolder 资源文件夹相对于 JAR 根的路径，如 "config" 或 "" 表示根目录
-     * @param relativePath   数据文件夹内的目标相对路径，可为空字符串
+     * 从插件 JAR 内指定资源文件夹复制所有 .yml 文件到数据文件夹，仅在目标文件不存在时才复制
+     * @param resourceFolder 资源文件夹路径，如 "config" 或 ""
+     * @param relativePath   目标相对路径
      */
     public void copyDefaults(String resourceFolder, String relativePath) {
         String folder = normalizeFolder(resourceFolder);
         ensureDirectory(relativePath);
         try {
             traverseJar(folder, (entry, jar) -> {
-                if (entry.getName().endsWith(".yml") && !entry.isDirectory()) {
+                if (!entry.isDirectory() && entry.getName().endsWith(".yml")) {
                     String subPath = entry.getName().substring(folder.length());
                     File dest = new File(plugin.getDataFolder(),
                             relativePath + File.separator + subPath.replace("/", File.separator));
@@ -132,10 +125,9 @@ public class YamlUtil {
     }
 
     /**
-     * 复制插件 JAR 内指定的单个 yml 文件到数据文件夹的相对目录，若目标文件已存在则跳过。
-     *
-     * @param resourcePath 资源文件的完整路径（JAR 内），例如 "config/example.yml"
-     * @param relativePath 数据文件夹内的目标目录，相对插件根目录
+     * 复制插件 JAR 内指定单个 .yml 文件到数据文件夹相对目录，若目标已存在则跳过
+     * @param resourcePath JAR 内资源完整路径，如 "config/example.yml"
+     * @param relativePath 目标目录相对路径
      */
     public void copyYamlFile(String resourcePath, String relativePath) {
         if (resourcePath == null || !resourcePath.endsWith(".yml")) {
@@ -155,8 +147,77 @@ public class YamlUtil {
     }
 
     /**
-     * 加载配置文件到缓存
-     *
+     * 确保目录存在并从 JAR 复制默认文件，支持排除指定文件
+     * @param resourceFolder JAR 内资源文件夹路径
+     * @param relativePath   目标目录相对路径
+     * @param excludedNames  排除的文件名列表（支持通配符）
+     */
+    public void ensureFolderAndCopyDefaults(String resourceFolder, String relativePath, String... excludedNames) {
+        File targetDir = new File(plugin.getDataFolder(), relativePath);
+        if (targetDir.exists()) {
+            logger.debug("目标目录已存在，跳过初始化: " + targetDir.getPath());
+            return;
+        }
+        ensureDirectory(relativePath);
+        String folder = normalizeFolder(resourceFolder);
+
+        // 构建排除列表
+        Set<String> excludeSet = new HashSet<>();
+        excludeSet.add("plugin.yml");
+        excludeSet.add("*.sql");
+        if (excludedNames != null) {
+            for (String ex : excludedNames) {
+                if (ex != null && !ex.trim().isEmpty()) {
+                    excludeSet.add(ex.trim());
+                }
+            }
+        }
+
+        try {
+            traverseJar(folder, (entry, jar) -> {
+                if (!entry.isDirectory()) {
+                    String entryName = entry.getName();
+                    String fileName = entryName.substring(entryName.lastIndexOf('/') + 1);
+                    // 检查排除
+                    boolean shouldExclude = excludeSet.stream().anyMatch(pattern -> {
+                        if (pattern.contains("*") || pattern.contains("?")) {
+                            String regex = pattern.replace("*", ".*").replace("?", ".");
+                            return fileName.matches(regex);
+                        } else {
+                            return fileName.equals(pattern);
+                        }
+                    });
+                    if (!shouldExclude) {
+                        String subPath = entryName.substring(folder.length());
+                        File dest = new File(targetDir, subPath.replace("/", File.separator));
+                        ensureParentDir(dest);
+                        if (!dest.exists()) {
+                            logger.debug("初始化复制: " + entryName + " -> " + dest.getPath());
+                            copyResourceToFile(entryName, dest);
+                        }
+                    } else {
+                        logger.debug("跳过排除文件: " + entryName);
+                    }
+                }
+            });
+        } catch (Exception e) {
+            logger.error("初始化复制文件夹失败: " + resourceFolder, e);
+        }
+    }
+
+    /**
+     * @deprecated 此方法为每个监听器创建新线程，效率低下。请迁移到 {@link #ensureFolderAndCopyDefaults(String, String, String...)}
+     */
+    @Deprecated
+    public void ensureFolderAndCopyDefaults(String resourceFolder, String relativePath) {
+        // 调用新方法，功能等同
+        ensureFolderAndCopyDefaults(resourceFolder, relativePath, new String[0]);
+    }
+
+    // ======================= 配置加载与保存 =======================
+
+    /**
+     * 加载指定配置文件到缓存
      * @param fileName 文件名（不含 .yml）
      */
     public void loadConfig(String fileName) {
@@ -176,11 +237,9 @@ public class YamlUtil {
     }
 
     /**
-     * 扫描指定目录下的所有 {@code .yml} 文件并全部加载。
-     * 加载的配置会放入内部缓存，以文件名（不含副档名）为键。
-     *
-     * @param folderPath 相对于插件数据文件夹的目录路径
-     * @return 以文件名为键、配置对象为值的映射
+     * 扫描目录并加载所有 .yml 文件
+     * @param folderPath 相对数据文件夹的目录路径
+     * @return 文件名->配置对象映射
      */
     public Map<String, YamlConfiguration> loadAllConfigsInFolder(String folderPath) {
         Map<String, YamlConfiguration> map = new HashMap<>();
@@ -206,8 +265,7 @@ public class YamlUtil {
     }
 
     /**
-     * 重载配置文件
-     *
+     * 重载指定配置文件
      * @param fileName 文件名（不含 .yml）
      */
     public void reloadConfig(String fileName) {
@@ -227,8 +285,7 @@ public class YamlUtil {
     }
 
     /**
-     * 保存缓存中的配置到磁盘（如果它被标记为“脏”）。
-     *
+     * 保存指定配置文件（若标记为脏或强制保存）
      * @param fileName 文件名（不含 .yml）
      */
     public void saveConfig(String fileName) {
@@ -236,16 +293,14 @@ public class YamlUtil {
     }
 
     /**
-     * 保存缓存中的配置到磁盘。
-     *
+     * 保存指定配置文件
      * @param fileName 文件名（不含 .yml）
-     * @param force    是否强制保存，即使未被标记为“脏”
+     * @param force    是否强制保存
      */
     public void saveConfig(String fileName, boolean force) {
         if (!force && !dirtyConfigs.contains(fileName)) {
-            return; // 未修改，不保存
+            return;
         }
-
         YamlConfiguration cfg = configs.get(fileName);
         if (cfg == null) {
             logger.warn("无可保存配置: " + fileName);
@@ -253,7 +308,7 @@ public class YamlUtil {
         }
         try {
             cfg.save(getConfigFile(fileName));
-            dirtyConfigs.remove(fileName); // 保存后移除脏标记
+            dirtyConfigs.remove(fileName);
             logger.debug("Saved config: " + fileName);
         } catch (IOException e) {
             logger.error("保存配置失败: " + fileName, e);
@@ -261,27 +316,23 @@ public class YamlUtil {
     }
 
     /**
-     * 保存所有被标记为“脏”的配置文件。
-     * 建议在插件 onDisable 时调用。
+     * 保存所有已修改的配置文件，建议在插件 onDisable 时调用
      */
     public void saveAllDirtyConfigs() {
         if (dirtyConfigs.isEmpty()) {
             return;
         }
         logger.info("正在保存 " + dirtyConfigs.size() + " 个已修改的配置文件...");
-        // 创建副本以避免在迭代时修改
-        Set<String> dirtySnapshot = new HashSet<>(dirtyConfigs);
-        for (String fileName : dirtySnapshot) {
-            saveConfig(fileName, true); // 强制保存
+        for (String fileName : new HashSet<>(dirtyConfigs)) {
+            saveConfig(fileName, true);
         }
         logger.info("所有已修改的配置文件保存完毕。");
     }
 
     /**
-     * 获取配置，若未加载则先加载
-     *
+     * 获取配置实例，若未加载则先加载
      * @param fileName 文件名（不含 .yml）
-     * @return YamlConfiguration 实例
+     * @return YamlConfiguration 对象
      */
     public YamlConfiguration getConfig(String fileName) {
         if (!configs.containsKey(fileName)) {
@@ -289,6 +340,8 @@ public class YamlUtil {
         }
         return configs.get(fileName);
     }
+
+    // ======================= 配置读取与写入 =======================
 
     public String getString(String fileName, String path, String def) {
         YamlConfiguration cfg = getConfig(fileName);
@@ -326,10 +379,22 @@ public class YamlUtil {
         return cfg.getStringList(path);
     }
 
+    public <T> T getValue(String path, Class<T> type, T defaultValue) {
+        YamlConfiguration cfg = getConfig(DEFAULT_FILE);
+        Object val = cfg.get(path);
+        if (val == null || !type.isInstance(val)) {
+            cfg.set(path, defaultValue);
+            dirtyConfigs.add(DEFAULT_FILE);
+            logger.debug("Set typed default: " + path + " = " + defaultValue);
+            return defaultValue;
+        }
+        return type.cast(val);
+    }
+
     public void setValue(String fileName, String path, Object value) {
         YamlConfiguration cfg = getConfig(fileName);
         cfg.set(path, value);
-        dirtyConfigs.add(fileName); // 标记为脏
+        dirtyConfigs.add(fileName);
         logger.debug("Set value: " + path + " = " + value + " in " + fileName);
     }
 
@@ -341,7 +406,7 @@ public class YamlUtil {
 
     public Set<String> getKeys(String fileName, String path) {
         ConfigurationSection sec = getConfig(fileName).getConfigurationSection(path);
-        Set<String> keys = (sec != null) ? sec.getKeys(false) : new HashSet<>();
+        Set<String> keys = sec != null ? sec.getKeys(false) : new HashSet<>();
         logger.debug("Keys retrieved: " + keys.size() + " in " + path + " of " + fileName);
         return keys;
     }
@@ -352,34 +417,6 @@ public class YamlUtil {
         return sec;
     }
 
-    /**
-     * 从默认 config.yml 中以类型安全的方式读取配置。
-     * 若路径不存在或类型不符，则写入并返回默认值。
-     *
-     * @param path         配置路径
-     * @param type         期望的类型，例如 {@code String.class}
-     * @param defaultValue 默认值
-     * @return 读取到的值
-     */
-    public <T> T getValue(String path, Class<T> type, T defaultValue) {
-        YamlConfiguration cfg = getConfig(DEFAULT_FILE);
-        Object val = cfg.get(path);
-        if (val == null || !type.isInstance(val)) {
-            cfg.set(path, defaultValue);
-            dirtyConfigs.add(DEFAULT_FILE); // 标记为脏
-            logger.debug("Set typed default: " + path + " = " + defaultValue);
-            return defaultValue;
-        }
-        return type.cast(val);
-    }
-
-    /**
-     * 为指定配置文件批量设置默认值。
-     * 若路径不存在，则写入对应默认值。
-     *
-     * @param configKey 配置文件名（不含 .yml）
-     * @param defaults  默认值映射，键为配置路径
-     */
     public void setDefaults(String configKey, Map<String, Object> defaults) {
         if (defaults == null || defaults.isEmpty()) {
             return;
@@ -390,78 +427,35 @@ public class YamlUtil {
         }
     }
 
-    /**
-     * 校验指定配置文件的结构是否符合给定模式。
-     *
-     * @param configKey 配置文件名（不含 .yml）
-     * @param schema    配置结构声明
-     * @return 校验结果
-     */
     public ValidationResult validateConfig(String configKey, ConfigSchema schema) {
         ConfigValidator validator = new ConfigValidator(this, logger);
         schema.configure(validator);
         return validator.validate(getConfig(configKey));
     }
 
-    /**
-     * 若目标目录不存在，则创建并从资源中一次性复制全部文件（含子目录、所有文件）。
-     *
-     * @param resourceFolder 资源文件夹相对于 JAR 根的路径，如 "templates" 或 "assets/lang"
-     * @param relativePath   数据文件夹内的目标目录，相对插件根目录
-     */
-    public void ensureFolderAndCopyDefaults(String resourceFolder, String relativePath) {
-        File targetDir = new File(plugin.getDataFolder(), relativePath);
-        if (targetDir.exists()) {
-            logger.debug("目标目录已存在，跳过初始化: " + targetDir.getPath());
-            return;
-        }
-        ensureDirectory(relativePath);
-        String folder = normalizeFolder(resourceFolder);
-        try {
-            traverseJar(folder, (entry, jar) -> {
-                if (!entry.isDirectory()) {
-                    String subPath = entry.getName().substring(folder.length());
-                    File dest = new File(targetDir, subPath.replace("/", File.separator));
-                    ensureParentDir(dest);
-                    if (!dest.exists()) {
-                        logger.debug("初始化复制: " + entry.getName() + " -> " + dest.getPath());
-                        copyResourceToFile(entry.getName(), dest);
-                    }
-                }
-            });
-        } catch (Exception e) {
-            logger.error("初始化复制文件夹失败: " + resourceFolder, e);
-        }
-    }
+    // ======================= 文件监听 =======================
 
     /**
-     * 监听指定配置文件，并允许自定义执行器和监听的事件类型。
-     *
-     * @param configName 配置文件名（不含 .yml）
-     * @param onChange   文件变更后的回调，提供最新的 YamlConfiguration
-     * @param executor   执行监听任务的线程池（此参数在新实现中被忽略）。
-     * @param kinds      要监听的事件类型（此参数在新实现中被忽略）。
-     * @return 监听句柄，可通过 {@link ConfigWatchHandle#close()} 停止监听。
-     * @deprecated 此方法为每个监听器创建一个新线程，效率低下。请改用 {@link #watchConfig(String, Consumer)}，它使用一个共享的、资源高效的监听线程。
+     * @deprecated 此方法为每个监听器创建新线程，效率低下。请迁移到 {@link #watchConfig(String, Consumer)}
      */
     @Deprecated
-    public ConfigWatchHandle watchConfig(String configName, Consumer<YamlConfiguration> onChange,
-                                         ExecutorService executor, WatchEvent.Kind<?>... kinds) {
+    public ConfigWatchHandle watchConfig(String configName,
+                                         Consumer<YamlConfiguration> onChange,
+                                         ExecutorService executor,
+                                         WatchEvent.Kind<?>... kinds) {
         logger.warn("正在调用已弃用的 watchConfig 方法。executor 和 kinds 参数将被忽略。请迁移到新的 watchConfig(String, Consumer) 方法。");
         return watchConfig(configName, onChange);
     }
 
     /**
-     * 监听指定配置文件，一旦文件被修改则自动重载并触发回调。
-     * 使用共享的后台线程，避免为每个监听器创建新线程。
-     *
+     * 监听指定配置文件，一旦修改则自动重载并触发回调
      * @param configName 配置文件名（不含 .yml）
-     * @param onChange   文件变更后的回调，提供最新的 YamlConfiguration
-     * @return 监听句柄，可通过 {@link ConfigWatchHandle#close()} 停止监听
+     * @param onChange   回调函数，参数为最新的 YamlConfiguration
+     * @return ConfigWatchHandle，用于停止监听
      */
     public ConfigWatchHandle watchConfig(String configName, Consumer<YamlConfiguration> onChange) {
         try {
-            startWatcherThread(); // 确保监听线程已启动
+            startWatcherThread();
         } catch (IOException e) {
             logger.error("无法初始化文件监听服务", e);
             return null;
@@ -471,51 +465,32 @@ public class YamlUtil {
         Path filePath = configFile.toPath();
         Path dirPath = filePath.getParent();
 
-        // 如果目录未被监听，则注册
-        if (watchKeyMap.values().stream().noneMatch(p -> p.equals(dirPath))) {
-            try {
-                WatchKey key = dirPath.register(sharedWatcher, StandardWatchEventKinds.ENTRY_MODIFY);
-                watchKeyMap.put(key, dirPath);
-                logger.info("开始监听目录: " + dirPath);
-            } catch (IOException e) {
-                logger.error("监听目录失败: " + dirPath, e);
-                return null;
-            }
+        // 注册目录监听
+        try {
+            registerWatchDirectory(dirPath);
+        } catch (IOException e) {
+            logger.error("监听目录失败: " + dirPath, e);
+            return null;
         }
 
-        // 存储文件和回调的映射关系
         watchedFileMap.put(filePath, configName);
         callbackMap.put(configName, onChange);
-
         logger.info("已设置对 " + configFile.getName() + " 的修改监听。");
         return new ConfigWatchHandle(this, configName);
     }
 
     /**
-     * 停止监听指定的配置文件。
-     * @param configName 要停止监听的配置文件名
+     * 停止监听指定配置文件
+     * @param configName 配置文件名（不含 .yml）
      */
     public void stopWatching(String configName) {
         callbackMap.remove(configName);
-        Path toRemove = null;
-        for (Map.Entry<Path, String> entry : watchedFileMap.entrySet()) {
-            if (entry.getValue().equals(configName)) {
-                toRemove = entry.getKey();
-                break;
-            }
-        }
-        if (toRemove != null) {
-            watchedFileMap.remove(toRemove);
-            logger.info("已停止监听配置文件: " + configName);
-        }
-        // 注意：为简化，即使一个目录下的所有文件都不再被监听，我们也不注销目录的 WatchKey。
+        watchedFileMap.entrySet().removeIf(e -> e.getValue().equals(configName));
+        logger.info("已停止监听配置文件: " + configName);
     }
 
     /**
-     * 开启指定配置文件的监听。
-     *
-     * @param configKey 配置文件名（不含 .yml）
-     * @param listener  文件变更回调
+     * 开启文件变动监听，触发自定义 FileChangeListener
      */
     public void enableFileWatcher(String configKey, FileChangeListener listener) {
         watchConfig(configKey, cfg -> {
@@ -526,16 +501,14 @@ public class YamlUtil {
     }
 
     /**
-     * 关闭指定配置文件的监听。
-     *
-     * @param configKey 配置文件名（不含 .yml）
+     * 关闭文件变动监听
      */
     public void disableFileWatcher(String configKey) {
         stopWatching(configKey);
     }
 
     /**
-     * 停止并关闭所有正在监听的配置文件。
+     * 停止并关闭所有文件监听
      */
     public void stopAllWatches() {
         if (sharedWatcherThread != null) {
@@ -558,14 +531,16 @@ public class YamlUtil {
     }
 
     /**
-     * 清空 JAR 内条目缓存，释放内存。
+     * 清空 JAR 条目缓存，释放内存
      */
     public void clearJarCache() {
         jarEntryCache.clear();
     }
 
+    // ======================= 内部类 =======================
+
     /**
-     * 监听句柄，用于停止对单个配置文件的监听。
+     * 监听句柄，用于停止对单个配置文件的监听
      */
     public class ConfigWatchHandle implements AutoCloseable {
         private final YamlUtil self;
@@ -586,54 +561,56 @@ public class YamlUtil {
         }
     }
 
+    // ======================= 私有辅助方法 =======================
+
+    // 注册目录到 WatchService
+    private void registerWatchDirectory(Path dirPath) throws IOException {
+        if (watchKeyMap.values().stream().noneMatch(p -> p.equals(dirPath))) {
+            WatchKey key = dirPath.register(sharedWatcher, StandardWatchEventKinds.ENTRY_MODIFY);
+            watchKeyMap.put(key, dirPath);
+            logger.info("开始监听目录: " + dirPath);
+        }
+    }
+
+    // 启动共享监听线程
     private void startWatcherThread() throws IOException {
         if (sharedWatcherThread != null && sharedWatcherThread.isAlive()) {
-            return; // 已经启动
+            return;
         }
-
         if (sharedWatcher == null) {
             sharedWatcher = FileSystems.getDefault().newWatchService();
         }
-
-        this.sharedWatcherThread = new Thread(() -> {
+        sharedWatcherThread = new Thread(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 WatchKey key;
                 try {
-                    // 使用带超时的轮询，避免额外休眠，同时汇聚短时间内的变更
                     key = sharedWatcher.poll(50, TimeUnit.MILLISECONDS);
                 } catch (InterruptedException | ClosedWatchServiceException e) {
                     Thread.currentThread().interrupt();
                     break;
                 }
                 if (key == null) {
-                    // 超时未收到事件，继续下一轮
                     continue;
                 }
-
                 Path dir = watchKeyMap.get(key);
-                if (dir == null) continue;
-
-                for (WatchEvent<?> event : key.pollEvents()) {
-                    if (event.kind() != StandardWatchEventKinds.ENTRY_MODIFY) {
-                        continue;
-                    }
-
-                    Path changedFile = dir.resolve((Path) event.context());
-                    String configName = watchedFileMap.get(changedFile);
-
-                    if (configName != null) {
-                        Consumer<YamlConfiguration> callback = callbackMap.get(configName);
-                        if (callback != null) {
-                            logger.info("检测到配置文件修改，正在重载: " + configName);
-                            // 在 Bukkit 主线程中执行重载和回调，以确保线程安全
-                            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                                reloadConfig(configName);
-                                callback.accept(getConfig(configName));
-                            });
+                if (dir != null) {
+                    for (WatchEvent<?> event : key.pollEvents()) {
+                        if (event.kind() == StandardWatchEventKinds.ENTRY_MODIFY) {
+                            Path changed = dir.resolve((Path) event.context());
+                            String name = watchedFileMap.get(changed);
+                            if (name != null) {
+                                Consumer<YamlConfiguration> cb = callbackMap.get(name);
+                                if (cb != null) {
+                                    logger.info("检测到配置文件修改，正在重载: " + name);
+                                    plugin.getServer().getScheduler().runTask(plugin, () -> {
+                                        reloadConfig(name);
+                                        cb.accept(getConfig(name));
+                                    });
+                                }
+                            }
                         }
                     }
                 }
-
                 if (!key.reset()) {
                     watchKeyMap.remove(key);
                     if (watchKeyMap.isEmpty()) {
@@ -644,30 +621,33 @@ public class YamlUtil {
             }
             logger.info("文件监听线程已停止。");
         }, "YamlUtil-Shared-Watcher");
-
-        this.sharedWatcherThread.setDaemon(true);
-        this.sharedWatcherThread.start();
+        sharedWatcherThread.setDaemon(true);
+        sharedWatcherThread.start();
     }
 
-    // ---------------- private 辅助方法 ----------------
-
+    // 获取配置文件对象
     private File getConfigFile(String fileName) {
         return new File(plugin.getDataFolder(), fileName + ".yml");
     }
 
+    // 设置默认值
     private void setDefaultIfAbsent(YamlConfiguration cfg, String fileName, String path, Object def) {
         if (!cfg.contains(path)) {
             cfg.set(path, def);
-            dirtyConfigs.add(fileName); // 标记为脏
+            dirtyConfigs.add(fileName);
             logger.debug("Set default value: " + path + " = " + def + " in " + fileName);
         }
     }
 
+    // 规范化文件夹路径
     private String normalizeFolder(String resourceFolder) {
-        if (resourceFolder == null || resourceFolder.isEmpty()) return "";
+        if (resourceFolder == null || resourceFolder.isEmpty()) {
+            return "";
+        }
         return resourceFolder.endsWith("/") ? resourceFolder : resourceFolder + "/";
     }
 
+    // 确保目标文件的父目录存在
     private void ensureParentDir(File dest) {
         File parent = dest.getParentFile();
         if (parent != null && !parent.exists() && parent.mkdirs()) {
@@ -675,6 +655,7 @@ public class YamlUtil {
         }
     }
 
+    // 遍历 JAR 中指定目录下的条目并执行回调
     @FunctionalInterface
     private interface JarEntryConsumer {
         void accept(JarEntry entry, JarFile jar) throws IOException;
@@ -702,6 +683,7 @@ public class YamlUtil {
         }
     }
 
+    // 复制 JAR 内资源到文件
     private void copyResourceToFile(String resourcePath, File dest) {
         try (InputStream in = plugin.getResource(resourcePath)) {
             if (in != null) {
@@ -714,5 +696,4 @@ public class YamlUtil {
             logger.error("复制资源失败: " + resourcePath, e);
         }
     }
-
 }
