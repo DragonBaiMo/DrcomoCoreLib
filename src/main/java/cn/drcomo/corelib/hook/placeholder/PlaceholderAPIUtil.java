@@ -33,6 +33,9 @@ import java.util.function.Function;
  */
 public class PlaceholderAPIUtil {
 
+    /** 最多递归解析次数 */
+    private static final int MAX_PARSE_ITERATIONS = 10;
+
     private final Plugin plugin;
     private final Map<String, BiFunction<Player, String, String>> handlers = new HashMap<>();
     private final String identifier;
@@ -137,17 +140,22 @@ public class PlaceholderAPIUtil {
 
     // === 私有工具 ===
 
-    /** 递归解析占位符直到稳定 */
+    /** 递归解析占位符直到稳定，若超过最大次数则返回当前结果并警告 */
     private String parseRecursive(Player player, String text) {
         if (text == null) return "";
         if (!papiEnabled) {
             return text;
         }
-        String last, cur = text;
-        do {
+        String last = text;
+        String cur = text;
+        for (int i = 0; i < MAX_PARSE_ITERATIONS; i++) {
+            cur = PlaceholderAPI.setPlaceholders(player, last);
+            if (cur.equals(last) || (!cur.contains("%") && !cur.contains("{"))) {
+                return cur;
+            }
             last = cur;
-            cur  = PlaceholderAPI.setPlaceholders(player, last);
-        } while (!cur.equals(last) && (cur.contains("%") || cur.contains("{")));
+        }
+        plugin.getLogger().warning("占位符递归解析超过 " + MAX_PARSE_ITERATIONS + " 次仍未收敛，返回当前结果：" + cur);
         return cur;
     }
 
