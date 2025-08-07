@@ -66,6 +66,8 @@ public class MessageService {
     private Pattern internalPlaceholderPattern = DEFAULT_INTERNAL_PLACEHOLDER_PATTERN;
     /** 额外占位符扩展规则 */
     private final Map<Pattern, BiFunction<Player, Matcher, String>> extraPlaceholderRules = new LinkedHashMap<>();
+    /** prefix+suffix 对应的正则缓存 */
+    private final Map<String, Pattern> delimiterPatternCache = new HashMap<>();
 
     /* -------------------- 构造函数 -------------------- */
 
@@ -294,11 +296,24 @@ public class MessageService {
      */
     private String replaceBraces(String template, Object... args) {
         if (template == null) return null;
-        String result = template;
-        for (Object arg : args) {
-            result = result.replaceFirst("\\{\\}", Matcher.quoteReplacement(String.valueOf(arg)));
+        StringBuilder sb = new StringBuilder();
+        int idx = 0;
+        int len = template.length();
+        // 使用索引遍历模板，遇到"{}"按顺序替换
+        for (int i = 0; i < len; i++) {
+            char c = template.charAt(i);
+            if (c == '{' && i + 1 < len && template.charAt(i + 1) == '}') {
+                if (idx < args.length) {
+                    sb.append(String.valueOf(args[idx++]));
+                } else {
+                    sb.append("{}");
+                }
+                i++;
+            } else {
+                sb.append(c);
+            }
         }
-        return result;
+        return sb.toString();
     }
 
     /**
@@ -501,7 +516,13 @@ public class MessageService {
 
         // —— 1. 自定义占位符 ——
         if (custom != null && !custom.isEmpty()) {
-            Pattern pattern = Pattern.compile(prefix + "(?<key>[^" + suffix + "]+)" + suffix);
+            // 使用 prefix+suffix 缓存编译后的正则，避免重复构建
+            String cacheKey = prefix + suffix;
+            Pattern pattern = delimiterPatternCache.get(cacheKey);
+            if (pattern == null) {
+                pattern = Pattern.compile(prefix + "(?<key>[^" + suffix + "]+)" + suffix);
+                delimiterPatternCache.put(cacheKey, pattern);
+            }
             Matcher matcher = pattern.matcher(result);
             StringBuffer sb = new StringBuffer();
             while (matcher.find()) {
