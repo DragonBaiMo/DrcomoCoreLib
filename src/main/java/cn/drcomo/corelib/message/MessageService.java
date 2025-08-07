@@ -53,7 +53,7 @@ public class MessageService {
     /** 上下文 -> 消息缓存 */
     private final Map<Object, List<String>> contextMessages = new HashMap<>();
     /** 内部占位符处理器 {key[:args]} */
-    private final Map<String, BiFunction<Player, String, String>> internalHandlers = new HashMap<>();
+    private final Map<String, PlaceholderResolver> internalHandlers = new HashMap<>();
 
     /* ---------- 可配置字段 ---------- */
     private String langConfigPath;
@@ -132,9 +132,44 @@ public class MessageService {
      *               占位符注册 & 解析核心
      * ================================================== */
 
-    /** 子插件调用：注册 {key[:args]} 占位符 */
-    public void registerInternalPlaceholder(String key, BiFunction<Player, String, String> resolver) {
+    /**
+     * 子插件调用：注册 {key[:args]} 占位符。
+     *
+     * @param key      占位符标识（不含大括号）
+     * @param resolver 占位符解析器
+     */
+    public void registerInternalPlaceholder(String key, PlaceholderResolver resolver) {
+        if (key == null || resolver == null) {
+            return;
+        }
         internalHandlers.put(key.toLowerCase(), resolver);
+    }
+
+    /**
+     * 兼容旧接口：接受单字符串参数的注册方法。
+     *
+     * @param key      占位符标识（不含大括号）
+     * @param resolver 旧版解析器（参数串按冒号划分的首段）
+     * @deprecated 请改用 {@link #registerInternalPlaceholder(String, PlaceholderResolver)}，以获取完整参数数组
+     */
+    @Deprecated
+    public void registerInternalPlaceholder(String key, BiFunction<Player, String, String> resolver) {
+        if (key == null || resolver == null) {
+            return;
+        }
+        registerInternalPlaceholder(key, (player, args) -> resolver.apply(player, args.length > 0 ? args[0] : ""));
+    }
+
+    /**
+     * 取消注册内部占位符。
+     *
+     * @param key 占位符标识（不含大括号）
+     */
+    public void unregisterInternalPlaceholder(String key) {
+        if (key == null) {
+            return;
+        }
+        internalHandlers.remove(key.toLowerCase());
     }
 
     /**
@@ -170,6 +205,15 @@ public class MessageService {
 
     /* -------------------- 占位符完整解析 -------------------- */
 
+    /**
+     * 兼容旧接口，默认使用 "%" 前后缀。
+     *
+     * @param key    消息键
+     * @param player 当前玩家，可为 null
+     * @param custom 自定义占位符
+     * @return 解析结果
+     * @deprecated 请使用 {@link #parseWithDelimiter(String, Player, Map, String, String)}
+     */
     @Deprecated
     public String parse(String key, Player player, Map<String, String> custom) {
         return parseWithDelimiter(key, player, custom, "%", "%");
@@ -540,10 +584,11 @@ public class MessageService {
             StringBuffer sb = new StringBuffer();
             while (m.find()) {
                 String k = m.group(1).toLowerCase();
-                String args = m.group(2) == null ? "" : m.group(2);
-                BiFunction<Player, String, String> fn = internalHandlers.get(k);
+                String argStr = m.group(2);
+                String[] args = (argStr == null || argStr.isEmpty()) ? new String[0] : argStr.split(":");
+                PlaceholderResolver resolver = internalHandlers.get(k);
                 m.appendReplacement(sb, Matcher.quoteReplacement(
-                        fn != null ? fn.apply(player, args) : m.group(0)));
+                        resolver != null ? resolver.resolve(player, args) : m.group(0)));
             }
             m.appendTail(sb);
             result = sb.toString();
