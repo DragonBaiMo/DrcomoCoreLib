@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 /**
  * 异步任务管理器。
@@ -24,6 +25,7 @@ public class AsyncTaskManager implements AutoCloseable {
     private final DebugUtil logger;
     private final ExecutorService executor;
     private final ScheduledExecutorService scheduler;
+    private final ThreadPoolExecutor priorityExecutor;
 
     /**
      * 使用默认线程池构造异步任务管理器。
@@ -34,16 +36,19 @@ public class AsyncTaskManager implements AutoCloseable {
     public AsyncTaskManager(Plugin plugin, DebugUtil logger) {
         this(plugin, logger,
              createDefaultExecutor(plugin, 0, null),
-             createDefaultScheduler(plugin, 1, null));
+             createDefaultScheduler(plugin, 1, null),
+             createPriorityExecutor(plugin));
     }
 
     private AsyncTaskManager(Plugin plugin, DebugUtil logger,
                              ExecutorService executor,
-                             ScheduledExecutorService scheduler) {
+                             ScheduledExecutorService scheduler,
+                             ThreadPoolExecutor priorityExecutor) {
         this.plugin = plugin;
         this.logger = logger;
         this.executor = executor;
         this.scheduler = scheduler;
+        this.priorityExecutor = priorityExecutor;
     }
 
     //================ public API =================
@@ -64,6 +69,89 @@ public class AsyncTaskManager implements AutoCloseable {
      */
     public ScheduledExecutorService getScheduler() {
         return scheduler;
+    }
+
+    /**
+     * 提交带优先级的 Supplier 任务。
+     *
+     * @param supplier 任务提供者
+     * @param priority 优先级
+     * @param <T>      返回类型
+     * @return Future 句柄
+     */
+    public <T> Future<T> submitWithPriority(Supplier<T> supplier, TaskPriority priority) {
+        PrioritizedFutureTask<T> future = new PrioritizedFutureTask<>(
+                wrapCallable(() -> supplier.get()), priority);
+        priorityExecutor.execute(future);
+        return future;
+    }
+
+    /**
+     * 提交带优先级的 Runnable 任务。
+     *
+     * @param task     任务
+     * @param priority 优先级
+     * @return Future 句柄
+     */
+    public Future<?> runWithPriority(Runnable task, TaskPriority priority) {
+        PrioritizedFutureTask<?> future = new PrioritizedFutureTask<>(wrapRunnable(task), null, priority);
+        priorityExecutor.execute(future);
+        return future;
+    }
+
+    /**
+     * 获取优先级队列状态。
+     *
+     * @return TaskQueueStatus
+     */
+    public TaskQueueStatus getQueueStatus() {
+        int high = 0, normal = 0, low = 0;
+        for (Runnable r : priorityExecutor.getQueue()) {
+            if (r instanceof PrioritizedFutureTask<?> task) {
+                TaskPriority p = task.getPriority();
+                switch (p) {
+                    case HIGH -> high++;
+                    case NORMAL -> normal++;
+                    case LOW -> low++;
+                }
+            }
+        }
+        return new TaskQueueStatus(high, normal, low);
+    }
+
+    /**
+     * 使用 CompletableFuture 执行 Supplier 异步任务。
+     *
+     * @param supplier 任务提供者
+     * @param <T>      返回类型
+     * @return CompletableFuture
+     */
+    public <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return supplier.get();
+            } catch (Exception e) {
+                logger.error("异步任务执行异常", e);
+                throw e;
+            }
+        }, executor);
+    }
+
+    /**
+     * 使用 CompletableFuture 异步运行 Runnable 任务。
+     *
+     * @param task 任务
+     * @return CompletableFuture
+     */
+    public CompletableFuture<Void> runAsync(Runnable task) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                task.run();
+            } catch (Exception e) {
+                logger.error("异步任务执行异常", e);
+                throw e;
+            }
+        }, executor);
     }
 
     /**
@@ -138,6 +226,7 @@ public class AsyncTaskManager implements AutoCloseable {
     public void shutdown() {
         executor.shutdown();
         scheduler.shutdown();
+        priorityExecutor.shutdown();
     }
 
     /**
@@ -307,7 +396,48 @@ public class AsyncTaskManager implements AutoCloseable {
             ScheduledExecutorService sch = scheduler != null
                     ? scheduler
                     : createDefaultScheduler(plugin, schedulerSize, schedulerFactory);
-            return new AsyncTaskManager(plugin, logger, ex, sch);
+            ThreadPoolExecutor pr = createPriorityExecutor(plugin);
+            return new AsyncTaskManager(plugin, logger, ex, sch, pr);
+        }
+    }
+
+    /** 创建带优先级的线程池 */
+    private static ThreadPoolExecutor createPriorityExecutor(Plugin plugin) {
+        return new ThreadPoolExecutor(
+                1,
+                1,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new PriorityBlockingQueue<>(),
+                createThreadFactory(plugin, "-Priority-")
+        );
+    }
+
+    /**
+     * 带优先级的 FutureTask，用于 PriorityBlockingQueue 排序。
+     */
+    private static class PrioritizedFutureTask<V> extends FutureTask<V>
+            implements Comparable<PrioritizedFutureTask<?>> {
+
+        private final TaskPriority priority;
+
+        PrioritizedFutureTask(Callable<V> callable, TaskPriority priority) {
+            super(callable);
+            this.priority = priority;
+        }
+
+        PrioritizedFutureTask(Runnable runnable, V result, TaskPriority priority) {
+            super(runnable, result);
+            this.priority = priority;
+        }
+
+        TaskPriority getPriority() {
+            return priority;
+        }
+
+        @Override
+        public int compareTo(PrioritizedFutureTask<?> o) {
+            return Integer.compare(this.priority.getLevel(), o.priority.getLevel());
         }
     }
 
