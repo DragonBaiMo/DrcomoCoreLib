@@ -1,8 +1,8 @@
 package cn.drcomo.corelib.gui;
 
 import org.bukkit.Sound;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 
 import cn.drcomo.corelib.util.DebugUtil;
@@ -43,11 +43,17 @@ public class GuiManager {
      * @param player 玩家实例
      * @param event  事件对象
      */
+    @SuppressWarnings("deprecation")
     public void clearCursor(Player player, InventoryClickEvent event) {
         if (player == null || event == null) return;
         try {
-            event.setCursor(null);
-            player.updateInventory();
+            // 热路径优化：仅在鼠标有物品时触发清空与刷新，减少不必要的 UI 同步成本
+            var cursor = event.getCursor();
+            if (cursor != null && cursor.getType() != Material.AIR && cursor.getAmount() > 0) {
+                // 虽然 setCursor 标记为 deprecated，但在当前 API 版本仍为兼容路径
+                event.setCursor(null);
+                player.updateInventory();
+            }
         } catch (Exception e) {
             logger.error("clear cursor error", e);
         }

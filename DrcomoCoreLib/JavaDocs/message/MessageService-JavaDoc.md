@@ -23,11 +23,11 @@
   * 输出颜色覆盖无遗漏。
   * 日志用于追踪与降级，不破坏调用流程。
 
-* **线程安全边界说明：**
+* **线程安全与主线程保障：**
   当前使用的是非线程安全的数据结构（`HashMap` / `ArrayList`），因此：
 
-  * 语言文件刷新（`reloadLanguages` / `switchLanguage`）应在主线程执行。
-  * 并发读取（如异步发送）时要避免同时进行写操作（reload），调用方需自行同步或在调度层加锁。
+* 组件内部对所有 Bukkit 发送 API 做了主线程调度保护（异步调用会自动切回主线程），但语言文件刷新（`reloadLanguages` / `switchLanguage`）仍建议在主线程执行。
+* 并发读取（如异步发送）时要避免同时进行写操作（reload），调用方仍需在上层调度中规避读写竞争。
   * 若未来需要并发安全，可考虑替换为 `ConcurrentHashMap` 或加显式锁。
 
 ---
@@ -126,10 +126,13 @@ messageService.registerInternalPlaceholder("online", (player, args) ->
   * 替换按注册顺序进行，后续规则看到的是前一个规则替换后的内容。
   * 冲突示例：规则 A 把 `{{x}}` 变成 `{{y}}`，规则 B 又匹配 `{{y}}` → 最终结果由 A+B 链式决定，注册顺序影响输出。
 
-#### 自定义前后缀
+#### 自定义前后缀（分隔符）
 
 * 方法：`parseWithDelimiter(...)`
-* 说明：可指定任意 prefix/suffix（如 `%`、`{}`、`<<>>` 等）控制 custom 替换语法。
+* 方法：`setDefaultCustomDelimiters(String prefix, String suffix)`
+* 说明：
+  * 可指定任意 prefix/suffix（如 `%`、`{}`、`<<>>` 等）控制 custom 替换语法。
+  * 若你的语言模板使用 `{变量}` 风格，建议在插件初始化时调用 `setDefaultCustomDelimiters("{", "}")`，这样后续按 key 的发送/广播会默认用花括号作为自定义占位符分隔符。
 
 #### 容错与降级
 
@@ -325,7 +328,21 @@ messageService.registerInternalPlaceholder("online", (player, args) ->
           * `suffix` (`String`): 占位符后缀。
           * `permission` (`String`): 可选的权限节点。
 
-  * #### `broadcastList(String key, Map<String, String> custom, String permission)`
+  * #### `broadcast(String key, Map<String, String> custom, String permission)`
+  
+      * 行为更新：该方法会使用通过 `setDefaultCustomDelimiters` 配置的默认分隔符对 custom map 进行解析（默认仍为 `%`），兼容旧版本行为并可按需切换到 `{}`。
+
+  * #### `broadcastByKey(String key, Map<String, String> custom, String prefix, String suffix)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 使用语言键并指定分隔符解析，然后向全服广播。
+      * **参数说明:** 同 `parseWithDelimiter` 的 `prefix/suffix` 规则。
+
+  * #### `broadcastByKey(String key, Map<String, String> custom, String prefix, String suffix, String permission)`
+
+      * **返回类型:** `void`
+      * **功能描述:** 使用语言键并指定分隔符解析，然后仅向拥有指定权限的玩家广播。
+      * **参数说明:** 同上，并附加 `permission`。
 
       * **返回类型:** `void`
       * **功能描述:** 广播一个来自语言文件的多行消息列表，每行独立发送。

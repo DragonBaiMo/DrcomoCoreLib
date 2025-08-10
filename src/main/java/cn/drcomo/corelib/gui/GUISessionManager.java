@@ -1,5 +1,6 @@
 package cn.drcomo.corelib.gui;
 
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.Plugin;
@@ -13,6 +14,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * GUI 会话管理器。
@@ -39,7 +41,10 @@ public class GUISessionManager {
     private final Plugin plugin;
     private final DebugUtil debug;
     private final MessageService msgSvc;
-    private final Map<Player, GUISession> sessions = new HashMap<>();
+    /**
+     * 使用 UUID 作为 Key，避免因 Player 实例更替导致的键不一致，并减少强引用导致的潜在泄漏。
+     */
+    private final Map<UUID, GUISession> sessions = new HashMap<>();
     private long sessionTimeout = DEFAULT_SESSION_TIMEOUT;
 
     /**
@@ -66,6 +71,21 @@ public class GUISessionManager {
         this.debug = debug;
         this.msgSvc = messageService;
         this.sessionTimeout = sessionTimeout;
+    }
+
+    /**
+     * 公开只读访问：返回注入的 {@link Plugin} 实例。
+     * 该方法仅用于诊断/集成场景，避免外部直接依赖字段。
+     */
+    public Plugin getPlugin() {
+        return plugin;
+    }
+
+    /**
+     * 公开只读访问：返回注入的 {@link MessageService}，可能为 null。
+     */
+    public MessageService getMessageService() {
+        return msgSvc;
     }
 
     /**
@@ -105,7 +125,7 @@ public class GUISessionManager {
      * @param player 目标玩家
      */
     public void closeSession(Player player) {
-        GUISession session = sessions.get(player);
+        GUISession session = sessions.get(player.getUniqueId());
         if (session != null) {
             safeClose(player, session);
         }
@@ -115,11 +135,17 @@ public class GUISessionManager {
      * 关闭并清理所有活跃会话。
      */
     public void closeAllSessions() {
-        List<Player> targets = new ArrayList<>(sessions.keySet());
-        for (Player p : targets) {
-            GUISession s = sessions.get(p);
+        List<UUID> targets = new ArrayList<>(sessions.keySet());
+        for (UUID uid : targets) {
+            GUISession s = sessions.get(uid);
             if (s != null) {
-                safeClose(p, s);
+                Player p = Bukkit.getPlayer(uid);
+                if (p != null) {
+                    safeClose(p, s);
+                } else {
+                    // 玩家不在线，仅移除会话条目
+                    unregisterSession(uid);
+                }
             }
         }
     }
@@ -132,7 +158,7 @@ public class GUISessionManager {
      */
     public String getCurrentSessionId(Player player) {
         cleanExpiredSessions();
-        GUISession s = sessions.get(player);
+        GUISession s = sessions.get(player.getUniqueId());
         return s == null ? null : s.sessionId;
     }
 
@@ -144,7 +170,7 @@ public class GUISessionManager {
      */
     public boolean hasSession(Player player) {
         cleanExpiredSessions();
-        return sessions.containsKey(player);
+        return sessions.containsKey(player.getUniqueId());
     }
 
     /**
@@ -156,8 +182,9 @@ public class GUISessionManager {
      */
     public boolean validateSessionInventory(Player player, Inventory inv) {
         if (player == null || inv == null) return false;
-        GUISession s = sessions.get(player);
-        return s != null && s.inventory.equals(inv);
+        GUISession s = sessions.get(player.getUniqueId());
+        // 引用比较以确保确为同一实例，避免不同实例但内容相同的误判
+        return s != null && s.inventory == inv;
     }
 
     /**
@@ -171,10 +198,10 @@ public class GUISessionManager {
      */
     public boolean isSessionInventoryClick(Player player, InventoryClickEvent event) {
         if (player == null || event == null) return false;
-        GUISession s = sessions.get(player);
+        GUISession s = sessions.get(player.getUniqueId());
         if (s == null) return false;
         Inventory clicked = event.getClickedInventory();
-        return clicked != null && clicked.equals(s.inventory);
+        return clicked != null && clicked == s.inventory;
     }
 
     /**
@@ -186,10 +213,10 @@ public class GUISessionManager {
      */
     public boolean isPlayerInventoryClick(Player player, InventoryClickEvent event) {
         if (player == null || event == null) return false;
-        GUISession s = sessions.get(player);
+        GUISession s = sessions.get(player.getUniqueId());
         if (s == null) return false;
         Inventory clicked = event.getClickedInventory();
-        return clicked == null || !clicked.equals(s.inventory);
+        return clicked == null || clicked != s.inventory;
     }
 
     /**
@@ -197,12 +224,17 @@ public class GUISessionManager {
      * <p>调度器已不可用，必须同步调用；若背包已满则自然掉落到玩家脚下。</p>
      */
     public void flushOnDisable() {
-        List<Player> targets = new ArrayList<>(sessions.keySet());
-        for (Player p : targets) {
-            GUISession s = sessions.get(p);
+        List<UUID> targets = new ArrayList<>(sessions.keySet());
+        for (UUID uid : targets) {
+            GUISession s = sessions.get(uid);
             if (s != null) {
-                flushSessionItems(p, s);
-                safeClose(p, s);
+                Player p = Bukkit.getPlayer(uid);
+                if (p != null) {
+                    flushSessionItems(p, s);
+                    safeClose(p, s);
+                } else {
+                    unregisterSession(uid);
+                }
             }
         }
     }
@@ -239,22 +271,29 @@ public class GUISessionManager {
 
     // ================== 私有助手 ==================
     private void registerSession(Player player, GUISession session) {
-        sessions.put(player, session);
+        sessions.put(player.getUniqueId(), session);
     }
 
     private void unregisterSession(Player player) {
-        sessions.remove(player);
+        sessions.remove(player.getUniqueId());
+    }
+
+    private void unregisterSession(UUID uuid) {
+        sessions.remove(uuid);
     }
 
     private void cleanExpiredSessions() {
-        Iterator<Map.Entry<Player, GUISession>> it = sessions.entrySet().iterator();
+        Iterator<Map.Entry<UUID, GUISession>> it = sessions.entrySet().iterator();
         while (it.hasNext()) {
-            Map.Entry<Player, GUISession> entry = it.next();
+            Map.Entry<UUID, GUISession> entry = it.next();
             if (entry.getValue().isExpired()) {
-                Player p = entry.getKey();
+                UUID uid = entry.getKey();
                 GUISession s = entry.getValue();
                 it.remove();
-                safeClose(p, s);
+                Player p = Bukkit.getPlayer(uid);
+                if (p != null) {
+                    safeClose(p, s);
+                }
             }
         }
     }

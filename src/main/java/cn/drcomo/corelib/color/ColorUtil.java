@@ -25,7 +25,7 @@ public class ColorUtil {
     private static final Pattern VERSION_PATTERN = Pattern.compile("1\\.(\\d+)");
 
     // 缓存的服务端主版本号，-1 表示尚未初始化
-    private static int MAJOR_VERSION = -1;
+    private static volatile int MAJOR_VERSION = -1;
 
     private ColorUtil() {
         // 私有构造，禁止实例化
@@ -103,7 +103,11 @@ public class ColorUtil {
      */
     public static void initMajorVersion(Server server) {
         if (MAJOR_VERSION == -1) {
-            MAJOR_VERSION = parseMajorVersion(server);
+            synchronized (ColorUtil.class) {
+                if (MAJOR_VERSION == -1) {
+                    MAJOR_VERSION = parseMajorVersion(server);
+                }
+            }
         }
     }
 

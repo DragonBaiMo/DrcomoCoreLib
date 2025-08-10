@@ -105,7 +105,9 @@ public class HttpUtil {
         if (headers != null) {
             headers.forEach(builder::header);
         }
-        builder.timeout(timeout);
+        if (timeout != null && !timeout.isNegative() && !timeout.isZero()) {
+            builder.timeout(timeout);
+        }
     }
 
     /**
@@ -247,6 +249,12 @@ public class HttpUtil {
                 }
                 if (executor != null) {
                     cb.executor(executor);
+                }
+                // 默认开启 HTTP/2（如可用），以获得更好的多路复用性能
+                try {
+                    cb.version(HttpClient.Version.HTTP_2);
+                } catch (Throwable ignored) {
+                    // 某些运行环境可能不支持，忽略降级
                 }
                 useClient = cb.build();
             }

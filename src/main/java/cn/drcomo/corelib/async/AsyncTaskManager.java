@@ -244,6 +244,13 @@ public class AsyncTaskManager implements AutoCloseable {
     }
 
     /**
+     * 获取注入的插件实例（只读访问，便于外部进行诊断或名称标识）。
+     */
+    public Plugin getPlugin() {
+        return plugin;
+    }
+
+    /**
      * 与 {@link #shutdown()} 功能相同，方便 try-with-resources 或 onDisable 调用。
      */
     @Override
@@ -297,7 +304,17 @@ public class AsyncTaskManager implements AutoCloseable {
         if (poolSize > 0) {
             return Executors.newFixedThreadPool(poolSize, factory);
         }
-        return Executors.newCachedThreadPool(factory);
+        // 替换为带超时回收能力的可伸缩线程池，降低空闲线程占用
+        ThreadPoolExecutor cached = new ThreadPoolExecutor(
+                0,
+                Math.max(2, Runtime.getRuntime().availableProcessors()),
+                60L,
+                TimeUnit.SECONDS,
+                new SynchronousQueue<>(),
+                factory
+        );
+        cached.allowCoreThreadTimeOut(true);
+        return cached;
     }
 
     /**
@@ -315,9 +332,17 @@ public class AsyncTaskManager implements AutoCloseable {
                 ? customFac
                 : createThreadFactory(plugin, "-Scheduler-");
         if (schedulerSize > 1) {
-            return Executors.newScheduledThreadPool(schedulerSize, factory);
+            ScheduledThreadPoolExecutor pool = new ScheduledThreadPoolExecutor(schedulerSize, factory);
+            pool.setRemoveOnCancelPolicy(true);
+            pool.setKeepAliveTime(60L, TimeUnit.SECONDS);
+            pool.allowCoreThreadTimeOut(true);
+            return pool;
         }
-        return Executors.newSingleThreadScheduledExecutor(factory);
+        ScheduledThreadPoolExecutor single = new ScheduledThreadPoolExecutor(1, factory);
+        single.setRemoveOnCancelPolicy(true);
+        single.setKeepAliveTime(60L, TimeUnit.SECONDS);
+        single.allowCoreThreadTimeOut(true);
+        return single;
     }
 
     /**

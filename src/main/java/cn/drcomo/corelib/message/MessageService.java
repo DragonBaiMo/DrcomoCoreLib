@@ -41,8 +41,8 @@ public class MessageService {
 
     /* -------------------- 私有字段 -------------------- */
 
-    // 插件实例（目前未用到，如有需要可打开）
-    // private final Plugin plugin;
+    // 插件实例（用于确保在主线程与调度任务中安全调用 Bukkit API）
+    private final Plugin plugin;
 
     private final DebugUtil logger;
     private final YamlUtil yamlUtil;
@@ -69,6 +69,10 @@ public class MessageService {
     /** prefix+suffix 对应的正则缓存 */
     private final Map<String, Pattern> delimiterPatternCache = new HashMap<>();
 
+    /** 自定义占位符默认分隔符（用于 key 路径下 custom map 的解析），默认使用 %...% 以保持兼容 */
+    private String defaultCustomPrefix = "%";
+    private String defaultCustomSuffix = "%";
+
     /* -------------------- 构造函数 -------------------- */
 
     public MessageService(Plugin plugin,
@@ -77,6 +81,7 @@ public class MessageService {
                           PlaceholderAPIUtil placeholderUtil,
                           String langConfigPath,
                           String keyPrefix) {
+        this.plugin = plugin;
         this.logger = logger;
         this.yamlUtil = yamlUtil;
         this.placeholderUtil = placeholderUtil;
@@ -85,6 +90,9 @@ public class MessageService {
 
         yamlUtil.loadConfig(langConfigPath);
         loadMessages(langConfigPath);
+        if (this.plugin == null) {
+            logger.warn("MessageService 警告：Plugin 为空，将无法进行主线程切换。");
+        }
     }
 
     /* ==================================================
@@ -117,6 +125,16 @@ public class MessageService {
         if (pattern != null) {
             this.internalPlaceholderPattern = pattern;
         }
+    }
+
+    /**
+     * 设置自定义占位符默认分隔符（仅影响需要 custom map 的解析路径，如按 key 发送/广播时的 custom 替换）。
+     * 默认值为 "%" 和 "%"，调用方可根据语言模板改为 "{" 与 "}"。
+     */
+    public void setDefaultCustomDelimiters(String prefix, String suffix) {
+        this.defaultCustomPrefix = (prefix == null || prefix.isEmpty()) ? "%" : prefix;
+        this.defaultCustomSuffix = (suffix == null || suffix.isEmpty()) ? "%" : suffix;
+        logger.info("已设置默认自定义占位符分隔符: prefix='" + this.defaultCustomPrefix + "' suffix='" + this.defaultCustomSuffix + "'");
     }
 
     /** 注册自定义占位符解析规则（正则级别） */
@@ -429,7 +447,9 @@ public class MessageService {
 
     public void broadcast(String key) {
         String msg = parse(key, null, Collections.emptyMap());
-        if (msg != null) Bukkit.broadcastMessage(msg);
+        if (msg != null && !msg.isBlank()) {
+            runSync(() -> Bukkit.getOnlinePlayers().forEach(p -> p.sendMessage(msg)));
+        }
     }
 
     /**
@@ -445,7 +465,10 @@ public class MessageService {
                           String prefix,
                           String suffix) {
         String parsed = processPlaceholdersWithDelimiter(null, template, custom, prefix, suffix);
-        Bukkit.broadcastMessage(ColorUtil.translateColors(parsed));
+        String colored = ColorUtil.translateColors(parsed);
+        if (colored != null && !colored.isBlank()) {
+            runSync(() -> Bukkit.getOnlinePlayers().forEach(p -> p.sendMessage(colored)));
+        }
     }
 
     /**
@@ -464,14 +487,40 @@ public class MessageService {
 
     public void broadcast(String key, Map<String, String> custom, String permission) {
         broadcastToPlayersWithPerm(permission, p -> {
-            String m = parse(key, p, custom);
+            String m = parseWithDelimiter(key, p, custom, defaultCustomPrefix, defaultCustomSuffix);
             if (m != null) sendColorizedRaw(p, m);
         });
     }
 
     public void broadcastList(String key, Map<String, String> custom, String permission) {
         broadcastToPlayersWithPerm(permission, p -> {
+            // 列表解析仍按默认 %，如需自定义分隔符建议先通过 getList + sendList 并指定分隔符
             parseList(key, p, custom).forEach(m -> sendColorizedRaw(p, m));
+        });
+    }
+
+    /**
+     * 通过语言键广播（支持自定义分隔符）。
+     */
+    public void broadcastByKey(String key,
+                               Map<String, String> custom,
+                               String prefix,
+                               String suffix) {
+        String parsed = parseWithDelimiter(key, null, custom, prefix, suffix);
+        broadcast(parsed, Collections.emptyMap(), "%", "%");
+    }
+
+    /**
+     * 通过语言键广播到具备权限的玩家（支持自定义分隔符）。
+     */
+    public void broadcastByKey(String key,
+                               Map<String, String> custom,
+                               String prefix,
+                               String suffix,
+                               String permission) {
+        broadcastToPlayersWithPerm(permission, p -> {
+            String m = parseWithDelimiter(key, p, custom, prefix, suffix);
+            if (m != null) sendColorizedRaw(p, m);
         });
     }
 
@@ -505,7 +554,7 @@ public class MessageService {
         switch (channel.toLowerCase()) {
             case "chat" -> sendOptimizedChat(player, list);
             case "actionbar" -> sendStagedActionBar(player, list);
-            case "title" -> sendStagedTitle(player, list, Collections.emptyList());
+            case "title" -> sendStagedTitle(player, list, Collections.nCopies(list.size(), ""));
             default -> logger.warn("未知渠道: " + channel);
         }
         contextMessages.remove(context);
@@ -556,7 +605,8 @@ public class MessageService {
         if (custom == null || custom.isEmpty()) return msg;
         Pattern pattern = getDelimiterPattern(prefix, suffix);
         Matcher matcher = pattern.matcher(msg);
-        StringBuilder sb = new StringBuilder();
+        // 预估容量，减少扩容
+        StringBuilder sb = new StringBuilder(Math.max(16, msg.length() + custom.size() * 8));
         while (matcher.find()) {
             String key = matcher.group("key");
             String value = custom.getOrDefault(key, matcher.group(0));
@@ -568,9 +618,11 @@ public class MessageService {
 
     /** 获取或缓存 prefix+suffix 对应的正则 */
     private Pattern getDelimiterPattern(String prefix, String suffix) {
-        String cacheKey = prefix + suffix;
+        String pf = (prefix == null || prefix.isEmpty()) ? "%" : prefix;
+        String sf = (suffix == null || suffix.isEmpty()) ? "%" : suffix;
+        String cacheKey = pf + sf;
         return delimiterPatternCache.computeIfAbsent(cacheKey, k -> {
-            String regex = Pattern.quote(prefix) + "(?<key>.+?)" + Pattern.quote(suffix);
+            String regex = Pattern.quote(pf) + "(?<key>.+?)" + Pattern.quote(sf);
             return Pattern.compile(regex);
         });
     }
@@ -579,7 +631,7 @@ public class MessageService {
     private String applyInternalPlaceholders(Player player, String msg) {
         if (internalHandlers.isEmpty()) return msg;
         Matcher m = internalPlaceholderPattern.matcher(msg);
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder(msg.length() + 16);
         while (m.find()) {
             String key = m.group(1).toLowerCase();
             String argStr = m.group(2);
@@ -600,6 +652,9 @@ public class MessageService {
             StringBuilder sb = new StringBuilder();
             while (m.find()) {
                 String replacement = entry.getValue().apply(player, m);
+                if (replacement == null) {
+                    replacement = m.group(0);
+                }
                 m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
             }
             m.appendTail(sb);
@@ -626,7 +681,7 @@ public class MessageService {
     /** 始终确保通过 ColorUtil 转换颜色再发送 */
     private void sendColorizedRaw(CommandSender target, String msg) {
         if (msg == null || msg.isBlank()) return;
-        target.sendMessage(ColorUtil.translateColors(msg));
+        runSync(() -> target.sendMessage(ColorUtil.translateColors(msg)));
     }
 
     private void sendColorizedList(CommandSender target, List<String> list) {
@@ -634,25 +689,33 @@ public class MessageService {
         list.forEach(m -> sendColorizedRaw(target, m));
     }
 
+    
+
+    @SuppressWarnings("deprecation")
     private void sendActionBarRaw(Player player, String msg) {
         if (player == null || msg == null) return;
-        player.spigot().sendMessage(ChatMessageType.ACTION_BAR,
-                new TextComponent(ColorUtil.translateColors(msg)));
+        // 兼容方式：部分环境 ActionBar 旧 API 标记为过时，保留调用；如需更高级控制请在子插件使用 Adventure API
+        runSync(() -> player.spigot().sendMessage(ChatMessageType.ACTION_BAR,
+                new TextComponent(ColorUtil.translateColors(msg))));
     }
 
+    @SuppressWarnings("deprecation")
     private void sendTitleRaw(Player player, String title, String sub) {
         if (player == null) return;
-        player.sendTitle(ColorUtil.translateColors(title),
+        // 兼容方式：旧 API 标记为过时，行为保持不变
+        runSync(() -> player.sendTitle(ColorUtil.translateColors(title),
                 ColorUtil.translateColors(sub),
-                10, 70, 20);
+                10, 70, 20));
     }
 
     /** 根据权限批量广播 */
     private void broadcastToPlayersWithPerm(String permission, Consumer<Player> action) {
         if (permission == null || action == null) return;
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            if (p.hasPermission(permission)) action.accept(p);
-        }
+        runSync(() -> {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                if (p.hasPermission(permission)) action.accept(p);
+            }
+        });
     }
 
     /** 统一处理上下文消息发送并清理缓存 */
@@ -666,6 +729,21 @@ public class MessageService {
     /** 将 CommandSender 转换为 Player（控制台返回 null） */
     private Player asPlayer(CommandSender sender) {
         return (sender instanceof Player p) ? p : null;
+    }
+
+    /**
+     * 确保在主线程执行 Bukkit API 调用。
+     */
+    private void runSync(Runnable task) {
+        if (task == null) return;
+        if (Bukkit.isPrimaryThread() || plugin == null) {
+            if (plugin == null) {
+                logger.warn("消息在异步上下文且 Plugin 为空，已直接在当前线程执行。请修正构造参数传入有效 Plugin。");
+            }
+            task.run();
+        } else {
+            Bukkit.getScheduler().runTask(plugin, task);
+        }
     }
 
     /* ============ 未使用字段 / 方法放置到最末尾隐藏 ============ */

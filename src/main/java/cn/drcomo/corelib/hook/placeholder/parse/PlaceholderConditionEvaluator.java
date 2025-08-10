@@ -347,10 +347,30 @@ public class PlaceholderConditionEvaluator {
         }
 
         static Cmp of(String s) {
-            for (Cmp c : values()) {
-                if (c.sym.equals(s)) return c;
+                String normalized = normalizeOperator(s);
+                for (Cmp c : values()) {
+                    if (c.sym.equals(normalized)) return c;
+                }
+                throw new IllegalArgumentException("未知运算符: " + s);
             }
-            throw new IllegalArgumentException("未知运算符: " + s);
+
+            private static String normalizeOperator(String op) {
+                if (op == null) return null;
+                switch (op) {
+                    case "=>":
+                        return ">=";
+                    case "=<":
+                        return "<=";
+                    case "<>":
+                    case "=!":
+                        return "!=";
+                    case "<<!":
+                        return "!<<";
+                    case ">>!":
+                        return "!>>";
+                    default:
+                        return op;
+                }
         }
     }
 
@@ -502,6 +522,7 @@ public class PlaceholderConditionEvaluator {
         // 支持的比较运算符
         private static final String[] OPS = {
                 "!>>", "!<<", ">=", "<=", "==", "!=",
+                "=>", "=<", "<>",
                 ">>", "<<", ">", "<", "="
         };
 

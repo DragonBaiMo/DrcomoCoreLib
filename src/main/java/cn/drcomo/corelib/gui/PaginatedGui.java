@@ -158,7 +158,8 @@ public abstract class PaginatedGui {
 
     //================ private helpers =================
     private void registerNavigation() {
-        dispatcher.register(sessionId, s -> s == prevSlot, ctx -> showPrev(ctx.player()));
-        dispatcher.register(sessionId, s -> s == nextSlot, ctx -> showNext(ctx.player()));
+        // 热路径优化：直接按槽位注册，避免每次点击时遍历谓词
+        dispatcher.registerForSlot(sessionId, prevSlot, ctx -> showPrev(ctx.player()));
+        dispatcher.registerForSlot(sessionId, nextSlot, ctx -> showNext(ctx.player()));
     }
 }
