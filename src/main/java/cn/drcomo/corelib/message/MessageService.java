@@ -710,10 +710,12 @@ public class MessageService {
 
     /** 根据权限批量广播 */
     private void broadcastToPlayersWithPerm(String permission, Consumer<Player> action) {
-        if (permission == null || action == null) return;
+        if (action == null) return;
         runSync(() -> {
             for (Player p : Bukkit.getOnlinePlayers()) {
-                if (p.hasPermission(permission)) action.accept(p);
+                if (permission == null || permission.isBlank() || p.hasPermission(permission)) {
+                    action.accept(p);
+                }
             }
         });
     }
