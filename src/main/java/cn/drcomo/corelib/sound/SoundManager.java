@@ -3,6 +3,7 @@ package cn.drcomo.corelib.sound;
 import cn.drcomo.corelib.config.YamlUtil;
 import cn.drcomo.corelib.util.DebugUtil;
 import cn.drcomo.corelib.math.NumberUtil;
+import cn.drcomo.corelib.async.AsyncTaskManager;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -13,6 +14,8 @@ import org.bukkit.plugin.Plugin;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 /**
  * 音效管理类，用于加载、缓存和播放音效。<br/>
@@ -102,12 +105,52 @@ public class SoundManager {
     }
 
     /**
+     * 异步加载音效配置并缓存。
+     * <p>读取与解析将在提供的异步执行器中进行，解析完成后会切回主线程更新缓存。</p>
+     *
+     * @param taskManager 异步任务管理器
+     * @return CompletableFuture，在加载结束后完成
+     */
+    public CompletableFuture<Void> loadSoundsAsync(AsyncTaskManager taskManager) {
+        return taskManager.supplyAsync(() -> {
+            yamlUtil.ensureDirectory("");
+            yamlUtil.copyDefaults(configName, "");
+            yamlUtil.loadConfig(configName);
+            var cfg = yamlUtil.getConfig(configName);
+
+            Map<String, SoundEffectData> temp = new HashMap<>();
+            for (String key : cfg.getKeys(false)) {
+                String soundString = cfg.getString(key);
+                if (soundString == null) continue;
+                try {
+                    SoundEffectData data = parseSoundString(soundString);
+                    if (data != null) {
+                        temp.put(key, data);
+                    }
+                } catch (Exception e) {
+                    logger.error("解析音效配置时发生异常: " + soundString, e);
+                }
+            }
+            return temp;
+        }).thenAcceptAsync(map -> {
+            soundCache.clear();
+            soundCache.putAll(map);
+            logger.info("从 '" + configName + ".yml' 异步加载完成，共缓存 " + soundCache.size() + " 个音效");
+        }, new Executor() {
+            @Override
+            public void execute(Runnable command) {
+                plugin.getServer().getScheduler().runTask(plugin, command);
+            }
+        });
+    }
+
+    /**
      * 重载音效配置
      */
-    public void reloadSounds() {
+    public CompletableFuture<Void> reloadSounds(AsyncTaskManager taskManager) {
         logger.info("开始重载音效配置");
-        loadSounds();
-        logger.info("完成重载音效配置");
+        return loadSoundsAsync(taskManager)
+                .thenRun(() -> logger.info("完成重载音效配置"));
     }
 
     // ===== 查询方法 =====

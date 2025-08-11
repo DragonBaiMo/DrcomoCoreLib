@@ -67,6 +67,10 @@ public class MyAwesomePlugin extends JavaPlugin {
             true            // 找不到音效时警告
         );
         mySoundManager.loadSounds(); // 手动加载音效
+        // 也可异步加载，解析完成后会在主线程更新缓存以避免线程安全问题
+        // AsyncTaskManager asyncManager = new AsyncTaskManager(this, myLogger);
+        // mySoundManager.loadSoundsAsync(asyncManager)
+        //     .thenRun(() -> myLogger.info("音效异步加载完成"));
         // 可随时调整全局音量倍率
         mySoundManager.setVolumeMultiplier(1.2f);
         // 可在需要时自定义音量与音调
