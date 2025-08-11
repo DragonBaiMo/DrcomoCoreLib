@@ -104,9 +104,9 @@ public class MyAwesomePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // 停止所有文件监听器，防止线程泄露
+        // 关闭 YamlUtil，释放监听线程与 WatchService
         if (myYamlUtil != null) {
-            myYamlUtil.stopAllWatches();
+            myYamlUtil.close();
         }
         
         // 如果使用了 AsyncTaskManager，记得关闭以释放线程资源
