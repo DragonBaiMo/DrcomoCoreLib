@@ -21,6 +21,9 @@ import java.util.UUID;
 /**
  * 通用 NBT 工具类，用于操作 Bukkit ItemStack 的 NBT 数据。
  * 替换旧版实现，兼容 NBT-API v2.15.0，支持读取、写入、复制等操作。
+ * <p>
+ * 本类多数写入方法在写入前会先读取原值：若值未变化则直接返回传入的对象，
+ * 仅当需要修改时才克隆并写入，以减少不必要的对象创建。
  *
  * <p>依赖外部包：
  * - NBT-API v2.15.0：提供 NBT、NBTType、ReadableItemNBT、ReadWriteItemNBT 等接口和类。
@@ -74,20 +77,30 @@ public class NBTUtil {
     }
 
     /**
-     * 向 ItemStack 的 NBT 中写入整数值，返回克隆后的 ItemStack。
+     * 向 ItemStack 的 NBT 中写入整数值。
+     * 若原值与待写入值相同，则直接返回原对象；
+     * 仅在需要写入时才克隆并修改。
      *
      * @param item 原 ItemStack 实例，可能为 null。
      * @param key NBT 键名。
      * @param val 要写入的整数值。
-     * @return 修改后的 ItemStack 克隆，或原 item 若操作失败。
+     * @return 原对象或修改后的克隆。
      * @throws Exception 若 NBT 操作异常，记录日志并返回原 item。
      */
     public ItemStack setInt(ItemStack item, String key, int val) {
         if (item == null) return null;
         try {
+            final boolean[] needWrite = {true};
+            NBT.get(item, (ReadableItemNBT nbt) -> {
+                if (nbt.hasTag(key) && nbt.getInteger(key) == val) {
+                    needWrite[0] = false;
+                }
+            });
+            if (!needWrite[0]) return item;
+
             ItemStack clone = item.clone();
             NBT.modify(clone, (ReadWriteItemNBT nbt) -> {
-                nbt.setInteger(key, val);  // 写入整数
+                nbt.setInteger(key, val);
             });
             return clone;
         } catch (Exception ex) {
@@ -120,17 +133,27 @@ public class NBTUtil {
     }
 
     /**
-     * 向 ItemStack 的 NBT 中写入字符串值，返回克隆后的 ItemStack。
+     * 向 ItemStack 的 NBT 中写入字符串值。
+     * 若原值与待写入值一致则返回原对象，避免额外克隆。
      *
      * @param item 原 ItemStack 实例，可能为 null。
      * @param key NBT 键名。
      * @param val 要写入的字符串值。
-     * @return 修改后的 ItemStack 克隆，或原 item 若操作失败。
+     * @return 原对象或修改后的克隆。
      * @throws Exception 若 NBT 操作异常，记录日志并返回原 item。
      */
     public ItemStack setString(ItemStack item, String key, String val) {
         if (item == null) return null;
         try {
+            final boolean[] needWrite = {true};
+            NBT.get(item, (ReadableItemNBT nbt) -> {
+                if (nbt.hasTag(key)) {
+                    String old = nbt.getString(key);
+                    if (Objects.equals(old, val)) needWrite[0] = false;
+                }
+            });
+            if (!needWrite[0]) return item;
+
             ItemStack clone = item.clone();
             NBT.modify(clone, (ReadWriteItemNBT nbt) -> {
                 nbt.setString(key, val);
@@ -165,20 +188,23 @@ public class NBTUtil {
     }
 
     /**
-     * 从 ItemStack 的 NBT 中移除指定键，返回克隆后的 ItemStack。
+     * 从 ItemStack 的 NBT 中移除指定键。
+     * 若键不存在则直接返回原对象。
      *
      * @param item 原 ItemStack 实例，可能为 null。
      * @param key NBT 键名。
-     * @return 修改后的 ItemStack 克隆，或原 item 若操作失败。
+     * @return 原对象或修改后的克隆。
      * @throws Exception 若 NBT 操作异常，记录日志并返回原 item。
      */
     public ItemStack removeKey(ItemStack item, String key) {
         if (item == null) return null;
         try {
+            final boolean[] exists = {false};
+            NBT.get(item, (ReadableItemNBT nbt) -> exists[0] = nbt.hasTag(key));
+            if (!exists[0]) return item;
+
             ItemStack clone = item.clone();
-            NBT.modify(clone, (ReadWriteItemNBT nbt) -> {
-                nbt.removeKey(key);  // 新增接口 removeKey(String)
-            });
+            NBT.modify(clone, (ReadWriteItemNBT nbt) -> nbt.removeKey(key));
             return clone;
         } catch (Exception ex) {
             logger.debug("removeKey 异常: " + ex.getMessage(), ex);
