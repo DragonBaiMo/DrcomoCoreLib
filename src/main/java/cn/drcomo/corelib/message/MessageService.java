@@ -8,6 +8,8 @@ import java.util.IllegalFormatException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -35,6 +37,16 @@ import net.md_5.bungee.api.chat.TextComponent;
  * · 支持上下文消息缓存与多渠道发送
  * · 所有公共 API 保持不变，仅对内部实现做重构
  * · 保证所有对玩家输出均经过 {@link ColorUtil} 进行颜色转换
+ *
+ * 线程安全保证：
+ * · 通过 {@link java.util.concurrent.ConcurrentHashMap} 与
+ *   {@link java.util.concurrent.CopyOnWriteArrayList} 管理上下文消息，
+ *   允许在异步线程安全地写入，在主线程统一发送。
+ * 推荐调用方式：
+ * · 异步线程使用 {@link #storeMessage(Object, String, Map)}、
+ *   {@link #storeMessageList(Object, String, Map)} 收集消息；
+ * · 主线程调用 {@link #sendContext(Object, Player, String)}、
+ *   {@link #sendContextFailures(Object, Player)} 等方法发送并清理。
  * </pre>
  */
 public class MessageService {
@@ -51,7 +63,7 @@ public class MessageService {
     /** 语言文件中的原始键值缓存 */
     private final Map<String, String> messages = new HashMap<>();
     /** 上下文 -> 消息缓存 */
-    private final Map<Object, List<String>> contextMessages = new HashMap<>();
+    private final Map<Object, List<String>> contextMessages = new ConcurrentHashMap<>();
     /** 内部占位符处理器 {key[:args]} */
     private final Map<String, PlaceholderResolver> internalHandlers = new HashMap<>();
 
@@ -67,7 +79,7 @@ public class MessageService {
     /** 额外占位符扩展规则 */
     private final Map<Pattern, BiFunction<Player, Matcher, String>> extraPlaceholderRules = new LinkedHashMap<>();
     /** prefix+suffix 对应的正则缓存 */
-    private final Map<String, Pattern> delimiterPatternCache = new HashMap<>();
+    private final Map<String, Pattern> delimiterPatternCache = new ConcurrentHashMap<>();
 
     /** 自定义占位符默认分隔符（用于 key 路径下 custom map 的解析），默认使用 %...% 以保持兼容 */
     private String defaultCustomPrefix = "%";
@@ -533,11 +545,11 @@ public class MessageService {
 
     public void storeMessage(Object context, String key, Map<String, String> custom) {
         String msg = parse(key, null, custom);
-        if (msg != null) contextMessages.computeIfAbsent(context, k -> new ArrayList<>()).add(msg);
+        if (msg != null) contextMessages.computeIfAbsent(context, k -> new CopyOnWriteArrayList<>()).add(msg);
     }
 
     public void storeMessageList(Object context, String key, Map<String, String> custom) {
-        contextMessages.computeIfAbsent(context, k -> new ArrayList<>())
+        contextMessages.computeIfAbsent(context, k -> new CopyOnWriteArrayList<>())
                 .addAll(parseList(key, null, custom));
     }
 
@@ -728,6 +740,7 @@ public class MessageService {
                                      BiConsumer<CommandSender, String> fn) {
         List<String> list = contextMessages.getOrDefault(context, Collections.emptyList());
         list.forEach(msg -> fn.accept(player, msg));
+        // 发送完毕后移除上下文，避免并发修改异常
         contextMessages.remove(context);
     }
 
