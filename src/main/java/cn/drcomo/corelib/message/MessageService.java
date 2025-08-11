@@ -446,10 +446,12 @@ public class MessageService {
     /* -------- 广播 -------- */
 
     public void broadcast(String key) {
-        String msg = parse(key, null, Collections.emptyMap());
-        if (msg != null && !msg.isBlank()) {
-            runSync(() -> Bukkit.getOnlinePlayers().forEach(p -> p.sendMessage(msg)));
-        }
+        broadcastToPlayersWithPerm(null, p -> {
+            String msg = parse(key, p, Collections.emptyMap());
+            if (msg != null && !msg.isBlank()) {
+                sendColorizedRaw(p, msg);
+            }
+        });
     }
 
     /**
@@ -464,11 +466,10 @@ public class MessageService {
                           Map<String, String> custom,
                           String prefix,
                           String suffix) {
-        String parsed = processPlaceholdersWithDelimiter(null, template, custom, prefix, suffix);
-        String colored = ColorUtil.translateColors(parsed);
-        if (colored != null && !colored.isBlank()) {
-            runSync(() -> Bukkit.getOnlinePlayers().forEach(p -> p.sendMessage(colored)));
-        }
+        broadcastToPlayersWithPerm(null, p -> {
+            String m = processPlaceholdersWithDelimiter(p, template, custom, prefix, suffix);
+            sendColorizedRaw(p, ColorUtil.translateColors(m));
+        });
     }
 
     /**
@@ -506,8 +507,10 @@ public class MessageService {
                                Map<String, String> custom,
                                String prefix,
                                String suffix) {
-        String parsed = parseWithDelimiter(key, null, custom, prefix, suffix);
-        broadcast(parsed, Collections.emptyMap(), "%", "%");
+        broadcastToPlayersWithPerm(null, p -> {
+            String m = parseWithDelimiter(key, p, custom, prefix, suffix);
+            if (m != null) sendColorizedRaw(p, m);
+        });
     }
 
     /**
