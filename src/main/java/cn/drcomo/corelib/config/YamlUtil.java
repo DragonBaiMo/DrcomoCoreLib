@@ -529,7 +529,7 @@ public class YamlUtil {
                 logger.debug("文件监听线程已结束");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                logger.warn("等待监听线程结束时被中断", e);
+                logger.error("等待监听线程结束时被中断", e);
             }
             sharedWatcherThread = null;
         }

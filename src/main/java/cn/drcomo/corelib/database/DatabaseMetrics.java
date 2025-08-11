@@ -1,17 +1,19 @@
 package cn.drcomo.corelib.database;
 
 /**
- * 数据库运行统计信息。
+ * 数据库运行统计信息，记录连接借出次数、语句执行总数、累计耗时以及缓存命中次数。
  */
 public class DatabaseMetrics {
     private final long borrowedConnections;
     private final long executedStatements;
     private final long totalExecutionTimeMillis;
+    private final long statementCacheHits;
 
-    public DatabaseMetrics(long borrowedConnections, long executedStatements, long totalExecutionTimeMillis) {
+    public DatabaseMetrics(long borrowedConnections, long executedStatements, long totalExecutionTimeMillis, long statementCacheHits) {
         this.borrowedConnections = borrowedConnections;
         this.executedStatements = executedStatements;
         this.totalExecutionTimeMillis = totalExecutionTimeMillis;
+        this.statementCacheHits = statementCacheHits;
     }
 
     public long getBorrowedConnections() {
@@ -24,6 +26,15 @@ public class DatabaseMetrics {
 
     public long getTotalExecutionTimeMillis() {
         return totalExecutionTimeMillis;
+    }
+
+    /**
+     * 获取预编译语句缓存命中次数。
+     *
+     * @return 缓存命中次数
+     */
+    public long getStatementCacheHits() {
+        return statementCacheHits;
     }
 
     /**
