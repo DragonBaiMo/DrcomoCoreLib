@@ -37,7 +37,7 @@ public class AsyncTaskManager implements AutoCloseable {
         this(plugin, logger,
              createDefaultExecutor(plugin, 0, null),
              createDefaultScheduler(plugin, 1, null),
-             createPriorityExecutor(plugin));
+             createPriorityExecutor(plugin, 1));
     }
 
     private AsyncTaskManager(Plugin plugin, DebugUtil logger,
@@ -73,6 +73,9 @@ public class AsyncTaskManager implements AutoCloseable {
 
     /**
      * 提交带优先级的 Supplier 任务。
+     * <p>默认优先级线程池大小为 1，能够保证同一优先级任务按提交顺序执行。
+     * 当通过 {@link Builder#priorityPoolSize(int)} 设置线程数大于 1 时，
+     * 同一优先级的任务可能并发运行，其完成顺序可能发生变化。</p>
      *
      * @param supplier 任务提供者
      * @param priority 优先级
@@ -88,6 +91,9 @@ public class AsyncTaskManager implements AutoCloseable {
 
     /**
      * 提交带优先级的 Runnable 任务。
+     * <p>默认优先级线程池大小为 1，可保证同一优先级任务按提交顺序执行。
+     * 当 {@link Builder#priorityPoolSize(int)} 大于 1 时，同级任务的执行顺序
+     * 可能受并发影响而改变。</p>
      *
      * @param task     任务
      * @param priority 优先级
@@ -383,6 +389,7 @@ public class AsyncTaskManager implements AutoCloseable {
         private ScheduledExecutorService scheduler;
         private int poolSize = 0;
         private int schedulerSize = 1;
+        private int priorityPoolSize = 1;
         private ThreadFactory threadFactory;
         private ThreadFactory schedulerFactory;
 
@@ -427,6 +434,15 @@ public class AsyncTaskManager implements AutoCloseable {
             return this;
         }
 
+        /**
+         * 设置优先级线程池大小（默认 1）。
+         * 当线程数大于 1 时，同一优先级任务的执行顺序可能出现变化。
+         */
+        public Builder priorityPoolSize(int size) {
+            this.priorityPoolSize = Math.max(1, size);
+            return this;
+        }
+
         /** 构建 AsyncTaskManager 实例 */
         public AsyncTaskManager build() {
             ExecutorService ex = executor != null
@@ -435,16 +451,22 @@ public class AsyncTaskManager implements AutoCloseable {
             ScheduledExecutorService sch = scheduler != null
                     ? scheduler
                     : createDefaultScheduler(plugin, schedulerSize, schedulerFactory);
-            ThreadPoolExecutor pr = createPriorityExecutor(plugin);
+            ThreadPoolExecutor pr = createPriorityExecutor(plugin, priorityPoolSize);
             return new AsyncTaskManager(plugin, logger, ex, sch, pr);
         }
     }
 
-    /** 创建带优先级的线程池 */
-    private static ThreadPoolExecutor createPriorityExecutor(Plugin plugin) {
+    /**
+     * 创建带优先级的线程池。
+     *
+     * @param plugin 插件实例
+     * @param core   线程数
+     * @return ThreadPoolExecutor
+     */
+    private static ThreadPoolExecutor createPriorityExecutor(Plugin plugin, int core) {
         return new ThreadPoolExecutor(
-                1,
-                1,
+                core,
+                core,
                 0L,
                 TimeUnit.MILLISECONDS,
                 new PriorityBlockingQueue<>(),
