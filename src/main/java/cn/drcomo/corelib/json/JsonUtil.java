@@ -19,6 +19,10 @@ public class JsonUtil {
 
     private final DebugUtil logger;
     private final Gson gson;
+    /**
+     * 用于美化输出的 {@link Gson} 实例。
+     */
+    private final Gson prettyGson;
 
     /**
      * 构造函数，使用默认的 {@link Gson} 配置。
@@ -26,7 +30,7 @@ public class JsonUtil {
      * @param logger DebugUtil 实例
      */
     public JsonUtil(DebugUtil logger) {
-        this(logger, new GsonBuilder().create());
+        this(logger, new GsonBuilder().create(), new GsonBuilder().setPrettyPrinting().create());
     }
 
     /**
@@ -36,8 +40,21 @@ public class JsonUtil {
      * @param gson   自定义的 Gson 实例
      */
     public JsonUtil(DebugUtil logger, Gson gson) {
+        this(logger, gson, new GsonBuilder().setPrettyPrinting().create());
+    }
+
+    /**
+     * 构造函数，允许自定义常规 {@link Gson} 与美化输出的 {@code prettyGson} 实例。
+     *
+     * @param logger     DebugUtil 实例
+     * @param gson       自定义的 Gson 实例
+     * @param prettyGson 自定义的美化输出 Gson 实例
+     */
+    public JsonUtil(DebugUtil logger, Gson gson, Gson prettyGson) {
         this.logger = logger;
         this.gson = gson == null ? new GsonBuilder().create() : gson;
+        this.prettyGson =
+                prettyGson == null ? new GsonBuilder().setPrettyPrinting().create() : prettyGson;
     }
 
     /**
@@ -166,11 +183,12 @@ public class JsonUtil {
      *
      * @param json 原始 JSON
      * @return 格式化后的 JSON
+     * @implNote 该方法线程安全，可在多线程环境下安全使用。
      */
     public String prettyPrint(String json) {
         try {
             Object obj = gson.fromJson(json, Object.class);
-            return new GsonBuilder().setPrettyPrinting().create().toJson(obj);
+            return prettyGson.toJson(obj);
         } catch (JsonParseException e) {
             logger.error("美化 JSON 失败", e);
             return json;
