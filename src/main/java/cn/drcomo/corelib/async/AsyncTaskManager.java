@@ -28,6 +28,13 @@ public class AsyncTaskManager implements AutoCloseable {
     private final ThreadPoolExecutor priorityExecutor;
 
     /**
+     * 各优先级任务计数，使用原子变量保证并发环境下的可见性与原子性。
+     */
+    private final AtomicInteger highCount = new AtomicInteger();
+    private final AtomicInteger normalCount = new AtomicInteger();
+    private final AtomicInteger lowCount = new AtomicInteger();
+
+    /**
      * 使用默认线程池构造异步任务管理器。
      *
      * @param plugin 插件实例
@@ -80,6 +87,7 @@ public class AsyncTaskManager implements AutoCloseable {
      * @return Future 句柄
      */
     public <T> Future<T> submitWithPriority(Supplier<T> supplier, TaskPriority priority) {
+        incrementCounter(priority);
         PrioritizedFutureTask<T> future = new PrioritizedFutureTask<>(
                 wrapCallable(() -> supplier.get()), priority);
         priorityExecutor.execute(future);
@@ -94,6 +102,7 @@ public class AsyncTaskManager implements AutoCloseable {
      * @return Future 句柄
      */
     public Future<?> runWithPriority(Runnable task, TaskPriority priority) {
+        incrementCounter(priority);
         PrioritizedFutureTask<?> future = new PrioritizedFutureTask<>(wrapRunnable(task), null, priority);
         priorityExecutor.execute(future);
         return future;
@@ -101,22 +110,12 @@ public class AsyncTaskManager implements AutoCloseable {
 
     /**
      * 获取优先级队列状态。
+     * <p>直接读取原子计数器，避免遍历队列造成的性能开销。</p>
      *
      * @return TaskQueueStatus
      */
     public TaskQueueStatus getQueueStatus() {
-        int high = 0, normal = 0, low = 0;
-        for (Runnable r : priorityExecutor.getQueue()) {
-            if (r instanceof PrioritizedFutureTask<?> task) {
-                TaskPriority p = task.getPriority();
-                switch (p) {
-                    case HIGH -> high++;
-                    case NORMAL -> normal++;
-                    case LOW -> low++;
-                }
-            }
-        }
-        return new TaskQueueStatus(high, normal, low);
+        return new TaskQueueStatus(highCount.get(), normalCount.get(), lowCount.get());
     }
 
     /**
@@ -259,6 +258,50 @@ public class AsyncTaskManager implements AutoCloseable {
     }
 
     //================ private helpers =================
+
+    /**
+     * 根据优先级递增计数器。
+     *
+     * @param priority 任务优先级
+     */
+    private void incrementCounter(TaskPriority priority) {
+        switch (priority) {
+            case HIGH -> {
+                int count = highCount.incrementAndGet();
+                logger.debug("高优先级任务计数 +1，当前：" + count);
+            }
+            case NORMAL -> {
+                int count = normalCount.incrementAndGet();
+                logger.debug("普通优先级任务计数 +1，当前：" + count);
+            }
+            case LOW -> {
+                int count = lowCount.incrementAndGet();
+                logger.debug("低优先级任务计数 +1，当前：" + count);
+            }
+        }
+    }
+
+    /**
+     * 根据优先级递减计数器。
+     *
+     * @param priority 任务优先级
+     */
+    private void decrementCounter(TaskPriority priority) {
+        switch (priority) {
+            case HIGH -> {
+                int count = highCount.decrementAndGet();
+                logger.debug("高优先级任务已完成，剩余：" + count);
+            }
+            case NORMAL -> {
+                int count = normalCount.decrementAndGet();
+                logger.debug("普通优先级任务已完成，剩余：" + count);
+            }
+            case LOW -> {
+                int count = lowCount.decrementAndGet();
+                logger.debug("低优先级任务已完成，剩余：" + count);
+            }
+        }
+    }
 
     /**
      * 包装 Runnable，使其在执行异常时记录日志。
@@ -455,7 +498,7 @@ public class AsyncTaskManager implements AutoCloseable {
     /**
      * 带优先级的 FutureTask，用于 PriorityBlockingQueue 排序。
      */
-    private static class PrioritizedFutureTask<V> extends FutureTask<V>
+    private class PrioritizedFutureTask<V> extends FutureTask<V>
             implements Comparable<PrioritizedFutureTask<?>> {
 
         private final TaskPriority priority;
@@ -472,6 +515,11 @@ public class AsyncTaskManager implements AutoCloseable {
 
         TaskPriority getPriority() {
             return priority;
+        }
+
+        @Override
+        protected void done() {
+            decrementCounter(priority);
         }
 
         @Override
