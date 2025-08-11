@@ -509,15 +509,34 @@ public class YamlUtil {
 
     /**
      * 停止并关闭所有文件监听
+     *
+     * @deprecated 请改用 {@link #close()}，其会额外等待监听线程结束
      */
+    @Deprecated
     public void stopAllWatches() {
+        close();
+    }
+
+    /**
+     * 关闭所有由 YamlUtil 创建的资源
+     * <p>必须在插件卸载时调用，以防止文件监听线程与 WatchService 未释放造成资源泄漏。</p>
+     */
+    public void close() {
         if (sharedWatcherThread != null) {
             sharedWatcherThread.interrupt();
+            try {
+                sharedWatcherThread.join();
+                logger.debug("文件监听线程已结束");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.warn("等待监听线程结束时被中断", e);
+            }
             sharedWatcherThread = null;
         }
         if (sharedWatcher != null) {
             try {
                 sharedWatcher.close();
+                logger.debug("WatchService 已关闭");
             } catch (IOException e) {
                 logger.error("关闭 WatchService 失败", e);
             }
@@ -527,7 +546,7 @@ public class YamlUtil {
         watchedFileMap.clear();
         callbackMap.clear();
         clearJarCache();
-        logger.info("所有文件监听已停止。");
+        logger.info("YamlUtil 资源已关闭");
     }
 
     /**
