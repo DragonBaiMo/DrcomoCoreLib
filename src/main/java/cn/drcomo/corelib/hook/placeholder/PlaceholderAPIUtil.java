@@ -6,8 +6,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -29,6 +29,8 @@ import java.util.function.Function;
  *       在 resolver 内部可通过 {@link #splitArgs(String)} 拆分多参数;<br>
  *    3. 在文本中使用 `%<identifier>_<key>_<arg1>_<arg2>…%` 或先用 `{key}` 自定义占位符;<br>
  *    4. 解析时调用 {@link #parse(Player, String)} 或 {@link #parse(Player, String, Map)}。<br>
+ * <br>
+ *  ⚠️ 占位符注册可在异步线程调用，但解析仍需在主线程执行。<br>
  * ======================================================================
  */
 public class PlaceholderAPIUtil {
@@ -37,7 +39,7 @@ public class PlaceholderAPIUtil {
     private static final int MAX_PARSE_ITERATIONS = 10;
 
     private final Plugin plugin;
-    private final Map<String, BiFunction<Player, String, String>> handlers = new HashMap<>();
+    private final Map<String, BiFunction<Player, String, String>> handlers = new ConcurrentHashMap<>();
     private final String identifier;
     private final PlaceholderExpansion expansion;
     private final String authors;

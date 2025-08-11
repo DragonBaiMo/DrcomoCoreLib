@@ -19,13 +19,17 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 /**
  * SQLite 数据库工具，管理连接、初始化表结构以及基础 CRUD 操作。
  * <p>自 1.1 起内部使用 HikariCP 维护连接池，确保在多线程环境下安全获取连接。
- * 同时提供一系列异步方法，便于在后台执行数据库操作。</p>
+ * 同时提供一系列异步方法，便于在后台执行数据库操作。
+ * 异步任务可通过 {@link #setExecutor(Executor)} 注入自定义执行器，
+ * 若未设置则回退到 {@link ForkJoinPool#commonPool()}。</p>
  */
 public class SQLiteDB {
 
@@ -43,6 +47,8 @@ public class SQLiteDB {
      */
     private final Map<String, PreparedStatement> statementCache = new ConcurrentHashMap<>();
     private final AtomicLong cacheHits = new AtomicLong();
+    /** 异步任务执行器，未设置时回退到 ForkJoinPool.commonPool */
+    private Executor executor;
 
     /**
      * 构造方法。
@@ -64,6 +70,17 @@ public class SQLiteDB {
      */
     public SQLiteDBConfig getConfig() {
         return config;
+    }
+
+    /**
+     * 设置异步任务执行器。
+     * <p>建议在调用 {@link #connect()} 或插件初始化阶段注入来自 AsyncTaskManager 的线程池，
+     * 以减少线程上下文切换。未设置时默认使用 {@link ForkJoinPool#commonPool()}。</p>
+     *
+     * @param executor 自定义执行器
+     */
+    public void setExecutor(Executor executor) {
+        this.executor = executor;
     }
 
     /**
@@ -426,13 +443,14 @@ public class SQLiteDB {
      * 通用异步执行封装，自动捕获异常并封装为 CompletionException。
      */
     private <T> CompletableFuture<T> runAsync(SqlCallable<T> task) {
+        Executor exec = this.executor != null ? this.executor : ForkJoinPool.commonPool();
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return task.call();
             } catch (Exception e) {
                 throw new CompletionException(e);
             }
-        });
+        }, exec);
     }
 
     /** 私有功能接口，用于异步方法封装 */
