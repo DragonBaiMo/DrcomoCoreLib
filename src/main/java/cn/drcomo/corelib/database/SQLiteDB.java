@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
@@ -37,6 +38,11 @@ public class SQLiteDB {
     private final AtomicLong borrowedConnections = new AtomicLong();
     private final AtomicLong executedStatements = new AtomicLong();
     private final AtomicLong totalExecutionTime = new AtomicLong();
+    /**
+     * 预编译语句缓存，键为 SQL 模板
+     */
+    private final Map<String, PreparedStatement> statementCache = new ConcurrentHashMap<>();
+    private final AtomicLong cacheHits = new AtomicLong();
 
     /**
      * 构造方法。
@@ -93,6 +99,13 @@ public class SQLiteDB {
     }
 
     public void disconnect() {
+        statementCache.values().forEach(ps -> {
+            try {
+                ps.close();
+            } catch (SQLException ignored) {
+            }
+        });
+        statementCache.clear();
         if (dataSource != null) {
             dataSource.close();
             dataSource = null;
@@ -118,7 +131,7 @@ public class SQLiteDB {
      * @return 当前统计信息
      */
     public DatabaseMetrics getMetrics() {
-        return new DatabaseMetrics(borrowedConnections.get(), executedStatements.get(), totalExecutionTime.get());
+        return new DatabaseMetrics(borrowedConnections.get(), executedStatements.get(), totalExecutionTime.get(), cacheHits.get());
     }
 
     /**
@@ -170,15 +183,18 @@ public class SQLiteDB {
      */
     public int executeUpdate(String sql, Object... params) throws SQLException {
         long start = System.currentTimeMillis();
-        Connection conn = borrowConnection();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        boolean inTx = txConnection.get() != null;
+        PreparedStatement ps = getPreparedStatement(sql);
+        try {
             setParams(ps, params);
             int rows = ps.executeUpdate();
-            commitIfNeeded(conn);
+            commitIfNeeded(ps.getConnection());
             recordExecution(start, 1);
             return rows;
         } finally {
-            returnConnection(conn);
+            if (inTx) {
+                ps.close();
+            }
         }
     }
 
@@ -194,15 +210,18 @@ public class SQLiteDB {
      */
     public <T> T queryOne(String sql, ResultSetHandler<T> handler, Object... params) throws SQLException {
         long start = System.currentTimeMillis();
-        Connection conn = borrowConnection();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        boolean inTx = txConnection.get() != null;
+        PreparedStatement ps = getPreparedStatement(sql);
+        try {
             setParams(ps, params);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? handler.handle(rs) : null;
             }
         } finally {
             recordExecution(start, 1);
-            returnConnection(conn);
+            if (inTx) {
+                ps.close();
+            }
         }
     }
 
@@ -219,8 +238,9 @@ public class SQLiteDB {
     public <T> List<T> queryList(String sql, ResultSetHandler<T> handler, Object... params) throws SQLException {
         long start = System.currentTimeMillis();
         List<T> list = new ArrayList<>();
-        Connection conn = borrowConnection();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        boolean inTx = txConnection.get() != null;
+        PreparedStatement ps = getPreparedStatement(sql);
+        try {
             setParams(ps, params);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -229,7 +249,9 @@ public class SQLiteDB {
             }
         } finally {
             recordExecution(start, 1);
-            returnConnection(conn);
+            if (inTx) {
+                ps.close();
+            }
         }
         return list;
     }
@@ -373,18 +395,22 @@ public class SQLiteDB {
             return new int[0];
         }
         long start = System.currentTimeMillis();
-        Connection conn = borrowConnection();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        boolean inTx = txConnection.get() != null;
+        PreparedStatement ps = getPreparedStatement(sql);
+        try {
             for (Object[] params : paramsList) {
                 setParams(ps, params);
                 ps.addBatch();
             }
             int[] result = ps.executeBatch();
-            commitIfNeeded(conn);
+            commitIfNeeded(ps.getConnection());
             recordExecution(start, paramsList.size());
+            ps.clearBatch();
             return result;
         } finally {
-            returnConnection(conn);
+            if (inTx) {
+                ps.close();
+            }
         }
     }
 
@@ -451,6 +477,30 @@ public class SQLiteDB {
                 ps.setObject(i + 1, params[i]);
             }
         }
+    }
+
+    /**
+     * 根据 SQL 模板获取预编译语句，未命中时自动创建并加入缓存。
+     * 事务环境下不使用缓存，避免连接混用。
+     *
+     * @param sql SQL 模板
+     * @return 对应的 PreparedStatement
+     */
+    private PreparedStatement getPreparedStatement(String sql) throws SQLException {
+        Connection txConn = txConnection.get();
+        if (txConn != null) {
+            return txConn.prepareStatement(sql);
+        }
+        PreparedStatement cached = statementCache.get(sql);
+        if (cached != null) {
+            cacheHits.incrementAndGet();
+            return cached;
+        }
+        Connection conn = dataSource.getConnection();
+        borrowedConnections.incrementAndGet();
+        PreparedStatement ps = conn.prepareStatement(sql);
+        statementCache.put(sql, ps);
+        return ps;
     }
 
     /** 获取连接：如果在事务中返回同一连接，否则从池中获取新连接 */
