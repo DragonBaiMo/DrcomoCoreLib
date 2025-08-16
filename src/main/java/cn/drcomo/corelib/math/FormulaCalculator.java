@@ -1,9 +1,12 @@
 package cn.drcomo.corelib.math;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.concurrent.ThreadLocalRandom;
 
 import net.objecthunter.exp4j.Expression;
 import net.objecthunter.exp4j.ExpressionBuilder;
@@ -305,6 +308,39 @@ public final class FormulaCalculator {
             public double apply(double... args) {
                 // percentage(value, total) = (value / total) * 100
                 return (args[0] / args[1]) * 100.0;
+            }
+        });
+
+        // 随机与小数位处理：统一为一个函数 random(min, max, decimals)
+        functions.put("random", new Function("random", 3) {
+            @Override
+            public double apply(double... args) {
+                // random(min, max, decimals)
+                // decimals < 0 表示不保留小数；>=0 则四舍五入保留对应小数位
+                double a = args[0];
+                double b = args[1];
+                int scale = (int) Math.round(args[2]);
+                double min = Math.min(a, b);
+                double max = Math.max(a, b);
+                if (Double.isNaN(min) || Double.isNaN(max) || Double.isInfinite(min) || Double.isInfinite(max)) {
+                    return Double.NaN;
+                }
+                if (min == max) {
+                    return formatWithScale(min, scale);
+                }
+                double val = ThreadLocalRandom.current().nextDouble(min, max);
+                return formatWithScale(val, scale);
+            }
+
+            private double formatWithScale(double value, int scale) {
+                if (scale < 0) {
+                    return value;
+                }
+                if (scale > 15) {
+                    scale = 15; // 避免不必要的精度风险
+                }
+                BigDecimal bd = BigDecimal.valueOf(value).setScale(scale, RoundingMode.HALF_UP);
+                return bd.doubleValue();
             }
         });
         
