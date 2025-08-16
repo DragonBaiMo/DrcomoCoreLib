@@ -236,3 +236,24 @@
           * `path` (`String`): 配置路径。
           * `type` (`Class<T>`): 期望的类型，例如 `String.class`。
           * `defaultValue` (`T`): 默认值。
+
+
+**4. 与消息颜色预解析协同（最佳实践）**
+
+  * 要点：颜色/渐变解析较耗时，应前移到“配置重载/监听回调”阶段完成一次性预解析。
+  * 做法：挑选相对静态的键，`ColorUtil.translateColors(...)` 后写入业务侧缓存；发送阶段仅做占位符替换。
+  * 收益：降低高频发送的 CPU 开销。
+
+```java
+// 极简思路：变更→重载→回调内重建缓存
+Map<String, String> cache = new HashMap<>();
+void rebuild(MessageService ms, List<String> keys) {
+  cache.clear();
+  for (String k : keys) {
+    String raw = ms.getRaw(k);
+    if (raw != null) cache.put(k, ColorUtil.translateColors(raw));
+  }
+}
+yamlUtil.watchConfig("languages/zh_CN", cfg -> rebuild(messageService, keys));
+// 发送：papi.replace(player, cache.getOrDefault(key, messageService.getRaw(key)));
+```

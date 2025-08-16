@@ -32,6 +32,12 @@ import java.util.jar.JarFile;
 /**
  * 工具类：管理 Bukkit 插件的 YAML 配置文件。
  * 提供目录创建、JAR 内资源复制、配置加载/重载/保存、读取带默认值的方法，以及文件变动监听。
+ *
+ * 与消息颜色预解析的协同：
+ * · 若语言/文本模板中使用了 <gradient:...>、<color:...>、&#RRGGBB 等标签，建议在配置加载或重载完成后，
+ *   由业务侧遍历相关键并调用 ColorUtil.translateColors 进行一次性“颜色预解析”，将结果缓存起来（例如 Map<String,String> precolored）。
+ * · 在 {@link #reloadConfig(String)} 或 {@link #watchConfig(String, java.util.function.Consumer)} 回调中触发上述预解析，
+ *   可避免在每次消息发送阶段重复进行正则匹配与逐字符渐变插色，降低运行期开销。
  */
 public class YamlUtil {
     private final Plugin plugin;
@@ -276,6 +282,8 @@ public class YamlUtil {
                 YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
                 configs.put(fileName, cfg);
                 logger.info("重载配置完成: " + fileName);
+                // 提示：如该配置承载了消息模板（含颜色标签），此处重载后应在业务层触发一次颜色预解析与缓存，
+                // 以减少后续消息发送阶段的解析成本。
             } catch (Exception e) {
                 logger.error("重载配置失败: " + fileName, e);
             }
@@ -623,6 +631,8 @@ public class YamlUtil {
                                     logger.info("检测到配置文件修改，正在重载: " + name);
                                     plugin.getServer().getScheduler().runTask(plugin, () -> {
                                         reloadConfig(name);
+                                        // 回调中建议：对与该配置相关的消息模板执行颜色预解析与缓存，
+                                        // 以避免运行期重复解析 <gradient>/<color>/HEX 颜色标签。
                                         cb.accept(getConfig(name));
                                     });
                                 }

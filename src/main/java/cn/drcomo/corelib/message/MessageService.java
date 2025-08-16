@@ -38,6 +38,15 @@ import net.md_5.bungee.api.chat.TextComponent;
  * · 所有公共 API 保持不变，仅对内部实现做重构
  * · 保证所有对玩家输出均经过 {@link ColorUtil} 进行颜色转换
  *
+ * 性能与最佳实践：
+ * · 渐变与 CSS 颜色解析（如 <gradient:...>、<color:...>、&#RRGGBB）在运行期会产生一定正则与逐字符计算开销。
+ * · 建议在语言文件加载/重载（如 {@link #reloadLanguages()}）后，预先调用 {@link ColorUtil#translateColors(String)}
+ *   对相对静态的消息模板进行“颜色预解析”并缓存（可在业务侧维护额外的 precolored 缓存 Map）。
+ * · 发送阶段仅做占位符替换（若需要），从缓存中取已预解析颜色的模板，避免在每次 send 时重复做颜色解析。
+ * · 即使通过本服务发送会再次调用 {@link ColorUtil#translateColors(String)}，对已是§格式/无 HEX 的文本开销极低，
+ *   但仍建议缓存以规避潜在的渐变/复杂 CSS 颜色标签重复解析。
+ * · 占位符（内部/自定义/PlaceholderAPI）与颜色解析互不影响，先预解析颜色、后按需替换占位符即可。
+ *
  * 线程安全保证：
  * · 通过 {@link java.util.concurrent.ConcurrentHashMap} 与
  *   {@link java.util.concurrent.CopyOnWriteArrayList} 管理上下文消息，
@@ -118,6 +127,10 @@ public class MessageService {
         messages.clear();
         loadMessages(langConfigPath);
         logger.info("语言文件重载完成，共 " + messages.size() + " 条");
+        // 性能建议：此处仅重新读入原始模板。如业务侧存在大量使用 <gradient>/<color>/&#RRGGBB 的静态文案，
+        // 可在本方法调用后，由业务层遍历 messages 并将需要的键进行一次 ColorUtil.translateColors 颜色预解析，
+        // 将结果放入自定义的预解析缓存（例如 precoloredMessages）。
+        // 运行期发送时再做占位符替换并取该缓存，可减少每次发送的颜色解析开销。
     }
 
     /** 切换语言文件并立即重载 */
@@ -249,7 +262,7 @@ public class MessageService {
      */
     @Deprecated
     public String parse(String key, Player player, Map<String, String> custom) {
-        return parseWithDelimiter(key, player, custom, "%", "%");
+        return parseWithDelimiter(key, player, custom, defaultCustomPrefix, defaultCustomSuffix);
     }
 
     public String parseWithDelimiter(String key,
@@ -276,7 +289,7 @@ public class MessageService {
         List<String> raw = getList(key);
         List<String> out = new ArrayList<>(raw.size());
         for (String line : raw) {
-            out.add(processPlaceholdersWithDelimiter(player, line, custom, "%", "%"));
+            out.add(processPlaceholdersWithDelimiter(player, line, custom, defaultCustomPrefix, defaultCustomSuffix));
         }
         return out;
     }
@@ -507,7 +520,8 @@ public class MessageService {
 
     public void broadcastList(String key, Map<String, String> custom, String permission) {
         broadcastToPlayersWithPerm(permission, p -> {
-            // 列表解析仍按默认 %，如需自定义分隔符建议先通过 getList + sendList 并指定分隔符
+            // 列表解析遵循默认分隔符设置（可通过 setDefaultCustomDelimiters 配置），
+            // 如需临时自定义分隔符，请使用 getList + sendList(…, prefix, suffix)
             parseList(key, p, custom).forEach(m -> sendColorizedRaw(p, m));
         });
     }
@@ -696,6 +710,9 @@ public class MessageService {
     /** 始终确保通过 ColorUtil 转换颜色再发送 */
     private void sendColorizedRaw(CommandSender target, String msg) {
         if (msg == null || msg.isBlank()) return;
+        // 注意：若调用方已在配置重载阶段对文本做了颜色预解析（已包含 §x/§RRGGBB 或 § 传统色），
+        // 再次调用 translateColors 的成本很小（HEX 与标签匹配将快速短路），但仍建议在上游尽量缓存，
+        // 以避免对包含 <gradient>/<color> 标签的文本在运行期重复解析。
         runSync(() -> target.sendMessage(ColorUtil.translateColors(msg)));
     }
 
