@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>DrcomoCoreLib JavaDocs</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">DrcomoCoreLib JavaDocs</h1>
+</header>
+<h1 id="drcomocorelib-子插件开发者指南"><strong>DrcomoCoreLib
+子插件开发者指南</strong></h1>
+<h2 id="安装与依赖"><strong>安装与依赖</strong></h2>
+<ol type="1">
+<li><p>将 <code>DrcomoCoreLib.jar</code> 放入服务器的
+<code>plugins</code> 文件夹。</p></li>
+<li><p>在你的插件 <code>plugin.yml</code> 中添加依赖：</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">depend</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">DrcomoCoreLib</span><span class="kw">]</span></span></code></pre></div></li>
+</ol>
+<h2 id="核心使用范例"><strong>核心使用范例</strong></h2>
+<p><code>DrcomoCoreLib</code>
+的所有工具类都不能直接使用，你必须在你的插件中通过 <code>new</code>
+关键字创建它们的实例，并将依赖注入。</p>
+<h3 id="基础实例化模式"><strong>基础实例化模式</strong></h3>
+<p>根据 <code>DrcomoCoreLib</code> 主类的设计理念，该类由 Bukkit/Spigot
+服务器自动管理，开发者<strong>不应也无需</strong>手动创建其实例。开发者需要关注的是如何在自己的插件中，正确地实例化和使用本库提供的其他工具类。</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">// 在你的插件主类的 onEnable() 方法中</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">cn</span><span class="op">.</span><span class="im">drcomo</span><span class="op">.</span><span class="im">corelib</span><span class="op">.*;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">public</span> <span class="kw">class</span> MyAwesomePlugin <span class="kw">extends</span> JavaPlugin <span class="op">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> DebugUtil myLogger<span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> YamlUtil myYamlUtil<span class="op">;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> YamlUtil<span class="op">.</span><span class="fu">ConfigWatchHandle</span> configHandle<span class="op">;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> SoundManager mySoundManager<span class="op">;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> SkullUtil skullUtil<span class="op">;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> GUISessionManager guiSessionManager<span class="op">;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> GuiActionDispatcher guiActionDispatcher<span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> MyPaginatedGui myPaginatedGui<span class="op">;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">onEnable</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 1. 为你的插件创建独立的日志工具</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>        myLogger <span class="op">=</span> <span class="kw">new</span> <span class="fu">DebugUtil</span><span class="op">(</span><span class="kw">this</span><span class="op">,</span> DebugUtil<span class="op">.</span><span class="fu">LogLevel</span><span class="op">.</span><span class="fu">INFO</span><span class="op">);</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 可选：自定义前缀和输出格式</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>        myLogger<span class="op">.</span><span class="fu">setPrefix</span><span class="op">(</span><span class="st">&quot;&amp;f[&amp;bMyPlugin&amp;r]&amp;f &quot;</span><span class="op">);</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>        myLogger<span class="op">.</span><span class="fu">setFormatTemplate</span><span class="op">(</span><span class="st">&quot;%prefix%[%level%] %msg%&quot;</span><span class="op">);</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 额外将日志写入文件</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>        myLogger<span class="op">.</span><span class="fu">addFileHandler</span><span class="op">(</span><span class="kw">new</span> <span class="bu">File</span><span class="op">(</span><span class="fu">getDataFolder</span><span class="op">(),</span> <span class="st">&quot;debug.log&quot;</span><span class="op">));</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 2. 为你的插件创建独立的 Yaml 配置工具，并注入日志实例</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>        myYamlUtil <span class="op">=</span> <span class="kw">new</span> <span class="fu">YamlUtil</span><span class="op">(</span><span class="kw">this</span><span class="op">,</span> myLogger<span class="op">);</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>        myYamlUtil<span class="op">.</span><span class="fu">loadConfig</span><span class="op">(</span><span class="st">&quot;config&quot;</span><span class="op">);</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>        <span class="bu">ExecutorService</span> watchPool <span class="op">=</span> <span class="bu">Executors</span><span class="op">.</span><span class="fu">newSingleThreadExecutor</span><span class="op">();</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>        configHandle <span class="op">=</span> myYamlUtil<span class="op">.</span><span class="fu">watchConfig</span><span class="op">(</span></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>                <span class="st">&quot;config&quot;</span><span class="op">,</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>                updated <span class="op">-&gt;</span> myLogger<span class="op">.</span><span class="fu">info</span><span class="op">(</span><span class="st">&quot;配置文件已重新加载！&quot;</span><span class="op">),</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>                watchPool<span class="op">,</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>                StandardWatchEventKinds<span class="op">.</span><span class="fu">ENTRY_MODIFY</span><span class="op">,</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>                StandardWatchEventKinds<span class="op">.</span><span class="fu">ENTRY_DELETE</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>        <span class="op">);</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 3. 实例化 SoundManager，注入所有需要的依赖</span></span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>        mySoundManager <span class="op">=</span> <span class="kw">new</span> <span class="fu">SoundManager</span><span class="op">(</span></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a>            <span class="kw">this</span><span class="op">,</span></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>            myYamlUtil<span class="op">,</span></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>            myLogger<span class="op">,</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;mySounds.yml&quot;</span><span class="op">,</span> <span class="co">// 自定义配置文件名</span></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>            <span class="fl">1.0f</span><span class="op">,</span>           <span class="co">// 全局音量</span></span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a>            <span class="kw">true</span>            <span class="co">// 找不到音效时警告</span></span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>        <span class="op">);</span></span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>        mySoundManager<span class="op">.</span><span class="fu">loadSounds</span><span class="op">();</span> <span class="co">// 手动加载音效</span></span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 也可异步加载，解析完成后会在主线程更新缓存以避免线程安全问题</span></span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>        <span class="co">// AsyncTaskManager asyncManager = new AsyncTaskManager(this, myLogger);</span></span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a>        <span class="co">// mySoundManager.loadSoundsAsync(asyncManager)</span></span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a>        <span class="co">//     .thenRun(() -&gt; myLogger.info(&quot;音效异步加载完成&quot;));</span></span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 可随时调整全局音量倍率</span></span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a>        mySoundManager<span class="op">.</span><span class="fu">setVolumeMultiplier</span><span class="op">(</span><span class="fl">1.2f</span><span class="op">);</span></span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 可在需要时自定义音量与音调</span></span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a>        <span class="co">// mySoundManager.play(&quot;level_up&quot;, player.getLocation(), 0.8f, 1.2f);</span></span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 4. 使用类型安全的方式读取配置</span></span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a>        <span class="dt">boolean</span> autoSave <span class="op">=</span> myYamlUtil<span class="op">.</span><span class="fu">getValue</span><span class="op">(</span><span class="st">&quot;settings.auto-save&quot;</span><span class="op">,</span> <span class="bu">Boolean</span><span class="op">.</span><span class="fu">class</span><span class="op">,</span> <span class="kw">true</span><span class="op">);</span></span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>autoSave<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a>            myLogger<span class="op">.</span><span class="fu">info</span><span class="op">(</span><span class="st">&quot;自动保存已启用&quot;</span><span class="op">);</span></span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 5. 备份数据并清理旧归档</span></span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a>        ArchiveUtil archiveUtil <span class="op">=</span> <span class="kw">new</span> <span class="fu">ArchiveUtil</span><span class="op">(</span>myLogger<span class="op">);</span></span>
+<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a>        <span class="bu">String</span> zip <span class="op">=</span> archiveUtil<span class="op">.</span><span class="fu">archiveByDate</span><span class="op">(</span><span class="st">&quot;plugins/MyPlugin/data&quot;</span><span class="op">,</span> <span class="st">&quot;backups&quot;</span><span class="op">);</span></span>
+<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a>        archiveUtil<span class="op">.</span><span class="fu">cleanupOldArchives</span><span class="op">(</span><span class="st">&quot;backups&quot;</span><span class="op">,</span> <span class="dv">30</span><span class="op">);</span></span>
+<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 若需更细粒度控制，可指定压缩级别</span></span>
+<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a>        archiveUtil<span class="op">.</span><span class="fu">compress</span><span class="op">(</span><span class="st">&quot;logs/latest.log&quot;</span><span class="op">,</span> <span class="st">&quot;logs.zip&quot;</span><span class="op">,</span> <span class="dv">9</span><span class="op">);</span></span>
+<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 6. 创建自定义头像工具</span></span>
+<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a>        skullUtil <span class="op">=</span> <span class="kw">new</span> <span class="fu">SkullUtil</span><span class="op">(</span>myLogger<span class="op">);</span></span>
+<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 可通过 URL 或 Base64 创建自定义头颅</span></span>
+<span id="cb2-72"><a href="#cb2-72" aria-hidden="true" tabindex="-1"></a>        <span class="co">// String textureUrl = &quot;http://textures.minecraft.net/texture/&lt;texture-id&gt;&quot;;</span></span>
+<span id="cb2-73"><a href="#cb2-73" aria-hidden="true" tabindex="-1"></a>        <span class="co">// ItemStack customSkull = skullUtil.fromUrl(textureUrl);</span></span>
+<span id="cb2-74"><a href="#cb2-74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-75"><a href="#cb2-75" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 7. 创建 GUI 管理组件</span></span>
+<span id="cb2-76"><a href="#cb2-76" aria-hidden="true" tabindex="-1"></a>        guiSessionManager <span class="op">=</span> <span class="kw">new</span> <span class="fu">GUISessionManager</span><span class="op">(</span><span class="kw">this</span><span class="op">,</span> myLogger<span class="op">);</span></span>
+<span id="cb2-77"><a href="#cb2-77" aria-hidden="true" tabindex="-1"></a>        guiActionDispatcher <span class="op">=</span> <span class="kw">new</span> <span class="fu">GuiActionDispatcher</span><span class="op">(</span><span class="kw">this</span><span class="op">,</span> myLogger<span class="op">);</span></span>
+<span id="cb2-78"><a href="#cb2-78" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb2-79"><a href="#cb2-79" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 8. 创建自定义分页 GUI（需要继承 PaginatedGui）</span></span>
+<span id="cb2-80"><a href="#cb2-80" aria-hidden="true" tabindex="-1"></a>        myPaginatedGui <span class="op">=</span> <span class="kw">new</span> <span class="fu">MyPaginatedGui</span><span class="op">(</span>guiSessionManager<span class="op">,</span> guiActionDispatcher<span class="op">);</span></span>
+<span id="cb2-81"><a href="#cb2-81" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 使用示例：myPaginatedGui.open(player, &quot;my-gui-session&quot;);</span></span>
+<span id="cb2-82"><a href="#cb2-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-83"><a href="#cb2-83" aria-hidden="true" tabindex="-1"></a>        myLogger<span class="op">.</span><span class="fu">info</span><span class="op">(</span><span class="st">&quot;我的插件已成功加载，并配置好了核心库工具！&quot;</span><span class="op">);</span></span>
+<span id="cb2-84"><a href="#cb2-84" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-85"><a href="#cb2-85" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-86"><a href="#cb2-86" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-87"><a href="#cb2-87" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">onDisable</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-88"><a href="#cb2-88" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 关闭 YamlUtil，释放监听线程与 WatchService</span></span>
+<span id="cb2-89"><a href="#cb2-89" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>myYamlUtil <span class="op">!=</span> <span class="kw">null</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-90"><a href="#cb2-90" aria-hidden="true" tabindex="-1"></a>            myYamlUtil<span class="op">.</span><span class="fu">close</span><span class="op">();</span></span>
+<span id="cb2-91"><a href="#cb2-91" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-92"><a href="#cb2-92" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb2-93"><a href="#cb2-93" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 如果使用了 AsyncTaskManager，记得关闭以释放线程资源</span></span>
+<span id="cb2-94"><a href="#cb2-94" aria-hidden="true" tabindex="-1"></a>        <span class="co">// if (asyncTaskManager != null) {</span></span>
+<span id="cb2-95"><a href="#cb2-95" aria-hidden="true" tabindex="-1"></a>        <span class="co">//     asyncTaskManager.close();</span></span>
+<span id="cb2-96"><a href="#cb2-96" aria-hidden="true" tabindex="-1"></a>        <span class="co">// }</span></span>
+<span id="cb2-97"><a href="#cb2-97" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb2-98"><a href="#cb2-98" aria-hidden="true" tabindex="-1"></a>        myLogger<span class="op">.</span><span class="fu">info</span><span class="op">(</span><span class="st">&quot;插件已安全卸载&quot;</span><span class="op">);</span></span>
+<span id="cb2-99"><a href="#cb2-99" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-100"><a href="#cb2-100" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb2-101"><a href="#cb2-101" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb2-102"><a href="#cb2-102" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-103"><a href="#cb2-103" aria-hidden="true" tabindex="-1"></a><span class="co">// MyPaginatedGui 实现示例</span></span>
+<span id="cb2-104"><a href="#cb2-104" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> MyPaginatedGui <span class="kw">extends</span> PaginatedGui <span class="op">{</span></span>
+<span id="cb2-105"><a href="#cb2-105" aria-hidden="true" tabindex="-1"></a>    <span class="kw">public</span> <span class="fu">MyPaginatedGui</span><span class="op">(</span>GUISessionManager sessions<span class="op">,</span> GuiActionDispatcher dispatcher<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-106"><a href="#cb2-106" aria-hidden="true" tabindex="-1"></a>        <span class="kw">super</span><span class="op">(</span>sessions<span class="op">,</span> dispatcher<span class="op">,</span> <span class="dv">45</span><span class="op">,</span> <span class="dv">45</span><span class="op">,</span> <span class="dv">53</span><span class="op">);</span> <span class="co">// 每页45格，45和53为导航按钮槽位</span></span>
+<span id="cb2-107"><a href="#cb2-107" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-108"><a href="#cb2-108" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-109"><a href="#cb2-109" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-110"><a href="#cb2-110" aria-hidden="true" tabindex="-1"></a>    <span class="kw">protected</span> <span class="dt">int</span> <span class="fu">getTotalItemCount</span><span class="op">(</span>Player player<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-111"><a href="#cb2-111" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 返回要展示的物品总数</span></span>
+<span id="cb2-112"><a href="#cb2-112" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="fu">getItemsForPlayer</span><span class="op">(</span>player<span class="op">).</span><span class="fu">size</span><span class="op">();</span></span>
+<span id="cb2-113"><a href="#cb2-113" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-114"><a href="#cb2-114" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-115"><a href="#cb2-115" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-116"><a href="#cb2-116" aria-hidden="true" tabindex="-1"></a>    <span class="kw">protected</span> Inventory <span class="fu">createInventory</span><span class="op">(</span>Player player<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-117"><a href="#cb2-117" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> Bukkit<span class="op">.</span><span class="fu">createInventory</span><span class="op">(</span>player<span class="op">,</span> <span class="dv">54</span><span class="op">,</span> <span class="st">&quot;我的物品列表&quot;</span><span class="op">);</span></span>
+<span id="cb2-118"><a href="#cb2-118" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-119"><a href="#cb2-119" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-120"><a href="#cb2-120" aria-hidden="true" tabindex="-1"></a>    <span class="at">@Override</span></span>
+<span id="cb2-121"><a href="#cb2-121" aria-hidden="true" tabindex="-1"></a>    <span class="kw">protected</span> <span class="dt">void</span> <span class="fu">renderPage</span><span class="op">(</span>Player player<span class="op">,</span> Inventory inv<span class="op">,</span> <span class="dt">int</span> page<span class="op">,</span> <span class="dt">int</span> totalPages<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-122"><a href="#cb2-122" aria-hidden="true" tabindex="-1"></a>        <span class="bu">List</span><span class="op">&lt;</span>ItemStack<span class="op">&gt;</span> items <span class="op">=</span> <span class="fu">getItemsForPlayer</span><span class="op">(</span>player<span class="op">);</span></span>
+<span id="cb2-123"><a href="#cb2-123" aria-hidden="true" tabindex="-1"></a>        <span class="dt">int</span> from <span class="op">=</span> page <span class="op">*</span> <span class="fu">getPageSize</span><span class="op">();</span></span>
+<span id="cb2-124"><a href="#cb2-124" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> <span class="op">(</span><span class="dt">int</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> <span class="fu">getPageSize</span><span class="op">();</span> i<span class="op">++)</span> <span class="op">{</span></span>
+<span id="cb2-125"><a href="#cb2-125" aria-hidden="true" tabindex="-1"></a>            <span class="dt">int</span> index <span class="op">=</span> from <span class="op">+</span> i<span class="op">;</span></span>
+<span id="cb2-126"><a href="#cb2-126" aria-hidden="true" tabindex="-1"></a>            inv<span class="op">.</span><span class="fu">setItem</span><span class="op">(</span>i<span class="op">,</span> index <span class="op">&lt;</span> items<span class="op">.</span><span class="fu">size</span><span class="op">()</span> <span class="op">?</span> items<span class="op">.</span><span class="fu">get</span><span class="op">(</span>index<span class="op">)</span> <span class="op">:</span> <span class="kw">null</span><span class="op">);</span></span>
+<span id="cb2-127"><a href="#cb2-127" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-128"><a href="#cb2-128" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb2-129"><a href="#cb2-129" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 添加导航按钮</span></span>
+<span id="cb2-130"><a href="#cb2-130" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>page <span class="op">&gt;</span> <span class="dv">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-131"><a href="#cb2-131" aria-hidden="true" tabindex="-1"></a>            inv<span class="op">.</span><span class="fu">setItem</span><span class="op">(</span><span class="fu">getPrevSlot</span><span class="op">(),</span> <span class="fu">createPrevButton</span><span class="op">());</span></span>
+<span id="cb2-132"><a href="#cb2-132" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-133"><a href="#cb2-133" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> <span class="op">(</span>page <span class="op">&lt;</span> totalPages <span class="op">-</span> <span class="dv">1</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-134"><a href="#cb2-134" aria-hidden="true" tabindex="-1"></a>            inv<span class="op">.</span><span class="fu">setItem</span><span class="op">(</span><span class="fu">getNextSlot</span><span class="op">(),</span> <span class="fu">createNextButton</span><span class="op">());</span></span>
+<span id="cb2-135"><a href="#cb2-135" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb2-136"><a href="#cb2-136" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-137"><a href="#cb2-137" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-138"><a href="#cb2-138" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> <span class="bu">List</span><span class="op">&lt;</span>ItemStack<span class="op">&gt;</span> <span class="fu">getItemsForPlayer</span><span class="op">(</span>Player player<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb2-139"><a href="#cb2-139" aria-hidden="true" tabindex="-1"></a>        <span class="co">// 实际实现中应该返回玩家的物品列表</span></span>
+<span id="cb2-140"><a href="#cb2-140" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="bu">Arrays</span><span class="op">.</span><span class="fu">asList</span><span class="op">(</span><span class="kw">new</span> <span class="fu">ItemStack</span><span class="op">(</span>Material<span class="op">.</span><span class="fu">DIAMOND</span><span class="op">),</span> <span class="kw">new</span> <span class="fu">ItemStack</span><span class="op">(</span>Material<span class="op">.</span><span class="fu">GOLD_INGOT</span><span class="op">));</span></span>
+<span id="cb2-141"><a href="#cb2-141" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-142"><a href="#cb2-142" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-143"><a href="#cb2-143" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> ItemStack <span class="fu">createPrevButton</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-144"><a href="#cb2-144" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="kw">new</span> <span class="fu">ItemStack</span><span class="op">(</span>Material<span class="op">.</span><span class="fu">ARROW</span><span class="op">);</span> <span class="co">// 上一页按钮</span></span>
+<span id="cb2-145"><a href="#cb2-145" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-146"><a href="#cb2-146" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb2-147"><a href="#cb2-147" aria-hidden="true" tabindex="-1"></a>    <span class="kw">private</span> ItemStack <span class="fu">createNextButton</span><span class="op">()</span> <span class="op">{</span></span>
+<span id="cb2-148"><a href="#cb2-148" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="kw">new</span> <span class="fu">ItemStack</span><span class="op">(</span>Material<span class="op">.</span><span class="fu">ARROW</span><span class="op">);</span> <span class="co">// 下一页按钮</span></span>
+<span id="cb2-149"><a href="#cb2-149" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-150"><a href="#cb2-150" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<blockquote>
+<p><strong>注意</strong>：自定义模板必须包含 <code>%msg%</code>
+占位符，否则日志内容将丢失。将日志写入文件时请确认插件目录可写。</p>
+</blockquote>
+<h3 id="高级配置示例"><strong>高级配置示例</strong></h3>
+<h4 id="更换线程池示例"><strong>更换线程池示例</strong></h4>
+<p>通过 <code>AsyncTaskManager.newBuilder()</code>
+可接入自定义线程池或调度器。</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">ExecutorService</span> exec <span class="op">=</span> <span class="bu">Executors</span><span class="op">.</span><span class="fu">newFixedThreadPool</span><span class="op">(</span><span class="dv">4</span><span class="op">);</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">ScheduledExecutorService</span> sched <span class="op">=</span> <span class="bu">Executors</span><span class="op">.</span><span class="fu">newSingleThreadScheduledExecutor</span><span class="op">();</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>AsyncTaskManager manager <span class="op">=</span> AsyncTaskManager</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">newBuilder</span><span class="op">(</span><span class="kw">this</span><span class="op">,</span> myLogger<span class="op">)</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">executor</span><span class="op">(</span>exec<span class="op">)</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">scheduler</span><span class="op">(</span>sched<span class="op">)</span> <span class="co">// 可替换为封装 BukkitScheduler 的实现</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">build</span><span class="op">();</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="co">// 快速调整内部线程池</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>AsyncTaskManager tuned <span class="op">=</span> AsyncTaskManager</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">newBuilder</span><span class="op">(</span><span class="kw">this</span><span class="op">,</span> myLogger<span class="op">)</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">poolSize</span><span class="op">(</span><span class="dv">4</span><span class="op">)</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">threadFactory</span><span class="op">(</span>r <span class="op">-&gt;</span> <span class="kw">new</span> <span class="bu">Thread</span><span class="op">(</span>r<span class="op">,</span> <span class="st">&quot;Worker-&quot;</span> <span class="op">+</span> r<span class="op">.</span><span class="fu">hashCode</span><span class="op">()))</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">build</span><span class="op">();</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="co">// 在插件 onDisable() 方法中调用以释放线程资源</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="co">// manager.close();</span></span></code></pre></div>
+<h4 id="自定义-httpclient-示例"><strong>自定义 HttpClient
+示例</strong></h4>
+<p>可通过 <code>HttpUtil.newBuilder()</code> 注入自定义的
+<code>HttpClient</code> 或执行器，实现完全控制的网络请求。</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">ExecutorService</span> pool <span class="op">=</span> <span class="bu">Executors</span><span class="op">.</span><span class="fu">newFixedThreadPool</span><span class="op">(</span><span class="dv">2</span><span class="op">);</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>HttpClient client <span class="op">=</span> HttpClient<span class="op">.</span><span class="fu">newBuilder</span><span class="op">()</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">executor</span><span class="op">(</span>pool<span class="op">)</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">build</span><span class="op">();</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>HttpUtil http <span class="op">=</span> HttpUtil<span class="op">.</span><span class="fu">newBuilder</span><span class="op">()</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">logger</span><span class="op">(</span>myLogger<span class="op">)</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">client</span><span class="op">(</span>client<span class="op">)</span>      <span class="co">// 直接使用自定义 HttpClient</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">baseUri</span><span class="op">(</span><span class="bu">URI</span><span class="op">.</span><span class="fu">create</span><span class="op">(</span><span class="st">&quot;https://api.example.com/&quot;</span><span class="op">))</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">defaultHeader</span><span class="op">(</span><span class="st">&quot;User-Agent&quot;</span><span class="op">,</span> <span class="st">&quot;MyPlugin&quot;</span><span class="op">)</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        <span class="op">.</span><span class="fu">build</span><span class="op">();</span></span></code></pre></div>
+<p>若需使用 Bukkit 原生调度器，可将 <code>BukkitScheduler</code> 封装为
+<code>ScheduledExecutorService</code> 后传入
+<code>scheduler()</code>。</p>
+<h4 id="获取-drcomocorelib-实例可选"><strong>获取 DrcomoCoreLib
+实例（可选）</strong></h4>
+<p>虽然通常不需要直接与 <code>DrcomoCoreLib</code>
+主类交互，但如果需要获取其实例：</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode java"><code class="sourceCode java"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>DrcomoCoreLib coreLib <span class="op">=</span> <span class="op">(</span>DrcomoCoreLib<span class="op">)</span> Bukkit<span class="op">.</span><span class="fu">getPluginManager</span><span class="op">().</span><span class="fu">getPlugin</span><span class="op">(</span><span class="st">&quot;DrcomoCoreLib&quot;</span><span class="op">);</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>coreLib <span class="op">!=</span> <span class="kw">null</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 你可以获取到实例，但通常不会直接与它交互。</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">// 它的价值在于作为一个加载入口和提供用法示例。</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">getLogger</span><span class="op">().</span><span class="fu">info</span><span class="op">(</span><span class="st">&quot;成功获取到 DrcomoCoreLib 实例。&quot;</span><span class="op">);</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<hr />
+<h2 id="api文档查询规则"><strong>API文档查询规则</strong></h2>
+<p>当接收到与 DrcomoCoreLib
+开发相关的用户请求时，严格遵循以下规则，将所需功能映射到对应的API文档，并基于该文档提供解决方案。</p>
+<hr />
+<h3 id="日志记录">日志记录</h3>
+<ul>
+<li><strong>功能描述</strong>：实现或管理控制台日志输出，如
+<code>info</code>, <code>warn</code>,
+<code>error</code>，或动态设置日志级别。<br />
+</li>
+<li><strong>包类路径</strong>：<code>cn.drcomo.corelib.util.DebugUtil</code></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/util/DebugUtil-JavaDoc.md">查看</a></li>
+</ul>
+<h3 id="配置文件读写-yaml">配置文件读写 (YAML)</h3>
+<ul>
+<li><strong>功能描述</strong>：对 <code>.yml</code>
+文件进行加载、重载、保存、读写键值、复制默认配置、获取配置节等操作。</li>
+<li><strong>包类路径</strong>：<code>cn.drcomo.corelib.config.YamlUtil</code></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/config/YamlUtil-JavaDoc.md">查看</a></li>
+</ul>
+<h3 id="配置文件变更监听">配置文件变更监听</h3>
+<ul>
+<li><strong>功能描述</strong>：监听配置文件的创建、修改、删除并触发自定义回调。</li>
+<li><strong>包类路径</strong>：
+<ul>
+<li><code>cn.drcomo.corelib.config.FileChangeListener</code>（回调接口）</li>
+<li><code>cn.drcomo.corelib.config.FileChangeType</code>（变更类型枚举）</li>
+</ul></li>
+<li><strong>查询文档</strong>：
+<ul>
+<li><a
+href="./JavaDocs/config/FileChangeListener-JavaDoc.md">查看</a>（回调接口）</li>
+<li><a
+href="./JavaDocs/config/FileChangeType-JavaDoc.md">查看</a>（变更类型枚举）</li>
+</ul></li>
+</ul>
+<h3 id="配置校验">配置校验</h3>
+<ul>
+<li><strong>功能描述</strong>：在读取或重载配置后，验证必填项是否存在且类型正确，支持字符串、数值、枚举类型验证以及自定义校验规则。</li>
+<li><strong>包类路径</strong>：
+<ul>
+<li><code>cn.drcomo.corelib.config.ConfigValidator</code>（配置校验器主入口）</li>
+<li><code>cn.drcomo.corelib.config.ValidatorBuilder</code>（链式校验规则构建器）</li>
+<li><code>cn.drcomo.corelib.config.ValidationResult</code>（校验结果处理）</li>
+<li><code>cn.drcomo.corelib.config.ConfigSchema</code>（配置结构声明接口）</li>
+</ul></li>
+<li><strong>核心查询</strong>：<a
+href="./JavaDocs/config/ConfigValidator-JavaDoc.md">查看</a>（配置校验器主入口）</li>
+<li><strong>关联查询</strong>：
+<ul>
+<li><a
+href="./JavaDocs/config/ValidatorBuilder-JavaDoc.md">查看</a>（链式校验规则构建器）</li>
+<li><a
+href="./JavaDocs/config/ValidationResult-JavaDoc.md">查看</a>（校验结果处理）</li>
+<li><a
+href="./JavaDocs/config/ConfigSchema-JavaDoc.md">查看</a>（配置结构声明接口）</li>
+</ul></li>
+</ul>
+<h3 id="文本颜色处理">文本颜色处理</h3>
+<ul>
+<li><strong>功能描述</strong>：翻译（<code>&amp;</code> →
+<code>§</code>）、转换（<code>&amp;#RRGGBB</code>）或剥离字符串中的
+Minecraft 颜色代码。<br />
+</li>
+<li><strong>包类路径</strong>：<code>cn.drcomo.corelib.color.ColorUtil</code></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/color/ColorUtil-JavaDoc.md">查看</a></li>
+</ul>
+<h3 id="发送消息与文本本地化">发送消息与文本本地化</h3>
+<ul>
+<li><strong>功能描述</strong>：发送游戏内消息（聊天、ActionBar、Title），解析多层级占位符（自定义、PAPI、内部），管理多语言文件。</li>
+<li><strong>包类路径</strong>：
+<ul>
+<li><code>cn.drcomo.corelib.message.MessageService</code></li>
+<li><code>cn.drcomo.corelib.message.PlaceholderResolver</code></li>
+</ul></li>
+<li><strong>查询文档</strong>：
+<ul>
+<li><a
+href="./JavaDocs/message/MessageService-JavaDoc.md">MessageService</a></li>
+<li><a
+href="./JavaDocs/message/PlaceholderResolver-JavaDoc.md">PlaceholderResolver</a></li>
+</ul></li>
+</ul>
+<h3 id="物品nbt数据操作">物品NBT数据操作</h3>
+<ul>
+<li><strong>功能描述</strong>：在 <code>ItemStack</code>
+上附加、读取、修改、删除或批量保留自定义数据标签。<br />
+</li>
+<li><strong>包类路径</strong>：
+<ul>
+<li><code>cn.drcomo.corelib.nbt.NbtKeyHandler</code>（NBT键名安全策略）</li>
+<li><code>cn.drcomo.corelib.nbt.NBTUtil</code>（具体NBT操作API）</li>
+</ul></li>
+<li><strong>前置查询</strong>：<a
+href="./JavaDocs/nbt/NbtKeyHandler-JavaDoc.md">查看</a>（NBT键名安全策略）<br />
+</li>
+<li><strong>核心查询</strong>：<a
+href="./JavaDocs/nbt/NBTUtil-JavaDoc.md">查看</a>（具体NBT操作API）</li>
+</ul>
+<h3 id="placeholderapi-papi-集成">PlaceholderAPI (PAPI) 集成</h3>
+<ul>
+<li><strong>功能描述</strong>：注册自定义PAPI占位符（如
+<code>%myplugin_level%</code>）或解析含PAPI占位符的字符串。<br />
+</li>
+<li><strong>包类路径</strong>：<code>cn.drcomo.corelib.hook.placeholder.PlaceholderAPIUtil</code></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/hook/placeholder/PlaceholderAPIUtil-JavaDoc.md">查看</a></li>
+</ul>
+<h3 id="动态条件判断">动态条件判断</h3>
+<ul>
+<li><strong>功能描述</strong>：解析并计算包含PAPI占位符、逻辑运算符（<code>&amp;&amp;</code>,
+<code>||</code>）和比较运算符（<code>&gt;=</code>, <code>==</code>,
+<code>STR_CONTAINS</code>）的条件表达式。</li>
+<li><strong>包类路径</strong>：
+<ul>
+<li><code>cn.drcomo.corelib.hook.placeholder.parse.PlaceholderConditionEvaluator</code></li>
+<li><code>cn.drcomo.corelib.hook.placeholder.parse.ParseException</code>（表达式解析异常处理）</li>
+</ul></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/hook/placeholder/parse/PlaceholderConditionEvaluator-JavaDoc.md">查看</a></li>
+<li><strong>关联查询</strong>：<a
+href="./JavaDocs/hook/placeholder/parse/ParseException-JavaDoc.md">查看</a>（表达式解析异常处理）</li>
+</ul>
+<h3 id="经济系统交互-vault-playerpoints">经济系统交互 (Vault /
+PlayerPoints)</h3>
+<ul>
+<li><strong>功能描述</strong>：查询玩家余额、扣款、存款、格式化货币等操作。<br />
+</li>
+<li><strong>包类路径</strong>：
+<ul>
+<li><code>cn.drcomo.corelib.hook.economy.EconomyProvider</code>（通用经济接口）</li>
+<li><code>cn.drcomo.corelib.hook.economy.provider.VaultEconomyProvider</code>（Vault对接实现）</li>
+<li><code>cn.drcomo.corelib.hook.economy.provider.PlayerPointsEconomyProvider</code>（PlayerPoints对接实现）</li>
+<li><code>cn.drcomo.corelib.hook.economy.EconomyResponse</code>（经济操作返回对象）</li>
+</ul></li>
+<li><strong>查询文档 1 (接口)</strong>：<a
+href="./JavaDocs/hook/economy/EconomyProvider-JavaDoc.md">查看</a>（通用经济接口）<br />
+</li>
+<li><strong>查询文档 2 (实现)</strong>：
+<ul>
+<li>Vault 对接：<a
+href="./JavaDocs/hook/economy/provider/VaultEconomyProvider-JavaDoc.md">查看</a><br />
+</li>
+<li>PlayerPoints 对接：<a
+href="./JavaDocs/hook/economy/provider/PlayerPointsEconomyProvider-JavaDoc.md">查看</a><br />
+</li>
+</ul></li>
+<li><strong>查询文档 3 (结果)</strong>：<a
+href="./JavaDocs/hook/economy/EconomyResponse-JavaDoc.md">查看</a>（经济操作返回对象）</li>
+</ul>
+<h3 id="数学公式计算">数学公式计算</h3>
+<ul>
+<li><strong>功能描述</strong>：计算字符串形式的数学表达式（支持变量）。</li>
+<li><strong>包类路径</strong>：<code>cn.drcomo.corelib.math.FormulaCalculator</code></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/math/FormulaCalculator-JavaDoc.md">查看</a></li>
+</ul>
+<h3 id="数值工具">数值工具</h3>
+<ul>
+<li><strong>功能描述</strong>：判断字符串是否为有效数字并提供基础加法运算。</li>
+<li><strong>包类路径</strong>：<code>cn.drcomo.corelib.math.NumberUtil</code></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/math/NumberUtil-JavaDoc.md">查看</a></li>
+</ul>
+<h3 id="异步任务管理">异步任务管理</h3>
+<ul>
+<li><strong>功能描述</strong>：管理异步任务执行，支持任务提交、延迟执行、定时调度、批量处理等，内置异常捕获和日志记录。通过
+Builder 可调整线程池大小及线程工厂。</li>
+<li><strong>包类路径</strong>：<code>cn.drcomo.corelib.async.AsyncTaskManager</code></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/async/AsyncTaskManager-JavaDoc.md">查看</a></li>
+<li><strong>关联查询 1</strong>：<a
+href="./JavaDocs/async/TaskPriority-JavaDoc.md">查看</a>（任务优先级枚举）</li>
+<li><strong>关联查询 2</strong>：<a
+href="./JavaDocs/async/TaskQueueStatus-JavaDoc.md">查看</a>（队列状态对象）</li>
+</ul>
+<h3 id="性能监控">性能监控</h3>
+<ul>
+<li><strong>功能描述</strong>：实时获取服务器TPS、CPU使用率、内存使用情况和GC统计信息，支持Paper和Spigot服务器。</li>
+<li><strong>包类路径</strong>：
+<ul>
+<li><code>cn.drcomo.corelib.performance.PerformanceUtil</code>（性能采集工具）</li>
+<li><code>cn.drcomo.corelib.performance.PerformanceSnapshot</code>（性能快照数据）</li>
+</ul></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/performance/PerformanceUtil-JavaDoc.md">查看</a>（性能采集工具）</li>
+<li><strong>关联查询</strong>：<a
+href="./JavaDocs/performance/PerformanceSnapshot-JavaDoc.md">查看</a>（性能快照数据）</li>
+</ul>
+<h3 id="json序列化工具">JSON序列化工具</h3>
+<ul>
+<li><strong>功能描述</strong>：基于Gson的JSON序列化与反序列化工具，支持对象转JSON、JSON转对象、文件读写和复杂泛型类型解析。</li>
+<li><strong>包类路径</strong>：<code>cn.drcomo.corelib.json.JsonUtil</code></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/json/JsonUtil-JavaDoc.md">查看</a></li>
+</ul>
+<h3 id="http网络请求">HTTP网络请求</h3>
+<ul>
+<li><strong>功能描述</strong>：基于Java 11
+HttpClient的异步HTTP工具，支持GET/POST请求、文件上传、代理配置、超时设置和重试机制。</li>
+<li><strong>包类路径</strong>：<code>cn.drcomo.corelib.net.HttpUtil</code></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/net/HttpUtil-JavaDoc.md">查看</a></li>
+</ul>
+<h3 id="文件归档与压缩">文件归档与压缩</h3>
+<ul>
+<li><strong>功能描述</strong>：压缩或解压文件/目录，并可按日期归档和清理旧文件。</li>
+<li><strong>包类路径</strong>：<code>cn.drcomo.corelib.archive.ArchiveUtil</code></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/archive/ArchiveUtil-JavaDoc.md">查看</a></li>
+</ul>
+<h3 id="音效管理">音效管理</h3>
+<ul>
+<li><strong>功能描述</strong>：从配置文件加载音效并通过键名（key）播放。<br />
+</li>
+<li><strong>包类路径</strong>：<code>cn.drcomo.corelib.sound.SoundManager</code></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/sound/SoundManager-JavaDoc.md">查看</a></li>
+</ul>
+<h3 id="自定义头像生成">自定义头像生成</h3>
+<ul>
+<li><strong>功能描述</strong>：根据纹理 URL 或 Base64
+字符串生成带自定义纹理的玩家头颅物品，支持异常处理和日志记录。</li>
+<li><strong>包类路径</strong>：<code>cn.drcomo.corelib.util.SkullUtil</code></li>
+<li><strong>查询文档</strong>：<a
+href="./JavaDocs/util/SkullUtil-JavaDoc.md">查看</a></li>
+</ul>
+<h3 id="gui-创建与交互">GUI 创建与交互</h3>
+<ul>
+<li><strong>功能描述</strong>：构建交互式菜单、定义特定槽位的点击行为、管理GUI的打开与关闭、获取点击事件的详细信息或执行安全的GUI辅助操作。</li>
+<li><strong>包类路径</strong>：
+<ul>
+<li><code>cn.drcomo.corelib.gui.interfaces.ClickAction</code>（定义”做什么”的回调）</li>
+<li><code>cn.drcomo.corelib.gui.interfaces.SlotPredicate</code>（定义”在哪里生效”的条件）</li>
+<li><code>cn.drcomo.corelib.gui.GuiActionDispatcher</code>（事件分发器）</li>
+<li><code>cn.drcomo.corelib.gui.GUISessionManager</code>（会话管理）</li>
+<li><code>cn.drcomo.corelib.gui.ClickContext</code>（点击上下文数据载体）</li>
+<li><code>cn.drcomo.corelib.gui.GuiManager</code>（GUI辅助工具）</li>
+<li><code>cn.drcomo.corelib.gui.PaginatedGui</code>（分页界面基类）</li>
+<li><code>cn.drcomo.corelib.gui.session.PlayerSessionManager</code>（通用玩家会话）</li>
+<li><code>cn.drcomo.corelib.gui.ClickTypeUtil</code>（点击类型工具）</li>
+</ul></li>
+<li><strong>前置概念查询</strong>：
+<ul>
+<li><a href="./JavaDocs/gui/interfaces/ClickAction-JavaDoc.md">查看</a>
+(理解定义 <strong>“做什么”</strong> 的回调)</li>
+<li><a
+href="./JavaDocs/gui/interfaces/SlotPredicate-JavaDoc.md">查看</a>
+(理解定义 <strong>“在哪里生效”</strong> 的条件)</li>
+</ul></li>
+<li><strong>核心逻辑查询 (事件分发)</strong>：<a
+href="./JavaDocs/gui/GuiActionDispatcher-JavaDoc.md">查看</a> (用于注册
+<code>ClickAction</code> 与 <code>SlotPredicate</code> 的组合)</li>
+<li><strong>关联查询 (会话管理)</strong>：<a
+href="./JavaDocs/gui/GUISessionManager-JavaDoc.md">查看</a>
+(用于打开、关闭、验证玩家的GUI会话)</li>
+<li><strong>会话超时设置</strong>：构造 <code>GUISessionManager</code>
+时可传入自定义过期毫秒数，或稍后调用
+<code>setSessionTimeout(long)</code> 动态调整。</li>
+<li><strong>关联查询 (数据载体)</strong>：<a
+href="./JavaDocs/gui/ClickContext-JavaDoc.md">查看</a>
+(用于在回调中获取点击类型、玩家等上下文信息)</li>
+<li><strong>关联查询 (辅助工具)</strong>：<a
+href="./JavaDocs/gui/GuiManager-JavaDoc.md">查看</a>
+(用于安全播放音效、清理光标、检查危险点击等)</li>
+<li><strong>分页界面基类</strong>：<a
+href="./JavaDocs/gui/PaginatedGui-JavaDoc.md">查看</a>
+(用于快速构建带翻页的GUI)</li>
+<li><strong>通用玩家会话</strong>：<a
+href="./JavaDocs/gui/session/PlayerSessionManager-JavaDoc.md">查看</a>
+(创建、获取或销毁与玩家相关的临时数据，退出或超时后自动清理)</li>
+</ul>
+<h3 id="数据库操作-sqlite">数据库操作 (SQLite)</h3>
+<ul>
+<li><strong>功能描述</strong>：连接管理 SQLite
+数据库，初始化表结构，执行增删改查（CRUD）、事务处理。内置 HikariCP
+连接池并提供异步接口，适合并发环境。</li>
+<li><strong>包类路径</strong>：<code>cn.drcomo.corelib.database.SQLiteDB</code></li>
+<li><strong>查询文档 1（核心 API）</strong>：<a
+href="./JavaDocs/database/SQLiteDB-JavaDoc.md">查看</a></li>
+<li><strong>查询文档 2（连接池状态）</strong>：<a
+href="./JavaDocs/database/ConnectionPoolStatus-JavaDoc.md">查看</a></li>
+<li><strong>查询文档 3（执行统计）</strong>：<a
+href="./JavaDocs/database/DatabaseMetrics-JavaDoc.md">查看</a></li>
+</ul>
+</body>
+</html>
