@@ -106,6 +106,7 @@ public class DatabaseBridge {
         if (columns.isEmpty()) {
             throw new IllegalArgumentException("列集合为空，无法构造批量写入语句");
         }
+        ensureColumnConsistency(rows, columns);
         String sql = buildReplaceSql(qualifiedTable, columns);
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -144,6 +145,25 @@ public class DatabaseBridge {
             dataSource.close();
             dataSource = null;
             debugUtil.info("MySQL 数据源已释放");
+        }
+    }
+
+    private void ensureColumnConsistency(List<Map<String, Object>> rows, List<String> columns) {
+        Set<String> expected = new LinkedHashSet<>(columns);
+        for (Map<String, Object> row : rows) {
+            if (row == null) {
+                continue;
+            }
+            Set<String> missing = new LinkedHashSet<>(expected);
+            missing.removeAll(row.keySet());
+            if (!missing.isEmpty()) {
+                throw new IllegalArgumentException("批量写入行缺少列: " + String.join(", ", missing));
+            }
+            Set<String> extras = new LinkedHashSet<>(row.keySet());
+            extras.removeAll(expected);
+            if (!extras.isEmpty()) {
+                throw new IllegalArgumentException("批量写入行包含未声明的额外列: " + String.join(", ", extras));
+            }
         }
     }
 
