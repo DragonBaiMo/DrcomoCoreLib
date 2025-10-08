@@ -37,6 +37,7 @@ public class DebugUtil {
     private String prefix;
     private String formatTemplate = "%prefix%%msg%";
     private LogLevel configuredLevel;
+    private boolean consoleOutputEnabled = true;
 
     /**
      * 构造一个 DebugUtil
@@ -94,6 +95,25 @@ public class DebugUtil {
     public void addFileHandler(File file) throws IOException {
         FileHandler fh = new FileHandler(file.getPath(), true);
         addHandler(fh);
+    }
+
+    /**
+     * 控制是否向控制台输出日志。
+     *
+     * @param enabled {@code true} 表示保留控制台输出，{@code false} 表示关闭
+     */
+    public void setConsoleOutput(boolean enabled) {
+        if (this.consoleOutputEnabled == enabled) {
+            return;
+        }
+        if (!enabled) {
+            log(LogLevel.INFO, "已关闭控制台日志输出");
+            logger.setUseParentHandlers(false);
+        } else {
+            logger.setUseParentHandlers(true);
+            log(LogLevel.INFO, "已启用控制台日志输出");
+        }
+        this.consoleOutputEnabled = enabled;
     }
 
     // 简化方法
