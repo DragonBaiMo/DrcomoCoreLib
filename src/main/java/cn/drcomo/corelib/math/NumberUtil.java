@@ -108,5 +108,37 @@ public final class NumberUtil {
             return null;
         }
     }
+
+    /**
+     * 将给定整数限制在指定的闭区间内。
+     *
+     * @param value  待裁剪的数值
+     * @param min    允许的最小值
+     * @param max    允许的最大值
+     * @return 若 {@code value} 小于 {@code min} 则返回 {@code min}；若大于 {@code max} 则返回 {@code max}；否则返回原值
+     * @throws IllegalArgumentException 当 {@code min} 大于 {@code max} 时抛出
+     */
+    public static int clampInt(int value, int min, int max) {
+        if (min > max) {
+            throw new IllegalArgumentException("最小值不能大于最大值");
+        }
+        if (value < min) {
+            return min;
+        }
+        if (value > max) {
+            return max;
+        }
+        return value;
+    }
+
+    /**
+     * 确保整数结果不为负数。
+     *
+     * @param value 待处理的数值
+     * @return 当 {@code value} 小于 0 时返回 0，否则返回原值
+     */
+    public static int ensureNonNegative(int value) {
+        return value < 0 ? 0 : value;
+    }
 }
 
