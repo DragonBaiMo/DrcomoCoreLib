@@ -71,6 +71,8 @@ public class MessageService {
 
     /** 语言文件中的原始键值缓存 */
     private final Map<String, String> messages = new HashMap<>();
+    /** 颜色预解析缓存（键 -> 已解析颜色的字符串） */
+    private final Map<String, String> precoloredMessages = new ConcurrentHashMap<>();
     /** 上下文 -> 消息缓存 */
     private final Map<Object, List<String>> contextMessages = new ConcurrentHashMap<>();
     /** 内部占位符处理器 {key[:args]} */
@@ -79,6 +81,8 @@ public class MessageService {
     /* ---------- 可配置字段 ---------- */
     private String langConfigPath;
     private String keyPrefix;
+    /** 是否启用颜色预解析缓存（默认启用以优化性能） */
+    private boolean enableColorPrecaching = true;
 
     /** 默认内部占位符正则：{key} / {key:args} */
     private static final Pattern DEFAULT_INTERNAL_PLACEHOLDER_PATTERN =
@@ -125,12 +129,16 @@ public class MessageService {
         logger.info("重新加载语言文件…");
         yamlUtil.reloadConfig(langConfigPath);
         messages.clear();
+        precoloredMessages.clear();
         loadMessages(langConfigPath);
-        logger.info("语言文件重载完成，共 " + messages.size() + " 条");
-        // 性能建议：此处仅重新读入原始模板。如业务侧存在大量使用 <gradient>/<color>/&#RRGGBB 的静态文案，
-        // 可在本方法调用后，由业务层遍历 messages 并将需要的键进行一次 ColorUtil.translateColors 颜色预解析，
-        // 将结果放入自定义的预解析缓存（例如 precoloredMessages）。
-        // 运行期发送时再做占位符替换并取该缓存，可减少每次发送的颜色解析开销。
+
+        // 如果启用了颜色预解析，立即缓存所有消息的颜色解析结果
+        if (enableColorPrecaching) {
+            precacheAllColors();
+        }
+
+        logger.info("语言文件重载完成，共 " + messages.size() + " 条" +
+                   (enableColorPrecaching ? "（已启用颜色预解析缓存）" : ""));
     }
 
     /** 切换语言文件并立即重载 */
@@ -143,6 +151,53 @@ public class MessageService {
     /** 动态修改统一键前缀 */
     public void setKeyPrefix(String newPrefix) {
         this.keyPrefix = newPrefix == null ? "" : newPrefix;
+    }
+
+    /**
+     * 启用或禁用颜色预解析缓存机制。
+     * <p>
+     * 性能优化：开启后在配置加载/重载时会预先解析所有消息的颜色标签
+     * （如 &c、&#RRGGBB、<gradient:...> 等），并缓存为 § 颜色码格式。
+     * 运行期发送消息时直接使用缓存，避免重复解析渐变等高开销颜色标签。
+     * </p>
+     * <p>
+     * 注意：占位符替换仍在运行期执行，不受此开关影响。
+     * </p>
+     *
+     * @param enable true 启用预解析（默认已启用），false 禁用
+     */
+    public void setEnableColorPrecaching(boolean enable) {
+        if (this.enableColorPrecaching == enable) {
+            return; // 状态未变化，无需操作
+        }
+
+        this.enableColorPrecaching = enable;
+        logger.info("颜色预解析缓存已" + (enable ? "启用" : "禁用"));
+
+        if (enable) {
+            // 立即缓存当前所有消息的颜色解析结果
+            precacheAllColors();
+        } else {
+            // 禁用时清空缓存释放内存
+            precoloredMessages.clear();
+        }
+    }
+
+    /**
+     * 预解析所有消息的颜色标签并缓存。
+     * 仅在 enableColorPrecaching = true 时调用。
+     */
+    private void precacheAllColors() {
+        precoloredMessages.clear();
+        int count = 0;
+        for (Map.Entry<String, String> entry : messages.entrySet()) {
+            String key = entry.getKey();
+            String original = entry.getValue();
+            String colored = ColorUtil.translateColors(original);
+            precoloredMessages.put(key, colored);
+            count++;
+        }
+        logger.info("已预解析 " + count + " 条消息的颜色标签");
     }
 
     /** 指定新的内部占位符匹配正则 */
@@ -225,7 +280,11 @@ public class MessageService {
         return keyPrefix.isEmpty() || key.startsWith(keyPrefix) ? key : keyPrefix + key;
     }
 
-    /** 取得原始字符串（无占位符处理） */
+    /**
+     * 取得原始字符串（无占位符处理，未解析颜色）。
+     * @deprecated 推荐使用 {@link #getRawWithColor(String)} 以利用颜色预解析缓存
+     */
+    @Deprecated
     public String getRaw(String key) {
         String actual = resolveKey(key);
         String raw = messages.get(actual);
@@ -235,9 +294,53 @@ public class MessageService {
         return raw;
     }
 
-    /** 使用 {@link String#format} 格式化后返回 */
+    /**
+     * 取得消息字符串（已预解析颜色，如果启用了缓存）。
+     * 性能优化：启用 enableColorPrecaching 后直接返回缓存的颜色解析结果。
+     */
+    public String getRawWithColor(String key) {
+        String actual = resolveKey(key);
+
+        // 如果启用了预解析缓存，优先从缓存读取
+        if (enableColorPrecaching) {
+            String cached = precoloredMessages.get(actual);
+            if (cached != null) {
+                return cached;
+            }
+        }
+
+        // 未启用缓存或缓存未命中，返回原始字符串
+        String raw = messages.get(actual);
+        if (raw == null) {
+            logger.warn("未找到原始消息，键: " + actual);
+        }
+        return raw;
+    }
+
+    /**
+     * 使用 {@link String#format} 格式化后返回。
+     * @deprecated 推荐使用 {@link #getWithColor(String, Object...)} 以利用颜色预解析缓存
+     */
+    @Deprecated
     public String get(String key, Object... args) {
         String raw = getRaw(key);
+        if (raw == null) {
+            return "Message not found: " + key;
+        }
+        try {
+            return String.format(raw, args);
+        } catch (IllegalFormatException ex) {
+            logger.error("格式化失败，键: " + key + " | " + ex.getMessage());
+            return raw;
+        }
+    }
+
+    /**
+     * 使用 {@link String#format} 格式化后返回（已预解析颜色）。
+     * 性能优化：启用 enableColorPrecaching 后直接使用缓存的颜色解析结果。
+     */
+    public String getWithColor(String key, Object... args) {
+        String raw = getRawWithColor(key);
         if (raw == null) {
             return "Message not found: " + key;
         }
@@ -707,13 +810,34 @@ public class MessageService {
         return ColorUtil.translateColors(processed);
     }
 
-    /** 始终确保通过 ColorUtil 转换颜色再发送 */
+    /**
+     * 始终确保通过 ColorUtil 转换颜色再发送。
+     * 性能优化：如果启用了 enableColorPrecaching 且消息已预解析，则跳过重复解析。
+     */
     private void sendColorizedRaw(CommandSender target, String msg) {
         if (msg == null || msg.isBlank()) return;
-        // 注意：若调用方已在配置重载阶段对文本做了颜色预解析（已包含 §x/§RRGGBB 或 § 传统色），
-        // 再次调用 translateColors 的成本很小（HEX 与标签匹配将快速短路），但仍建议在上游尽量缓存，
-        // 以避免对包含 <gradient>/<color> 标签的文本在运行期重复解析。
-        runSync(() -> target.sendMessage(ColorUtil.translateColors(msg)));
+
+        // 性能优化：如果启用了预解析缓存，检查消息是否已包含 § 颜色码
+        // （预解析后的消息都已转为 § 格式，无需重复解析）
+        String finalMsg;
+        if (enableColorPrecaching && msg.contains("§")) {
+            // 消息已预解析，直接发送
+            finalMsg = msg;
+        } else {
+            // 未启用缓存或消息未预解析，执行颜色转换
+            finalMsg = ColorUtil.translateColors(msg);
+        }
+
+        runSync(() -> target.sendMessage(finalMsg));
+    }
+
+    /**
+     * 发送原始消息（不解析颜色）。
+     * 适用于已手动处理颜色或不需要颜色解析的场景。
+     */
+    private void sendRawWithoutColor(CommandSender target, String msg) {
+        if (msg == null || msg.isBlank()) return;
+        runSync(() -> target.sendMessage(msg));
     }
 
     private void sendColorizedList(CommandSender target, List<String> list) {
