@@ -16,6 +16,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -339,27 +340,31 @@ public class SQLiteDB {
 
     /**
      * 批量插入数据。
+     * <p>表名和列名仅允许字母、数字和下划线，防止 SQL 注入。</p>
      *
-     * @param table    表名
+     * @param table    表名（仅允许字母、数字、下划线）
      * @param dataList 数据列表
      * @return 异步完成通知
+     * @throws IllegalArgumentException 表名或列名包含非法字符时抛出
      */
     public CompletableFuture<Void> batchInsert(String table, List<Map<String, Object>> dataList) {
         return runAsync(() -> {
             if (dataList == null || dataList.isEmpty()) {
                 return null;
             }
+            String safeTable = validateIdentifier(table, "表名");
             Map<String, Object> first = dataList.get(0);
-            List<String> columns = new ArrayList<>(first.keySet());
-            String columnPart = String.join(",", columns);
-            StringBuilder placeholder = new StringBuilder();
-            for (int i = 0; i < columns.size(); i++) {
-                placeholder.append("?");
-                if (i < columns.size() - 1) {
-                    placeholder.append(",");
-                }
+            List<String> columns = new ArrayList<>();
+            for (String col : first.keySet()) {
+                columns.add(validateIdentifier(col, "列名"));
             }
-            String sql = "INSERT INTO " + table + " (" + columnPart + ") VALUES (" + placeholder + ")";
+            StringJoiner columnJoiner = new StringJoiner(", ");
+            StringJoiner placeholderJoiner = new StringJoiner(", ");
+            for (String column : columns) {
+                columnJoiner.add("\"" + column + "\"");
+                placeholderJoiner.add("?");
+            }
+            String sql = "INSERT INTO \"" + safeTable + "\" (" + columnJoiner + ") VALUES (" + placeholderJoiner + ")";
             List<Object[]> paramsList = new ArrayList<>();
             for (Map<String, Object> map : dataList) {
                 Object[] arr = new Object[columns.size()];
@@ -371,6 +376,26 @@ public class SQLiteDB {
             doBatchUpdate(sql, paramsList);
             return null;
         });
+    }
+
+    /**
+     * 验证 SQL 标识符（表名、列名）是否安全。
+     * <p>仅允许字母、数字和下划线，防止 SQL 注入攻击。</p>
+     *
+     * @param identifier 待验证的标识符
+     * @param type       标识符类型描述（用于错误提示）
+     * @return 验证通过的标识符
+     * @throws IllegalArgumentException 标识符为空或包含非法字符时抛出
+     */
+    private String validateIdentifier(String identifier, String type) {
+        if (identifier == null || identifier.trim().isEmpty()) {
+            throw new IllegalArgumentException(type + "不能为空");
+        }
+        String trimmed = identifier.trim();
+        if (!trimmed.matches("[A-Za-z0-9_]+")) {
+            throw new IllegalArgumentException(type + "仅允许字母、数字或下划线: " + trimmed);
+        }
+        return trimmed;
     }
 
     /**
