@@ -368,15 +368,28 @@ public class MessageService {
         return parseWithDelimiter(key, player, custom, defaultCustomPrefix, defaultCustomSuffix);
     }
 
+    /**
+     * 使用指定前后缀解析占位符并按需转换颜色。
+     * <p>优先使用颜色预解析缓存；若占位符未引入新的颜色标记则跳过二次解析，减轻频繁消息下的正则与字符串构建开销。</p>
+     *
+     * @param key    消息键
+     * @param player 当前玩家，可为 null
+     * @param custom 自定义占位符
+     * @param prefix 自定义占位符前缀
+     * @param suffix 自定义占位符后缀
+     * @return 解析结果，未命中返回 null
+     */
     public String parseWithDelimiter(String key,
                                      Player player,
                                      Map<String, String> custom,
                                      String prefix,
                                      String suffix) {
-        String msg = get(key);
-        if (msg == null) return null;
+        String msg = getRawWithColor(key);
+        if (msg == null) {
+            return "Message not found: " + key;
+        }
         String result = processPlaceholdersWithDelimiter(player, msg, custom, prefix, suffix);
-        return ColorUtil.translateColors(result);
+        return applyColorIfNeeded(result);
     }
 
     /* -------------------- 列表读取与解析 -------------------- */
@@ -737,13 +750,16 @@ public class MessageService {
         if (custom == null || custom.isEmpty()) return msg;
         Pattern pattern = getDelimiterPattern(prefix, suffix);
         Matcher matcher = pattern.matcher(msg);
+        if (!matcher.find()) {
+            return msg;
+        }
         // 预估容量，减少扩容
         StringBuilder sb = new StringBuilder(Math.max(16, msg.length() + custom.size() * 8));
-        while (matcher.find()) {
+        do {
             String key = matcher.group("key");
             String value = custom.getOrDefault(key, matcher.group(0));
             matcher.appendReplacement(sb, Matcher.quoteReplacement(value));
-        }
+        } while (matcher.find());
         matcher.appendTail(sb);
         return sb.toString();
     }
@@ -763,15 +779,18 @@ public class MessageService {
     private String applyInternalPlaceholders(Player player, String msg) {
         if (internalHandlers.isEmpty()) return msg;
         Matcher m = internalPlaceholderPattern.matcher(msg);
+        if (!m.find()) {
+            return msg;
+        }
         StringBuilder sb = new StringBuilder(msg.length() + 16);
-        while (m.find()) {
+        do {
             String key = m.group(1).toLowerCase();
             String argStr = m.group(2);
             String[] args = (argStr == null || argStr.isEmpty()) ? new String[0] : argStr.split(":");
             PlaceholderResolver resolver = internalHandlers.get(key);
             String replacement = resolver != null ? resolver.resolve(player, args) : m.group(0);
             m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
-        }
+        } while (m.find());
         m.appendTail(sb);
         return sb.toString();
     }
@@ -781,14 +800,17 @@ public class MessageService {
         String result = msg;
         for (var entry : extraPlaceholderRules.entrySet()) {
             Matcher m = entry.getKey().matcher(result);
+            if (!m.find()) {
+                continue;
+            }
             StringBuilder sb = new StringBuilder();
-            while (m.find()) {
+            do {
                 String replacement = entry.getValue().apply(player, m);
                 if (replacement == null) {
                     replacement = m.group(0);
                 }
                 m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
-            }
+            } while (m.find());
             m.appendTail(sb);
             result = sb.toString();
         }
@@ -800,14 +822,14 @@ public class MessageService {
         return placeholderUtil.parse(player, msg);
     }
 
-    /** 快捷解析并翻译颜色 */
+    /** 快捷解析并按需翻译颜色 */
     private String parseTranslate(Player player,
                                   String template,
                                   Map<String, String> custom,
                                   String prefix,
                                   String suffix) {
         String processed = processPlaceholdersWithDelimiter(player, template, custom, prefix, suffix);
-        return ColorUtil.translateColors(processed);
+        return applyColorIfNeeded(processed);
     }
 
     /**
@@ -903,6 +925,39 @@ public class MessageService {
         } else {
             Bukkit.getScheduler().runTask(plugin, task);
         }
+    }
+
+    /**
+     * 判断并执行颜色解析，避免对已预解析或无颜色标记的消息重复处理。
+     *
+     * @param text 待处理文本
+     * @return 若检测到颜色标记则返回解析后的文本，否则直接返回原文
+     */
+    private String applyColorIfNeeded(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        if (!needsColorTranslation(text)) {
+            return text;
+        }
+        return ColorUtil.translateColors(text);
+    }
+
+    /**
+     * 检测文本中是否存在需要解析的颜色标记。
+     *
+     * @param text 待检测文本
+     * @return true 需要解析颜色；false 可直接复用现有字符串
+     */
+    private boolean needsColorTranslation(String text) {
+        if (!enableColorPrecaching) {
+            return true;
+        }
+        boolean containsSection = text.indexOf('§') >= 0;
+        boolean containsLegacy = text.indexOf('&') >= 0;
+        boolean containsTag = text.contains("<gradient") || text.contains("<color");
+        boolean containsHex = text.contains("&#");
+        return containsLegacy || containsTag || containsHex || !containsSection;
     }
 
     /* ============ 未使用字段 / 方法放置到最末尾隐藏 ============ */

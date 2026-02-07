@@ -5,6 +5,25 @@
   * **完整路径:** `cn.drcomo.corelib.config.YamlUtil`
   * **核心职责:** 一个强大的 YAML 配置文件管理工具类。它封装了 Bukkit 插件开发中与 `*.yml` 文件交互的几乎所有常见操作，包括：自动创建插件数据文件夹、从 JAR 中复制默认配置、加载/重载/保存配置、以及提供一系列带默认值的便捷读取方法，并集成了详细的日志记录。
 
+**1.1 配置自动补全机制**
+
+  * **触发时机:** 当调用 `loadConfig`、`reloadConfig` 或 `loadAllConfigsInFolder` 时自动执行。
+  * **工作原理:** 将用户配置文件与 JAR 内的默认配置进行比对，若发现用户配置缺失某些键，会自动补全并输出 **WARN** 级别日志。
+  * **典型场景:** 插件版本更新后新增了配置键，服务器管理员无需手动添加，系统会自动补全并在控制台提示。
+  * **持久化:** 补全后的配置会被标记为 dirty，可通过 `saveAllDirtyConfigs()` 持久化到磁盘。
+  * **控制台输出示例:**
+    ```
+    [WARN] 配置键缺失已自动补全: [config.yml] new-feature.enabled = true
+    [WARN] 配置键缺失已自动补全: [config.yml] new-feature.timeout = 30
+    ```
+
+**1.2 路径自动映射机制**
+
+  * **适用场景:** 使用 `loadAllConfigsInFolder` 加载子目录下的配置文件时。
+  * **工作原理:** 内部维护一个 `configKey → 实际路径` 的映射表。当通过 `loadAllConfigsInFolder("languages")` 加载 `languages/zh_CN.yml` 时，返回的 Map 使用 `"zh_CN"` 作为键（保持向后兼容），但内部记录了完整路径 `"languages/zh_CN"`。
+  * **效果:** 后续调用 `saveConfig("zh_CN")`、`reloadConfig("zh_CN")` 时，会自动定位到正确的子目录文件 `languages/zh_CN.yml`，无需手动传入完整路径。
+  * **路径兼容性:** 所有接受 `fileName` 参数的方法都支持正斜杠 `/` 和反斜杠 `\`，内部会自动统一处理。
+
 **2. 如何实例化 (Initialization)**
 
   * **核心思想:** `YamlUtil` 被设计为每个插件持有一个实例。它需要 `Plugin` 实例来定位数据文件夹和资源，需要 `DebugUtil` 实例来输出操作日志。一旦实例化，它就可以管理该插件的所有 `.yml` 配置文件。
@@ -75,32 +94,37 @@
   * #### `loadConfig(String fileName)`
 
       * **返回类型:** `void`
-      * **功能描述:** 加载一个指定的 `.yml` 文件，并将其内容解析为一个 `YamlConfiguration` 对象，缓存在内存中。
+      * **功能描述:** 加载一个指定的 `.yml` 文件，并将其内容解析为一个 `YamlConfiguration` 对象，缓存在内存中。**加载时会自动与 JAR 内默认配置比对，若发现缺失的键会自动补全并输出 WARN 日志。**
       * **参数说明:**
-          * `fileName` (`String`): 文件名，**不**包含 `.yml` 后缀。
+          * `fileName` (`String`): 文件名或相对路径，**不**包含 `.yml` 后缀。支持以下格式：
+              * `"config"` - 加载根目录下的 `config.yml`
+              * `"languages/zh_CN"` - 加载子目录下的 `zh_CN.yml`
+      * **路径兼容性:** 支持正斜杠 `/` 和反斜杠 `\`，内部会自动统一为正斜杠处理。
 
   * #### `loadAllConfigsInFolder(String folderPath)`
 
       * **返回类型:** `Map<String, YamlConfiguration>`
-      * **功能描述:** 扫描指定目录下的所有 `.yml` 文件并逐个加载，返回的映射以文件名为键，`YamlConfiguration` 为值，同时写入内部缓存。
+      * **功能描述:** 扫描指定目录下的所有 `.yml` 文件并逐个加载，返回的映射以**文件名**为键（如 `"zh_CN"`），`YamlConfiguration` 为值，同时写入内部缓存。**每个文件加载时都会自动与 JAR 内对应的默认配置比对，补全缺失的键。**
       * **参数说明:**
           * `folderPath` (`String`): 相对于插件数据文件夹的目录路径。
-      * **返回值:** `Map<文件名, 配置对象>`
+      * **返回值:** `Map<文件名, 配置对象>`（如 `{"zh_CN": cfg, "en_US": cfg}`）
+      * **内部机制:** 虽然返回的 Map 使用文件名作为键以保持向后兼容，但内部会自动记录文件的完整路径。后续调用 `saveConfig`、`reloadConfig` 时会自动定位到正确的子目录文件。
+      * **注意:** 如果不同子目录下存在同名文件，后加载的会覆盖先加载的。若需区分，请使用 `loadConfig("languages/zh_CN")` 传入完整相对路径。
 
   * #### `reloadConfig(String fileName)`
 
       * **返回类型:** `void`
-      * **功能描述:** 从磁盘重新加载指定的配置文件，覆盖内存中的旧缓存。
+      * **功能描述:** 从磁盘重新加载指定的配置文件，覆盖内存中的旧缓存。**重载时会自动与 JAR 内默认配置比对，若发现缺失的键会自动补全并输出 WARN 日志。**
       * **参数说明:**
-          * `fileName` (`String`): 文件名（不含.yml）。
+          * `fileName` (`String`): 文件名或相对路径（不含 `.yml`）。支持传入通过 `loadAllConfigsInFolder` 加载的文件名（如 `"zh_CN"`），会自动解析为正确的文件路径。
 
   * #### `saveConfig(String fileName, boolean force)`
 
       * **返回类型:** `void`
-      * **功能描述:** 将内存中缓存的指定配置对象，保存回磁盘上的 `.yml` 文件。如果 `force` 为 `false`（或调用无参版本 `saveConfig(fileName)`），则仅在配置被修改过（即“脏”状态）时才会保存。
+      * **功能描述:** 将内存中缓存的指定配置对象，保存回磁盘上的 `.yml` 文件。如果 `force` 为 `false`（或调用无参版本 `saveConfig(fileName)`），则仅在配置被修改过（即"脏"状态）时才会保存。
       * **参数说明:**
-          * `fileName` (`String`): 文件名（不含.yml）。
-          * `force` (`boolean`): 是否强制保存，无视“脏”状态。
+          * `fileName` (`String`): 文件名或相对路径（不含 `.yml`）。支持传入通过 `loadAllConfigsInFolder` 加载的文件名，会自动定位到正确的子目录文件。
+          * `force` (`boolean`): 是否强制保存，无视"脏"状态。
 
   * #### `saveAllDirtyConfigs()`
 
@@ -112,7 +136,7 @@
       * **返回类型:** `YamlConfiguration`
       * **功能描述:** 获取一个已加载的 `YamlConfiguration` 实例。如果该配置尚未被加载，此方法会先自动调用 `loadConfig`。
       * **参数说明:**
-          * `fileName` (`String`): 文件名（不含.yml）。
+          * `fileName` (`String`): 文件名或相对路径（不含 `.yml`）。支持传入通过 `loadAllConfigsInFolder` 加载的文件名。
 
   * #### `getString(String fileName, String path, String def)`
 

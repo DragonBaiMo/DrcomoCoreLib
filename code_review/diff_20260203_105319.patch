@@ -1,0 +1,888 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index eed024c..ef038ed 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -1,137 +1,141 @@
+-# 开发规则（采用 Win11/Powershell）
+-
+-> **作者：BaiMo_**  
+-> **开发理念关键词：第一性原理 / DRY / KISS / SOLID / YAGNI**  
+-> **目标：保持清晰沟通、可扩展架构、安全可控、代码高质、维护高效**
+-
+----
+-
+-## 一、沟通与需求确认规则
+-
+-1. **统一语言规范**
+-   所有沟通内容、注释、日志输出及生成内容，**一律使用中文**进行表达，严禁混用其他语言。
+-2. **外部资源使用边界**
+-   凡我未明确提供或指定的接口、API、库文件或外部资源，**仅允许基于公开文档或明确说明进行调用**；
+-   禁止使用**反射、动态拼接、模糊推测等方式构造调用路径或方法名**，以防绕过语义校验导致隐性错误。
+-3. **不确定行为处理机制**
+-   凡遇以下任一情况，必须遵循“确认优先”原则，**不得擅自执行或构造替代逻辑**，应按以下流程处理：
+-   * **情境类型**：接口未提供、参数不明、调用失败、报错信息未知、文档缺失或需求含糊；
+-   * **处理流程**：
+-     1. 尝试调用 MCP Server 或搜索工具，获取可验证的调用方式；
+-     2. 无法解决时，应**向我明确提出问题**，并提供已尝试的上下文与返回信息；
+-     3. 若问题暂不可解，**标注为 `TODO` 并附原因说明**，不得继续执行或跳过逻辑。
+-
+----
+-
+-## 二、设计规划与架构原则
+-
+-1. **设计先行**：复杂逻辑/新功能开发前，务必先进行功能规划，可使用 `sequential-thinking`。
+-2. **模块清晰职责单一**：遵循 **SRP**，将指令处理、监听、配置、逻辑等分开设计。
+-3. **从领域抽象出核心接口**：坚持“第一性原理”，代码以业务模型与接口驱动结构演进。
+-4. **可扩展性优先**：
+-   * 所有可拓展逻辑须基于接口/抽象类；
+-   * 新功能开发前先排查已有代码，优先复用或扩展。
+-5. **五大开发原则嵌入设计层**：
+-   * **DRY**：禁止复制粘贴逻辑，抽取公共方法；
+-   * **KISS**：代码保持简洁直观；
+-   * **SOLID**：接口隔离、单一职责、依赖倒置等设计准则；
+-   * **YAGNI**：只做当前所需，避免预设未使用的未来扩展。
+-6. **方法/类建议控制在 30~200 行**；单文件超500行需拆分子模块，**并附文档注释**。
+-7. **复杂项目建议采用明确的目录结构与分层职责**（如：`domain/`, `service/`, `repository/`, `controller/`），保持可读性与扩展性。
+-
+----
+-
+-## 三、编码规范与质量控制
+-
+-1. **命名统一规范**：变量、方法、类名需**清晰表达语义，命名具有业务意义**，遵循代码命名风格。
+-2. **格式化 & 静态分析工具必须启用**，保持风格统一、避免潜在语法错误。
+-3. **注释规范**：
+-   * 所有公共 API、暴露方法需具备完整文档（含描述、参数、返回值、异常）；
+-   * **所有公共类与接口必须使用 JavaDoc 标准格式注释，说明用途、参数、返回、异常等信息**；
+-   * 复杂逻辑必须说明“为何如此”，而非仅描述“做了什么”。
+-4. **禁止重复造轮子**：写代码前，必须检查项目是否已有类似功能，复用为首选；不可重复实现同类逻辑。
+-5. **合并写入，避免刷屏**：
+-   同一文件中修改应最大程度上采用一次性写完相关多行，避免一行行提交;除非因内容过长或交互确认，否则不得碎片输出。
+-6. **导包推迟或随用**：
+-   禁止先集中导入所有包。应在写逻辑时同步导包，或写完再统一整理导入区，避免多余导入。
+-7. **禁止硬编码可修改内容**  
+-   禁止将用户可自定义的内容以硬编码形式写入代码。配置文件加载逻辑应具备判断机制：仅在未检测到用于存放配置文件的目录时，才自动创建该目录并复制文件夹里的所有示例配置文件进入，避免强制注入。
+-8. **示例配置文件需实时同步**  
+-   所有涉及读取配置文件内容的功能，必须同步创建或更新对应的示例配置文件，以便我实时追踪配置结构与参数变更，确保示例文件始终与实际逻辑保持一致。
+-
+----
+-
+-## 四、异步任务与性能控制
+-
+-1. **异步使用评估优先**：
+-   * 对耗时的 IO、网络、计算等，应优先异步；
+-   * 异步前需分析是否会引发线程安全、竞态条件问题。
+-2. **主线程状态更新必须安全回调**；无法保证线程安全时，应使用同步处理，并明确说明理由。
+-3. **异步逻辑需做异常保护与降级处理**，避免主流程失控。
+-
+----
+-
+-## 五、安全性要求
+-
+-1. **输入验证严谨**：
+-   * 禁止信任任何外部输入；
+-   * 严格检查输入格式、长度、类型、范围；
+-   * 使用白名单策略。
+-2. **敏感信息保护**：
+-   * 密码、密钥需加密或加盐存储；
+-   * 日志和配置文件中严禁暴露敏感内容。
+-3. **权限控制原则**：
+-   * 所有敏感操作前均需权限判断；
+-   * 权限配置遵循“最小权限”原则。
+-4. **防护要点**：明确防范 SQL/命令注入、路径遍历、XSS、DoS 等典型漏洞。
+-
+----
+-
+-## 六、数据与资源管理规范
+-
+-1. **持久化逻辑统一**：
+-   * 所有数据处理先在内存执行，再按策略统一写入；
+-   * 数据库操作必须采用参数化查询，禁止拼接 SQL。
+-2. **资源释放规范**：
+-   * 文件、数据库连接、Socket 等必须在使用后主动释放；
+-   * 推荐使用连接池统一管理长连接资源。
+-
+----
+-
+-## 七、自定义配置与国际化支持
+-
+-1. **用户界面内容、提示语**必须支持配置文件化，便于多语言切换和自定义。
+-2. **所有提示信息禁止硬编码**，必须提取至配置文件或本地化资源中。
+-
+----
+-
+-## 八、日志、调试与错误处理
+-
+-1. **关键路径需添加中文日志**：如状态变更、异常捕捉、重要分支逻辑。
+-2. **日志内容不得包含敏感数据**，避免泄漏问题。
+-3. **调试日志需分级处理**，便于问题定位与上线控制。
+-
+----
+-
+-## 九、开发中待办管理
+-
+-1. 所有以下情况**必须添加 `// TODO` 注释**标记待办：
+-   * 功能暂未实现；
+-   * 临时方案/模拟逻辑/占位实现；
+-   * 存在待优化的性能或设计；
+-   * 已知问题待后续修复。
+-   * 等待后续扩展
+-1. TODO 注释需明确说明“本次目的+处理思路”。
+-
+----
+-
+-## ✅ 最终原则总结
+-
+-> **始终贯彻五大核心理念**：  
+-> **第一性原理：** 从本质建模抽象接口；  
+-> **DRY：** 绝不重复；  
+-> **KISS：** 保持简洁；  
+-> **SOLID：** 单一职责、接口隔离、依赖倒置；  
+-> **YAGNI：** 不做没用的提前设计。
+-
+-**以清晰沟通为前提、以规划优先为核心、以安全可靠为底线、以可维护可扩展为目标。**
++## 项目概述
++
++DrcomoCoreLib 是一个 Minecraft 服务器插件核心库，为子插件提供高复用、零耦合、完全可控的工具集。基于 Paper/Spigot API 1.18.2+，使用 Java 17 和 Maven 构建。
++
++## 架构原则
++
++### 三大基石
++
++1. **零硬编码原则** - 禁止写死配置值（文件名、路径、URL、配置键）。所有可变值通过参数传入
++2. **控制反转原则** - 通过构造函数注入所有外部依赖（`Plugin`, `DebugUtil` 等），不创建也不管理依赖生命周期
++3. **单一职责原则** - 每个模块只解决一个通用开发痛点，禁止渗透特定插件业务逻辑
++
++### 类设计规范
++
++- 新类必须是可实例化的 `public` 类，拥有 `public` 构造函数
++- 严禁设计为静态工具类（`private` 构造函数 + 静态方法）
++- 需实例化并持有状态的类使用 `Manager`, `Service`, `Provider` 后缀
++- 纯无状态辅助功能使用 `Util` 后缀
++
++## 代码与文档同步规范
++
++**关键规则：代码更新必须同步更新文档，这是强制性要求。**
++
++### 新增功能时
++
++1. 在 `./DrcomoCoreLib/JavaDocs/` 目录下创建对应的 `-JavaDoc.md` 文件
++2. 在 `./DrcomoCoreLib/README.md` 的 **API文档查询规则** 部分添加新模块条目
++3. 格式参考现有文档，包含：
++   - 功能描述
++   - 包类路径
++   - 查询文档链接
++
++### 修改 public API 时
++
++更新 `./DrcomoCoreLib/JavaDocs/` 中对应的文档，确保：
++- 方法签名一致
++- 参数说明一致
++- 返回值描述一致
++- 代码示例有效
++
++### 废弃功能时
++
++**重要：不要删除废弃的代码，按以下步骤处理：**
++
++1. 在代码中添加 `@Deprecated` 注解，保持 `public` 可见性
++2. 添加 Javadoc 说明废弃原因和替代方案
++3. 从 `./DrcomoCoreLib/README.md` 中**删除**该功能的使用说明条目
++4. 在对应的 JavaDoc 文件中标注已废弃状态
++
++示例：
++```java
++/**
++ * @deprecated 自 1.x 版本起废弃，请使用 {@link NewClass#newMethod()} 替代
++ */
++@Deprecated
++public void oldMethod() {
++    // 保留实现，不删除
++}
++```
++
++## 包结构
++
++```
++cn.drcomo.corelib
++├── archive/        # 文件归档与压缩
++├── async/          # 异步任务管理
++├── color/          # 颜色代码处理
++├── config/         # YAML配置与校验
++├── database/       # SQLite/MySQL数据库操作
++├── gui/            # GUI创建与交互
++│   ├── interfaces/ # 点击回调接口
++│   └── session/    # 玩家会话管理
++├── hook/           # 第三方插件集成
++│   ├── economy/    # Vault/PlayerPoints经济
++│   └── placeholder/# PlaceholderAPI集成
++├── json/           # JSON序列化
++├── math/           # 数学公式计算
++├── message/        # 消息服务与本地化
++├── nbt/            # NBT数据操作
++├── net/            # HTTP网络请求
++├── performance/    # 性能监控
++├── sound/          # 音效管理
++└── util/           # 通用工具（DebugUtil, SkullUtil）
++```
++
++## 文档结构
++
++```
++DrcomoCoreLib/
++├── README.md           # 子插件开发者指南（含API索引）
++└── JavaDocs/
++    ├── DrcomoCoreLib-JavaDoc.md
++    ├── async/
++    ├── color/
++    ├── config/
++    ├── database/
++    ├── gui/
++    ├── hook/
++    ├── json/
++    ├── math/
++    ├── message/
++    ├── nbt/
++    ├── net/
++    ├── performance/
++    ├── sound/
++    └── util/
++```
++
++## 依赖注入模式
++
++所有工具类遵循构造函数注入：
++
++```java
++// 正确示例
++public class MyManager {
++    private final Plugin plugin;
++    private final DebugUtil logger;
++
++    public MyManager(Plugin plugin, DebugUtil logger) {
++        this.plugin = plugin;
++        this.logger = logger;
++    }
++}
++
++// 子插件使用方式
++DebugUtil logger = new DebugUtil(this, DebugUtil.LogLevel.INFO);
++MyManager manager = new MyManager(this, logger);
++```
++
++## 外部依赖
++
++| 依赖 | 用途 | 作用域 |
++|------|------|--------|
++| Paper API 1.18.2 | 服务器API | provided |
++| PlaceholderAPI | 占位符集成 | provided |
++| Vault API | 经济系统 | provided |
++| PlayerPoints | 点数经济 | provided |
++| NBTAPI | NBT操作 | provided |
++| HikariCP | 数据库连接池 | provided |
++| exp4j | 数学表达式解析 | provided |
++| Gson | JSON处理 | provided |
+diff --git a/CLAUDE.md b/CLAUDE.md
+deleted file mode 100644
+index 7a13465..0000000
+--- a/CLAUDE.md
++++ /dev/null
+@@ -1,103 +0,0 @@
+-# CLAUDE.md
+-
+-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+-
+-## 项目概览
+-
+-DrcomoCoreLib 是一个面向 Minecraft 插件开发者的核心工具库，遵循"军火库"而非"预制营房"的设计哲学。它为子插件提供高复用、零耦合、完全可控的工具集，不创造功能，只赋能创造。
+-
+-### 技术栈
+-- Java 17
+-- Maven 构建系统 
+-- Bukkit/Spigot/Paper API (1.18.2)
+-- 支持 PlaceholderAPI、Vault、PlayerPoints 等常见插件
+-
+-## 构建与开发命令
+-
+-### 基本构建
+-```bash
+-# Maven 标准构建（默认目标：clean package）
+-mvn clean package
+-
+-# 或使用项目根目录的快捷方式
+-mvn
+-```
+-
+-### 安装到本地仓库
+-```bash
+-# 使用自定义 Python 脚本安装生成的 JAR 到本地 Maven 仓库
+-python mvn.py
+-```
+-
+-### 测试
+-```bash
+-# 运行测试（使用 Maven Surefire 插件）
+-mvn test
+-```
+-
+-## 核心架构原则
+-
+-### 三大基石（不可违背）
+-1. **零硬编码原则**: 禁止在代码中写死任何配置项，所有可变值必须作为参数传入
+-2. **控制反转原则**: 不创建不管理依赖生命周期，所有外部依赖通过构造函数注入
+-3. **单一职责原则**: 每个模块只解决一个通用开发痛点，严禁特定插件业务逻辑渗透
+-
+-### 设计模式
+-- **实例化设计**: 所有工具类必须是可实例化的 public 类，严禁静态工具类
+-- **依赖注入**: 通过构造函数注入所有依赖（Plugin 实例、DebugUtil 等）
+-- **命名约定**: Manager/Service/Provider 后缀表示有状态类，Util 后缀用于无状态工具
+-
+-## 代码组织结构
+-
+-### 核心模块
+-- `config/`: 配置管理（YamlUtil, ConfigValidator）
+-- `gui/`: GUI 交互（GuiManager, PaginatedGui）
+-- `message/`: 消息系统（MessageService - 支持多语言/占位符）
+-- `database/`: 数据库操作（SQLiteDB）
+-- `hook/`: 外部插件集成（economy, placeholder）
+-- `util/`: 通用工具（DebugUtil, SkullUtil）
+-- `math/`: 数学计算（FormulaCalculator, NumberUtil）
+-- `sound/`: 声音管理（SoundManager）
+-- `nbt/`: NBT 数据处理
+-- `net/`: 网络工具（HttpUtil）
+-
+-### 使用模式示例
+-```java
+-// 正确的使用方式 - 在子插件中实例化
+-DebugUtil logger = new DebugUtil(this, LogLevel.DEBUG);
+-YamlUtil yamlUtil = new YamlUtil(this, logger);
+-SoundManager soundManager = new SoundManager(this, yamlUtil, logger, "sounds", 1.0f, true);
+-MessageService messageService = new MessageService(this, logger, yamlUtil, papiUtil, "lang/zh_cn", "msg.");
+-```
+-
+-## 开发规范
+-
+-### 代码质量要求
+-- **中文注释**: 所有沟通内容、注释、日志必须使用中文
+-- **JavaDoc 同步**: 所有 public API 修改必须同步更新 `DrcomoCoreLib/JavaDocs/` 下的对应文档
+-- **方法长度**: 单类/方法控制在 30-200 行，文件超 500 行需拆分并补充文档
+-- **命名规范**: 变量、方法、类名必须清晰表达业务含义
+-
+-### 安全与性能
+-- **输入验证**: 外部输入严格校验，使用白名单策略
+-- **异步处理**: IO、网络等操作必须异步，确保线程安全
+-- **资源管理**: 文件、数据库连接等必须主动释放
+-
+-### 扩展性设计
+-- 模块开发时优先使用接口、事件、回调等低耦合方式
+-- 发现通用逻辑必须提取至 util 工具类并强制复用
+-- 按需引入依赖，禁止冗余导入
+-
+-## 文档维护
+-
+-每次修改 public API 时，必须：
+-1. 更新对应的 JavaDoc 文件（在 `DrcomoCoreLib/JavaDocs/` 下）
+-2. 确保代码行为、参数、返回值与文档完全一致
+-3. 新增的 public 类和方法需要提供清晰的 JavaDoc
+-
+-## 重要提醒
+-
+-- 本库是工具箱而非功能插件，不注册事件监听或命令
+-- 遵循用户指定的 `.cursor/rules/开发规则.mdc` 中的详细规范
+-- 任何违背三大基石原则的修改将被驳回
+-- 配置文件仅在缺失时自动生成，样例配置须与实际逻辑同步
+\ No newline at end of file
+diff --git a/DrcomoCoreLib/JavaDocs/config/YamlUtil-JavaDoc.md b/DrcomoCoreLib/JavaDocs/config/YamlUtil-JavaDoc.md
+index b850129..1775e7b 100644
+--- a/DrcomoCoreLib/JavaDocs/config/YamlUtil-JavaDoc.md
++++ b/DrcomoCoreLib/JavaDocs/config/YamlUtil-JavaDoc.md
+@@ -1,15 +1,27 @@
+ ### `YamlUtil.java`
+ 
+ **1. 概述 (Overview)**
+ 
+   * **完整路径:** `cn.drcomo.corelib.config.YamlUtil`
+   * **核心职责:** 一个强大的 YAML 配置文件管理工具类。它封装了 Bukkit 插件开发中与 `*.yml` 文件交互的几乎所有常见操作，包括：自动创建插件数据文件夹、从 JAR 中复制默认配置、加载/重载/保存配置、以及提供一系列带默认值的便捷读取方法，并集成了详细的日志记录。
+ 
++**1.1 配置自动补全机制**
++
++  * **触发时机:** 当调用 `loadConfig`、`reloadConfig` 或 `loadAllConfigsInFolder` 时自动执行。
++  * **工作原理:** 将用户配置文件与 JAR 内的默认配置进行比对，若发现用户配置缺失某些键，会自动补全并输出 **WARN** 级别日志。
++  * **典型场景:** 插件版本更新后新增了配置键，服务器管理员无需手动添加，系统会自动补全并在控制台提示。
++  * **持久化:** 补全后的配置会被标记为 dirty，可通过 `saveAllDirtyConfigs()` 持久化到磁盘。
++  * **控制台输出示例:**
++    ```
++    [WARN] 配置键缺失已自动补全: [config.yml] new-feature.enabled = true
++    [WARN] 配置键缺失已自动补全: [config.yml] new-feature.timeout = 30
++    ```
++
+ **2. 如何实例化 (Initialization)**
+ 
+   * **核心思想:** `YamlUtil` 被设计为每个插件持有一个实例。它需要 `Plugin` 实例来定位数据文件夹和资源，需要 `DebugUtil` 实例来输出操作日志。一旦实例化，它就可以管理该插件的所有 `.yml` 配置文件。
+   * **构造函数:** `public YamlUtil(Plugin plugin, DebugUtil logger)`
+   * **代码示例:**
+     ```java
+     // 在你的子插件 onEnable() 方法中:
+     Plugin myPlugin = this;
+@@ -70,32 +82,33 @@
+       * **功能描述:** 复制插件 JAR 内指定的单个 `.yml` 文件到插件数据文件夹的目标目录，若目标文件已存在则跳过。
+       * **参数说明:**
+           * `resourcePath` (`String`): 资源文件在 JAR 内的完整路径，例如 `"config/example.yml"`。
+           * `relativePath` (`String`): 插件数据文件夹内的目标目录，相对插件根目录，空字符串表示根目录。
+ 
+   * #### `loadConfig(String fileName)`
+ 
+       * **返回类型:** `void`
+-      * **功能描述:** 加载一个指定的 `.yml` 文件，并将其内容解析为一个 `YamlConfiguration` 对象，缓存在内存中。
++      * **功能描述:** 加载一个指定的 `.yml` 文件，并将其内容解析为一个 `YamlConfiguration` 对象，缓存在内存中。**加载时会自动与 JAR 内默认配置比对，若发现缺失的键会自动补全并输出 WARN 日志。**
+       * **参数说明:**
+           * `fileName` (`String`): 文件名，**不**包含 `.yml` 后缀。
+ 
+   * #### `loadAllConfigsInFolder(String folderPath)`
+ 
+       * **返回类型:** `Map<String, YamlConfiguration>`
+-      * **功能描述:** 扫描指定目录下的所有 `.yml` 文件并逐个加载，返回的映射以文件名为键，`YamlConfiguration` 为值，同时写入内部缓存。
++      * **功能描述:** 扫描指定目录下的所有 `.yml` 文件并逐个加载，返回的映射以**完整相对路径**为键（如 `"languages/zh_CN"`），`YamlConfiguration` 为值，同时写入内部缓存。**每个文件加载时都会自动与 JAR 内对应的默认配置比对，补全缺失的键。**
+       * **参数说明:**
+           * `folderPath` (`String`): 相对于插件数据文件夹的目录路径。
+-      * **返回值:** `Map<文件名, 配置对象>`
++      * **返回值:** `Map<完整相对路径, 配置对象>`（如 `{"languages/zh_CN": cfg, "languages/en_US": cfg}`）
++      * **重要变更 (Breaking Change):** 自本版本起，返回的 Map 键格式由"仅文件名"变更为"完整相对路径"。后续调用 `getConfig`、`saveConfig`、`reloadConfig` 等方法时，需使用相同格式的键（如 `"languages/zh_CN"` 而非 `"zh_CN"`）。
+ 
+   * #### `reloadConfig(String fileName)`
+ 
+       * **返回类型:** `void`
+-      * **功能描述:** 从磁盘重新加载指定的配置文件，覆盖内存中的旧缓存。
++      * **功能描述:** 从磁盘重新加载指定的配置文件，覆盖内存中的旧缓存。**重载时会自动与 JAR 内默认配置比对，若发现缺失的键会自动补全并输出 WARN 日志。**
+       * **参数说明:**
+           * `fileName` (`String`): 文件名（不含.yml）。
+ 
+   * #### `saveConfig(String fileName, boolean force)`
+ 
+       * **返回类型:** `void`
+       * **功能描述:** 将内存中缓存的指定配置对象，保存回磁盘上的 `.yml` 文件。如果 `force` 为 `false`（或调用无参版本 `saveConfig(fileName)`），则仅在配置被修改过（即“脏”状态）时才会保存。
+       * **参数说明:**
+diff --git a/src/main/java/cn/drcomo/corelib/config/YamlUtil.java b/src/main/java/cn/drcomo/corelib/config/YamlUtil.java
+index 7f5e632..fbd630a 100644
+--- a/src/main/java/cn/drcomo/corelib/config/YamlUtil.java
++++ b/src/main/java/cn/drcomo/corelib/config/YamlUtil.java
+@@ -2,16 +2,18 @@ package cn.drcomo.corelib.config;
+ 
+ import org.bukkit.plugin.Plugin;
+ import cn.drcomo.corelib.util.DebugUtil;
+ import org.bukkit.configuration.file.YamlConfiguration;
+ import org.bukkit.configuration.ConfigurationSection;
+ import java.io.File;
+ import java.io.IOException;
+ import java.io.InputStream;
++import java.io.InputStreamReader;
++import java.nio.charset.StandardCharsets;
+ import java.nio.file.Files;
+ import java.nio.file.StandardCopyOption;
+ import java.nio.file.FileSystems;
+ import java.nio.file.Path;
+ import java.nio.file.WatchEvent;
+ import java.nio.file.WatchKey;
+ import java.nio.file.WatchService;
+ import java.nio.file.StandardWatchEventKinds;
+@@ -28,19 +30,28 @@ import java.util.concurrent.TimeUnit;
+ import java.util.function.Consumer;
+ import java.util.jar.JarEntry;
+ import java.util.jar.JarFile;
+ 
+ /**
+  * 工具类：管理 Bukkit 插件的 YAML 配置文件。
+  * 提供目录创建、JAR 内资源复制、配置加载/重载/保存、读取带默认值的方法，以及文件变动监听。
+  *
+- * 与消息颜色预解析的协同：
+- * · 若语言/文本模板中使用了 <gradient:...>、<color:...>、&#RRGGBB 等标签，建议在配置加载或重载完成后，
+- *   由业务侧遍历相关键并调用 ColorUtil.translateColors 进行一次性“颜色预解析”，将结果缓存起来（例如 Map<String,String> precolored）。
++ * <h3>配置自动补全机制</h3>
++ * 当调用 {@link #loadConfig(String)}、{@link #reloadConfig(String)} 或 {@link #loadAllConfigsInFolder(String)} 时，
++ * 会自动将用户配置文件与 JAR 内的默认配置进行比对：
++ * <ul>
++ *   <li>若发现用户配置缺失某些键，会自动补全并输出 WARN 级别日志</li>
++ *   <li>补全后的配置会被标记为 dirty，可通过 {@link #saveAllDirtyConfigs()} 持久化</li>
++ *   <li>适用于插件版本更新后新增配置键的场景，服务器管理员可在控制台看到哪些配置被自动添加</li>
++ * </ul>
++ *
++ * <h3>与消息颜色预解析的协同</h3>
++ * · 若语言/文本模板中使用了 &lt;gradient:...&gt;、&lt;color:...&gt;、&amp;#RRGGBB 等标签，建议在配置加载或重载完成后，
++ *   由业务侧遍历相关键并调用 ColorUtil.translateColors 进行一次性"颜色预解析"，将结果缓存起来（例如 Map&lt;String,String&gt; precolored）。
+  * · 在 {@link #reloadConfig(String)} 或 {@link #watchConfig(String, java.util.function.Consumer)} 回调中触发上述预解析，
+  *   可避免在每次消息发送阶段重复进行正则匹配与逐字符渐变插色，降低运行期开销。
+  */
+ public class YamlUtil {
+     private final Plugin plugin;
+     private final DebugUtil logger;
+     private final Map<String, YamlConfiguration> configs = new HashMap<>();
+     private final Set<String> dirtyConfigs = new HashSet<>(); // 记录被修改过的配置
+@@ -218,73 +229,142 @@ public class YamlUtil {
+     public void ensureFolderAndCopyDefaults(String resourceFolder, String relativePath) {
+         // 调用新方法，功能等同
+         ensureFolderAndCopyDefaults(resourceFolder, relativePath, new String[0]);
+     }
+ 
+     // ======================= 配置加载与保存 =======================
+ 
+     /**
+-     * 加载指定配置文件到缓存
++     * 加载指定配置文件到缓存，并与 JAR 内默认配置比对，自动补全缺失的键
+      * @param fileName 文件名（不含 .yml）
+      */
+     public void loadConfig(String fileName) {
+         ensureDirectory("");
+         File file = getConfigFile(fileName);
+         if (!file.exists()) {
+             logger.debug("未找到配置，将从 JAR 中复制默认文件: " + fileName + ".yml");
+             plugin.saveResource(fileName + ".yml", false);
+         }
+         try {
+             YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
++
++            // 与 JAR 内默认配置比对，补全缺失键
++            boolean hasNewKeys = mergeDefaultsFromJar(cfg, fileName);
++            if (hasNewKeys) {
++                dirtyConfigs.add(fileName);
++            }
++
+             configs.put(fileName, cfg);
+             logger.debug("Loaded config: " + fileName);
+         } catch (Exception e) {
+             logger.error("加载配置失败: " + fileName, e);
+         }
+     }
+ 
+     /**
+-     * 扫描目录并加载所有 .yml 文件
++     * 从 JAR 内读取默认配置，与用户配置比对，补全缺失的键并输出警告
++     * @param userCfg 用户配置
++     * @param fileName 文件名（不含 .yml）
++     * @return 是否有新键被补全
++     */
++    private boolean mergeDefaultsFromJar(YamlConfiguration userCfg, String fileName) {
++        try (InputStream defaultStream = plugin.getResource(fileName + ".yml")) {
++            if (defaultStream == null) {
++                logger.debug("JAR 内未找到默认配置: " + fileName + ".yml，跳过比对");
++                return false;
++            }
++
++            YamlConfiguration defaultCfg = YamlConfiguration.loadConfiguration(
++                new InputStreamReader(defaultStream, StandardCharsets.UTF_8)
++            );
++
++            boolean hasChanges = false;
++            for (String key : defaultCfg.getKeys(true)) {
++                // 跳过 ConfigurationSection，只处理叶子节点
++                if (defaultCfg.get(key) instanceof ConfigurationSection) {
++                    continue;
++                }
++
++                if (!userCfg.contains(key)) {
++                    Object value = defaultCfg.get(key);
++                    userCfg.set(key, value);
++                    logger.warn("配置键缺失已自动补全: [" + fileName + ".yml] " + key + " = " + value);
++                    hasChanges = true;
++                }
++            }
++
++            return hasChanges;
++        } catch (IOException e) {
++            logger.error("读取 JAR 内默认配置失败: " + fileName, e);
++            return false;
++        }
++    }
++
++    /**
++     * 扫描目录并加载所有 .yml 文件，并与 JAR 内默认配置比对，自动补全缺失的键
++     * <p>
++     * 返回的 Map 以<b>完整相对路径</b>为键（如 {@code "languages/zh_CN"}），
++     * 后续调用 {@link #getConfig(String)}、{@link #saveConfig(String)} 等方法时需使用相同格式的键。
++     * </p>
++     *
+      * @param folderPath 相对数据文件夹的目录路径
+-     * @return 文件名->配置对象映射
++     * @return 完整相对路径 -&gt; 配置对象映射
+      */
+     public Map<String, YamlConfiguration> loadAllConfigsInFolder(String folderPath) {
+         Map<String, YamlConfiguration> map = new HashMap<>();
+-        File dir = new File(plugin.getDataFolder(), folderPath);
++        // 规范化路径分隔符为正斜杠，确保 configKey 格式统一
++        String normalizedFolder = (folderPath == null) ? "" : folderPath.replace('\\', '/');
++        File dir = new File(plugin.getDataFolder(), normalizedFolder);
+         if (!dir.exists() || !dir.isDirectory()) {
+             logger.warn("目录不存在: " + dir.getPath());
+             return map;
+         }
+         File[] files = dir.listFiles((d, name) -> name.endsWith(".yml"));
+         if (files == null) return map;
+         for (File file : files) {
+             String name = file.getName().replaceFirst("\\.yml$", "");
++            // 使用完整相对路径作为 configKey，确保 saveConfig 时路径正确
++            String configKey = normalizedFolder.isEmpty() ? name : normalizedFolder + "/" + name;
+             try {
+                 YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
+-                configs.put(name, cfg);
+-                map.put(name, cfg);
+-                logger.debug("Loaded config: " + file.getPath());
++
++                // 与 JAR 内默认配置比对，补全缺失键
++                boolean hasNewKeys = mergeDefaultsFromJar(cfg, configKey);
++                if (hasNewKeys) {
++                    dirtyConfigs.add(configKey);
++                }
++
++                configs.put(configKey, cfg);
++                map.put(configKey, cfg);
++                logger.debug("Loaded config: " + file.getPath() + " (key=" + configKey + ")");
+             } catch (Exception e) {
+                 logger.error("加载配置失败: " + file.getPath(), e);
+             }
+         }
+         return map;
+     }
+ 
+     /**
+-     * 重载指定配置文件
++     * 重载指定配置文件，并与 JAR 内默认配置比对，自动补全缺失的键
+      * @param fileName 文件名（不含 .yml）
+      */
+     public void reloadConfig(String fileName) {
+         logger.info("重载配置开始: " + fileName);
+         File file = getConfigFile(fileName);
+         if (file.exists()) {
+             try {
+                 YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
++
++                // 与 JAR 内默认配置比对，补全缺失键
++                boolean hasNewKeys = mergeDefaultsFromJar(cfg, fileName);
++                if (hasNewKeys) {
++                    dirtyConfigs.add(fileName);
++                }
++
+                 configs.put(fileName, cfg);
+                 logger.info("重载配置完成: " + fileName);
+                 // 提示：如该配置承载了消息模板（含颜色标签），此处重载后应在业务层触发一次颜色预解析与缓存，
+                 // 以减少后续消息发送阶段的解析成本。
+             } catch (Exception e) {
+                 logger.error("重载配置失败: " + fileName, e);
+             }
+         } else {
+@@ -649,19 +729,21 @@ public class YamlUtil {
+                 }
+             }
+             logger.info("文件监听线程已停止。");
+         }, "YamlUtil-Shared-Watcher");
+         sharedWatcherThread.setDaemon(true);
+         sharedWatcherThread.start();
+     }
+ 
+-    // 获取配置文件对象
++    // 获取配置文件对象（支持带路径的 fileName，如 "languages/zh_CN"）
+     private File getConfigFile(String fileName) {
+-        return new File(plugin.getDataFolder(), fileName + ".yml");
++        // 将正斜杠统一转为系统路径分隔符，确保跨平台兼容
++        String normalizedPath = fileName.replace('/', File.separatorChar);
++        return new File(plugin.getDataFolder(), normalizedPath + ".yml");
+     }
+ 
+     // 设置默认值
+     private void setDefaultIfAbsent(YamlConfiguration cfg, String fileName, String path, Object def) {
+         if (!cfg.contains(path)) {
+             cfg.set(path, def);
+             dirtyConfigs.add(fileName);
+             logger.debug("Set default value: " + path + " = " + def + " in " + fileName);
+diff --git a/src/main/java/cn/drcomo/corelib/message/MessageService.java b/src/main/java/cn/drcomo/corelib/message/MessageService.java
+index e1fc235..d25321c 100644
+--- a/src/main/java/cn/drcomo/corelib/message/MessageService.java
++++ b/src/main/java/cn/drcomo/corelib/message/MessageService.java
+@@ -363,25 +363,38 @@ public class MessageService {
+      * @return 解析结果
+      * @deprecated 请使用 {@link #parseWithDelimiter(String, Player, Map, String, String)}
+      */
+     @Deprecated
+     public String parse(String key, Player player, Map<String, String> custom) {
+         return parseWithDelimiter(key, player, custom, defaultCustomPrefix, defaultCustomSuffix);
+     }
+ 
++    /**
++     * 使用指定前后缀解析占位符并按需转换颜色。
++     * <p>优先使用颜色预解析缓存；若占位符未引入新的颜色标记则跳过二次解析，减轻频繁消息下的正则与字符串构建开销。</p>
++     *
++     * @param key    消息键
++     * @param player 当前玩家，可为 null
++     * @param custom 自定义占位符
++     * @param prefix 自定义占位符前缀
++     * @param suffix 自定义占位符后缀
++     * @return 解析结果，未命中返回 null
++     */
+     public String parseWithDelimiter(String key,
+                                      Player player,
+                                      Map<String, String> custom,
+                                      String prefix,
+                                      String suffix) {
+-        String msg = get(key);
+-        if (msg == null) return null;
++        String msg = getRawWithColor(key);
++        if (msg == null) {
++            return "Message not found: " + key;
++        }
+         String result = processPlaceholdersWithDelimiter(player, msg, custom, prefix, suffix);
+-        return ColorUtil.translateColors(result);
++        return applyColorIfNeeded(result);
+     }
+ 
+     /* -------------------- 列表读取与解析 -------------------- */
+ 
+     public List<String> getList(String key) {
+         String actual = resolveKey(key);
+         List<String> list = yamlUtil.getConfig(langConfigPath).getStringList(actual);
+         if (list.isEmpty()) logger.warn("未找到消息列表，键: " + actual);
+@@ -732,23 +745,26 @@ public class MessageService {
+     private String applyCustomPlaceholders(Player player,
+                                            String msg,
+                                            Map<String, String> custom,
+                                            String prefix,
+                                            String suffix) {
+         if (custom == null || custom.isEmpty()) return msg;
+         Pattern pattern = getDelimiterPattern(prefix, suffix);
+         Matcher matcher = pattern.matcher(msg);
++        if (!matcher.find()) {
++            return msg;
++        }
+         // 预估容量，减少扩容
+         StringBuilder sb = new StringBuilder(Math.max(16, msg.length() + custom.size() * 8));
+-        while (matcher.find()) {
++        do {
+             String key = matcher.group("key");
+             String value = custom.getOrDefault(key, matcher.group(0));
+             matcher.appendReplacement(sb, Matcher.quoteReplacement(value));
+-        }
++        } while (matcher.find());
+         matcher.appendTail(sb);
+         return sb.toString();
+     }
+ 
+     /** 获取或缓存 prefix+suffix 对应的正则 */
+     private Pattern getDelimiterPattern(String prefix, String suffix) {
+         String pf = (prefix == null || prefix.isEmpty()) ? "%" : prefix;
+         String sf = (suffix == null || suffix.isEmpty()) ? "%" : suffix;
+@@ -758,61 +774,67 @@ public class MessageService {
+             return Pattern.compile(regex);
+         });
+     }
+ 
+     /** 应用内部 {key[:args]} 占位符解析 */
+     private String applyInternalPlaceholders(Player player, String msg) {
+         if (internalHandlers.isEmpty()) return msg;
+         Matcher m = internalPlaceholderPattern.matcher(msg);
++        if (!m.find()) {
++            return msg;
++        }
+         StringBuilder sb = new StringBuilder(msg.length() + 16);
+-        while (m.find()) {
++        do {
+             String key = m.group(1).toLowerCase();
+             String argStr = m.group(2);
+             String[] args = (argStr == null || argStr.isEmpty()) ? new String[0] : argStr.split(":");
+             PlaceholderResolver resolver = internalHandlers.get(key);
+             String replacement = resolver != null ? resolver.resolve(player, args) : m.group(0);
+             m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+-        }
++        } while (m.find());
+         m.appendTail(sb);
+         return sb.toString();
+     }
+ 
+     /** 应用额外正则占位符规则 */
+     private String applyExtraPlaceholderRules(Player player, String msg) {
+         String result = msg;
+         for (var entry : extraPlaceholderRules.entrySet()) {
+             Matcher m = entry.getKey().matcher(result);
++            if (!m.find()) {
++                continue;
++            }
+             StringBuilder sb = new StringBuilder();
+-            while (m.find()) {
++            do {
+                 String replacement = entry.getValue().apply(player, m);
+                 if (replacement == null) {
+                     replacement = m.group(0);
+                 }
+                 m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+-            }
++            } while (m.find());
+             m.appendTail(sb);
+             result = sb.toString();
+         }
+         return result;
+     }
+ 
+     /** 应用 PlaceholderAPI 解析 */
+     private String applyPlaceholderAPI(Player player, String msg) {
+         return placeholderUtil.parse(player, msg);
+     }
+ 
+-    /** 快捷解析并翻译颜色 */
++    /** 快捷解析并按需翻译颜色 */
+     private String parseTranslate(Player player,
+                                   String template,
+                                   Map<String, String> custom,
+                                   String prefix,
+                                   String suffix) {
+         String processed = processPlaceholdersWithDelimiter(player, template, custom, prefix, suffix);
+-        return ColorUtil.translateColors(processed);
++        return applyColorIfNeeded(processed);
+     }
+ 
+     /**
+      * 始终确保通过 ColorUtil 转换颜色再发送。
+      * 性能优化：如果启用了 enableColorPrecaching 且消息已预解析，则跳过重复解析。
+      */
+     private void sendColorizedRaw(CommandSender target, String msg) {
+         if (msg == null || msg.isBlank()) return;
+@@ -900,12 +922,45 @@ public class MessageService {
+                 logger.warn("消息在异步上下文且 Plugin 为空，已直接在当前线程执行。请修正构造参数传入有效 Plugin。");
+             }
+             task.run();
+         } else {
+             Bukkit.getScheduler().runTask(plugin, task);
+         }
+     }
+ 
++    /**
++     * 判断并执行颜色解析，避免对已预解析或无颜色标记的消息重复处理。
++     *
++     * @param text 待处理文本
++     * @return 若检测到颜色标记则返回解析后的文本，否则直接返回原文
++     */
++    private String applyColorIfNeeded(String text) {
++        if (text == null || text.isEmpty()) {
++            return text;
++        }
++        if (!needsColorTranslation(text)) {
++            return text;
++        }
++        return ColorUtil.translateColors(text);
++    }
++
++    /**
++     * 检测文本中是否存在需要解析的颜色标记。
++     *
++     * @param text 待检测文本
++     * @return true 需要解析颜色；false 可直接复用现有字符串
++     */
++    private boolean needsColorTranslation(String text) {
++        if (!enableColorPrecaching) {
++            return true;
++        }
++        boolean containsSection = text.indexOf('§') >= 0;
++        boolean containsLegacy = text.indexOf('&') >= 0;
++        boolean containsTag = text.contains("<gradient") || text.contains("<color");
++        boolean containsHex = text.contains("&#");
++        return containsLegacy || containsTag || containsHex || !containsSection;
++    }
++
+     /* ============ 未使用字段 / 方法放置到最末尾隐藏 ============ */
+ 
+     // private final Plugin plugin; // 保留声明但默认注释，防止误删
+ }

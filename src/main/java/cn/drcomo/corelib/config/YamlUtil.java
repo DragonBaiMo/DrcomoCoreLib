@@ -7,6 +7,8 @@ import org.bukkit.configuration.ConfigurationSection;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.FileSystems;
@@ -33,9 +35,18 @@ import java.util.jar.JarFile;
  * 工具类：管理 Bukkit 插件的 YAML 配置文件。
  * 提供目录创建、JAR 内资源复制、配置加载/重载/保存、读取带默认值的方法，以及文件变动监听。
  *
- * 与消息颜色预解析的协同：
- * · 若语言/文本模板中使用了 <gradient:...>、<color:...>、&#RRGGBB 等标签，建议在配置加载或重载完成后，
- *   由业务侧遍历相关键并调用 ColorUtil.translateColors 进行一次性“颜色预解析”，将结果缓存起来（例如 Map<String,String> precolored）。
+ * <h3>配置自动补全机制</h3>
+ * 当调用 {@link #loadConfig(String)}、{@link #reloadConfig(String)} 或 {@link #loadAllConfigsInFolder(String)} 时，
+ * 会自动将用户配置文件与 JAR 内的默认配置进行比对：
+ * <ul>
+ *   <li>若发现用户配置缺失某些键，会自动补全并输出 WARN 级别日志</li>
+ *   <li>补全后的配置会被标记为 dirty，可通过 {@link #saveAllDirtyConfigs()} 持久化</li>
+ *   <li>适用于插件版本更新后新增配置键的场景，服务器管理员可在控制台看到哪些配置被自动添加</li>
+ * </ul>
+ *
+ * <h3>与消息颜色预解析的协同</h3>
+ * · 若语言/文本模板中使用了 &lt;gradient:...&gt;、&lt;color:...&gt;、&amp;#RRGGBB 等标签，建议在配置加载或重载完成后，
+ *   由业务侧遍历相关键并调用 ColorUtil.translateColors 进行一次性"颜色预解析"，将结果缓存起来（例如 Map&lt;String,String&gt; precolored）。
  * · 在 {@link #reloadConfig(String)} 或 {@link #watchConfig(String, java.util.function.Consumer)} 回调中触发上述预解析，
  *   可避免在每次消息发送阶段重复进行正则匹配与逐字符渐变插色，降低运行期开销。
  */
@@ -45,6 +56,14 @@ public class YamlUtil {
     private final Map<String, YamlConfiguration> configs = new HashMap<>();
     private final Set<String> dirtyConfigs = new HashSet<>(); // 记录被修改过的配置
     private final String jarPath;
+
+    /**
+     * configKey 到实际文件相对路径的映射表。
+     * <p>用于支持 loadAllConfigsInFolder 加载子目录文件时，保持 API 返回文件名的同时，
+     * 内部正确记录完整路径以便 saveConfig 时能定位到正确的文件。</p>
+     * <p>例如：{"zh_CN" -> "languages/zh_CN", "config" -> "config"}</p>
+     */
+    private final Map<String, String> configKeyToPath = new HashMap<>();
 
     /** 共享的文件监听服务与线程，以及相关映射 */
     private WatchService sharedWatcher;
@@ -223,33 +242,113 @@ public class YamlUtil {
     // ======================= 配置加载与保存 =======================
 
     /**
-     * 加载指定配置文件到缓存
-     * @param fileName 文件名（不含 .yml）
+     * 加载指定配置文件到缓存，并与 JAR 内默认配置比对，自动补全缺失的键
+     * <p>支持以下调用方式：
+     * <ul>
+     *   <li>{@code loadConfig("config")} - 加载根目录下的 config.yml</li>
+     *   <li>{@code loadConfig("languages/zh_CN")} - 加载子目录下的 zh_CN.yml</li>
+     * </ul>
+     * </p>
+     * @param fileName 文件名或相对路径（不含 .yml），如 "config" 或 "languages/zh_CN"
      */
     public void loadConfig(String fileName) {
-        ensureDirectory("");
-        File file = getConfigFile(fileName);
+        // 规范化路径分隔符
+        String normalizedName = normalizeConfigKey(fileName);
+        if (normalizedName.isEmpty()) {
+            logger.warn("loadConfig 收到空文件名，已跳过");
+            return;
+        }
+        
+        // 确保父目录存在
+        int lastSlash = normalizedName.lastIndexOf('/');
+        if (lastSlash > 0) {
+            ensureDirectory(normalizedName.substring(0, lastSlash));
+        } else {
+            ensureDirectory("");
+        }
+        
+        File file = getConfigFile(normalizedName);
         if (!file.exists()) {
-            logger.debug("未找到配置，将从 JAR 中复制默认文件: " + fileName + ".yml");
-            plugin.saveResource(fileName + ".yml", false);
+            logger.debug("未找到配置，将从 JAR 中复制默认文件: " + normalizedName + ".yml");
+            // saveResource 需要使用 / 分隔符
+            plugin.saveResource(normalizedName + ".yml", false);
         }
         try {
             YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
-            configs.put(fileName, cfg);
-            logger.debug("Loaded config: " + fileName);
+
+            // 与 JAR 内默认配置比对，补全缺失键
+            boolean hasNewKeys = mergeDefaultsFromJar(cfg, normalizedName);
+            if (hasNewKeys) {
+                dirtyConfigs.add(normalizedName);
+            }
+
+            configs.put(normalizedName, cfg);
+            // 注册路径映射（自身映射到自身，确保 getConfigFile 能正确处理）
+            configKeyToPath.put(normalizedName, normalizedName);
+            logger.debug("Loaded config: " + normalizedName);
         } catch (Exception e) {
-            logger.error("加载配置失败: " + fileName, e);
+            logger.error("加载配置失败: " + normalizedName, e);
         }
     }
 
     /**
-     * 扫描目录并加载所有 .yml 文件
+     * 从 JAR 内读取默认配置，与用户配置比对，补全缺失的键并输出警告
+     * @param userCfg 用户配置
+     * @param fileName 文件名（不含 .yml），可包含路径如 "languages/zh_CN"
+     * @return 是否有新键被补全
+     */
+    private boolean mergeDefaultsFromJar(YamlConfiguration userCfg, String fileName) {
+        // 确保资源路径始终使用 '/'，即使 fileName 可能来自 Windows 风格的输入
+        String resourcePath = normalizeConfigKey(fileName) + ".yml";
+        try (InputStream defaultStream = plugin.getResource(resourcePath)) {
+            if (defaultStream == null) {
+                logger.debug("JAR 内未找到默认配置: " + resourcePath + "，跳过比对");
+                return false;
+            }
+
+            YamlConfiguration defaultCfg = YamlConfiguration.loadConfiguration(
+                new InputStreamReader(defaultStream, StandardCharsets.UTF_8)
+            );
+
+            boolean hasChanges = false;
+            for (String key : defaultCfg.getKeys(true)) {
+                // 跳过 ConfigurationSection，只处理叶子节点
+                if (defaultCfg.get(key) instanceof ConfigurationSection) {
+                    continue;
+                }
+
+                if (!userCfg.contains(key)) {
+                    Object value = defaultCfg.get(key);
+                    userCfg.set(key, value);
+                    logger.warn("配置键缺失已自动补全: [" + resourcePath + "] " + key + " = " + value);
+                    hasChanges = true;
+                }
+            }
+
+            return hasChanges;
+        } catch (IOException e) {
+            logger.error("读取 JAR 内默认配置失败: " + resourcePath, e);
+            return false;
+        }
+    }
+
+    /**
+     * 扫描目录并加载所有 .yml 文件，并与 JAR 内默认配置比对，自动补全缺失的键
+     * <p>
+     * 返回的 Map 以<b>文件名</b>为键（如 {@code "zh_CN"}），保持向后兼容。
+     * 内部会自动记录文件的完整路径，后续调用 {@link #saveConfig(String)} 时会自动定位到正确的文件。
+     * </p>
+     * <p><b>注意</b>：如果不同子目录下存在同名文件，后加载的会覆盖先加载的。
+     * 若需要区分，请使用 {@link #loadConfig(String)} 并传入完整相对路径（如 {@code "languages/zh_CN"}）。</p>
+     *
      * @param folderPath 相对数据文件夹的目录路径
-     * @return 文件名->配置对象映射
+     * @return 文件名 -&gt; 配置对象映射
      */
     public Map<String, YamlConfiguration> loadAllConfigsInFolder(String folderPath) {
         Map<String, YamlConfiguration> map = new HashMap<>();
-        File dir = new File(plugin.getDataFolder(), folderPath);
+        // 规范化路径分隔符为正斜杠，确保内部路径格式统一
+        String normalizedFolder = normalizeConfigKey(folderPath);
+        File dir = new File(plugin.getDataFolder(), normalizedFolder);
         if (!dir.exists() || !dir.isDirectory()) {
             logger.warn("目录不存在: " + dir.getPath());
             return map;
@@ -258,11 +357,22 @@ public class YamlUtil {
         if (files == null) return map;
         for (File file : files) {
             String name = file.getName().replaceFirst("\\.yml$", "");
+            // 计算完整相对路径，用于内部存储和 JAR 资源比对
+            String fullPath = normalizedFolder.isEmpty() ? name : normalizedFolder + "/" + name;
             try {
                 YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
+
+                // 与 JAR 内默认配置比对，补全缺失键
+                boolean hasNewKeys = mergeDefaultsFromJar(cfg, fullPath);
+                if (hasNewKeys) {
+                    dirtyConfigs.add(name);
+                }
+
+                // 使用文件名作为 configKey（保持向后兼容），但记录完整路径用于保存
                 configs.put(name, cfg);
+                configKeyToPath.put(name, fullPath);
                 map.put(name, cfg);
-                logger.debug("Loaded config: " + file.getPath());
+                logger.debug("Loaded config: " + file.getPath() + " (key=" + name + ", path=" + fullPath + ")");
             } catch (Exception e) {
                 logger.error("加载配置失败: " + file.getPath(), e);
             }
@@ -271,24 +381,37 @@ public class YamlUtil {
     }
 
     /**
-     * 重载指定配置文件
-     * @param fileName 文件名（不含 .yml）
+     * 重载指定配置文件，并与 JAR 内默认配置比对，自动补全缺失的键
+     * <p>支持传入文件名或完整相对路径（如 "zh_CN" 或 "languages/zh_CN"）。
+     * 如果传入的是通过 {@link #loadAllConfigsInFolder(String)} 加载的文件名，
+     * 会自动解析为正确的文件路径。</p>
+     * @param fileName 文件名或相对路径（不含 .yml）
      */
     public void reloadConfig(String fileName) {
-        logger.info("重载配置开始: " + fileName);
-        File file = getConfigFile(fileName);
+        String key = normalizeConfigKey(fileName);
+        logger.info("重载配置开始: " + key);
+        // 获取实际路径用于 JAR 资源比对
+        String actualPath = configKeyToPath.getOrDefault(key, key);
+        File file = getConfigFile(key);
         if (file.exists()) {
             try {
                 YamlConfiguration cfg = YamlConfiguration.loadConfiguration(file);
-                configs.put(fileName, cfg);
-                logger.info("重载配置完成: " + fileName);
+
+                // 与 JAR 内默认配置比对，补全缺失键（使用实际路径）
+                boolean hasNewKeys = mergeDefaultsFromJar(cfg, actualPath);
+                if (hasNewKeys) {
+                    dirtyConfigs.add(key);
+                }
+
+                configs.put(key, cfg);
+                logger.info("重载配置完成: " + key);
                 // 提示：如该配置承载了消息模板（含颜色标签），此处重载后应在业务层触发一次颜色预解析与缓存，
                 // 以减少后续消息发送阶段的解析成本。
             } catch (Exception e) {
-                logger.error("重载配置失败: " + fileName, e);
+                logger.error("重载配置失败: " + key, e);
             }
         } else {
-            logger.warn("重载时未找到配置文件: " + fileName);
+            logger.warn("重载时未找到配置文件: " + key + " (实际路径: " + file.getPath() + ")");
         }
     }
 
@@ -306,20 +429,21 @@ public class YamlUtil {
      * @param force    是否强制保存
      */
     public void saveConfig(String fileName, boolean force) {
-        if (!force && !dirtyConfigs.contains(fileName)) {
+        String key = normalizeConfigKey(fileName);
+        if (!force && !dirtyConfigs.contains(key)) {
             return;
         }
-        YamlConfiguration cfg = configs.get(fileName);
+        YamlConfiguration cfg = configs.get(key);
         if (cfg == null) {
-            logger.warn("无可保存配置: " + fileName);
+            logger.warn("无可保存配置: " + key);
             return;
         }
         try {
-            cfg.save(getConfigFile(fileName));
-            dirtyConfigs.remove(fileName);
-            logger.debug("Saved config: " + fileName);
+            cfg.save(getConfigFile(key));
+            dirtyConfigs.remove(key);
+            logger.debug("Saved config: " + key);
         } catch (IOException e) {
-            logger.error("保存配置失败: " + fileName, e);
+            logger.error("保存配置失败: " + key, e);
         }
     }
 
@@ -343,10 +467,11 @@ public class YamlUtil {
      * @return YamlConfiguration 对象
      */
     public YamlConfiguration getConfig(String fileName) {
-        if (!configs.containsKey(fileName)) {
-            loadConfig(fileName);
+        String key = normalizeConfigKey(fileName);
+        if (!configs.containsKey(key)) {
+            loadConfig(key);
         }
-        return configs.get(fileName);
+        return configs.get(key);
     }
 
     // ======================= 配置读取与写入 =======================
@@ -400,10 +525,11 @@ public class YamlUtil {
     }
 
     public void setValue(String fileName, String path, Object value) {
-        YamlConfiguration cfg = getConfig(fileName);
+        String key = normalizeConfigKey(fileName);
+        YamlConfiguration cfg = getConfig(key);
         cfg.set(path, value);
-        dirtyConfigs.add(fileName);
-        logger.debug("Set value: " + path + " = " + value + " in " + fileName);
+        dirtyConfigs.add(key);
+        logger.debug("Set value: " + path + " = " + value + " in " + key);
     }
 
     public boolean contains(String fileName, String path) {
@@ -462,6 +588,7 @@ public class YamlUtil {
      * @return ConfigWatchHandle，用于停止监听
      */
     public ConfigWatchHandle watchConfig(String configName, Consumer<YamlConfiguration> onChange) {
+        String key = normalizeConfigKey(configName);
         try {
             startWatcherThread();
         } catch (IOException e) {
@@ -469,7 +596,7 @@ public class YamlUtil {
             return null;
         }
 
-        File configFile = getConfigFile(configName);
+        File configFile = getConfigFile(key);
         Path filePath = configFile.toPath();
         Path dirPath = filePath.getParent();
 
@@ -481,10 +608,10 @@ public class YamlUtil {
             return null;
         }
 
-        watchedFileMap.put(filePath, configName);
-        callbackMap.put(configName, onChange);
+        watchedFileMap.put(filePath, key);
+        callbackMap.put(key, onChange);
         logger.info("已设置对 " + configFile.getName() + " 的修改监听。");
-        return new ConfigWatchHandle(this, configName);
+        return new ConfigWatchHandle(this, key);
     }
 
     /**
@@ -492,18 +619,20 @@ public class YamlUtil {
      * @param configName 配置文件名（不含 .yml）
      */
     public void stopWatching(String configName) {
-        callbackMap.remove(configName);
-        watchedFileMap.entrySet().removeIf(e -> e.getValue().equals(configName));
-        logger.info("已停止监听配置文件: " + configName);
+        String key = normalizeConfigKey(configName);
+        callbackMap.remove(key);
+        watchedFileMap.entrySet().removeIf(e -> e.getValue().equals(key));
+        logger.info("已停止监听配置文件: " + key);
     }
 
     /**
      * 开启文件变动监听，触发自定义 FileChangeListener
      */
     public void enableFileWatcher(String configKey, FileChangeListener listener) {
-        watchConfig(configKey, cfg -> {
+        String key = normalizeConfigKey(configKey);
+        watchConfig(key, cfg -> {
             if (listener != null) {
-                listener.onChange(configKey, FileChangeType.MODIFY, cfg);
+                listener.onChange(key, FileChangeType.MODIFY, cfg);
             }
         });
     }
@@ -654,17 +783,32 @@ public class YamlUtil {
         sharedWatcherThread.start();
     }
 
-    // 获取配置文件对象
+    /**
+     * 获取配置文件对象。
+     * <p>自动查找 configKeyToPath 映射表，将 configKey 转换为实际文件路径。
+     * 支持以下两种调用方式：
+     * <ul>
+     *   <li>{@code getConfigFile("zh_CN")} - 如果该 key 来自 loadAllConfigsInFolder，会自动解析为 "languages/zh_CN.yml"</li>
+     *   <li>{@code getConfigFile("languages/zh_CN")} - 直接使用传入的路径</li>
+     * </ul>
+     * </p>
+     */
     private File getConfigFile(String fileName) {
-        return new File(plugin.getDataFolder(), fileName + ".yml");
+        // 优先查找路径映射表，获取实际的完整路径
+        String actualPath = configKeyToPath.getOrDefault(fileName, fileName);
+        // 将正斜杠统一转为系统路径分隔符，确保跨平台兼容
+        String normalizedPath = actualPath.replace('/', File.separatorChar).replace('\\', File.separatorChar);
+        return new File(plugin.getDataFolder(), normalizedPath + ".yml");
     }
 
-    // 设置默认值
+    // 设置默认值（内部使用，fileName 应已规范化）
     private void setDefaultIfAbsent(YamlConfiguration cfg, String fileName, String path, Object def) {
         if (!cfg.contains(path)) {
             cfg.set(path, def);
-            dirtyConfigs.add(fileName);
-            logger.debug("Set default value: " + path + " = " + def + " in " + fileName);
+            // 确保 key 规范化后再加入 dirtyConfigs
+            String key = normalizeConfigKey(fileName);
+            dirtyConfigs.add(key);
+            logger.debug("Set default value: " + path + " = " + def + " in " + key);
         }
     }
 
@@ -674,6 +818,17 @@ public class YamlUtil {
             return "";
         }
         return resourceFolder.endsWith("/") ? resourceFolder : resourceFolder + "/";
+    }
+
+    /**
+     * 规范化配置文件名/路径，统一使用正斜杠分隔符。
+     * 用于确保 Map 的 Key 在跨平台环境下保持一致。
+     */
+    private String normalizeConfigKey(String fileName) {
+        if (fileName == null) {
+            return "";
+        }
+        return fileName.replace('\\', '/');
     }
 
     // 确保目标文件的父目录存在
