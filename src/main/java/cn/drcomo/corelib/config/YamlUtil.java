@@ -279,7 +279,14 @@ public class YamlUtil {
             // 与 JAR 内默认配置比对，补全缺失键
             boolean hasNewKeys = mergeDefaultsFromJar(cfg, normalizedName);
             if (hasNewKeys) {
-                dirtyConfigs.add(normalizedName);
+                // 立即保存补全后的配置，无需等待 onDisable
+                try {
+                    cfg.save(file);
+                    logger.info("已自动保存补全后的配置: " + normalizedName + ".yml");
+                } catch (IOException e) {
+                    logger.error("自动保存配置失败: " + normalizedName, e);
+                    dirtyConfigs.add(normalizedName); // 保存失败则标记为 dirty，等待后续保存
+                }
             }
 
             configs.put(normalizedName, cfg);
@@ -365,7 +372,14 @@ public class YamlUtil {
                 // 与 JAR 内默认配置比对，补全缺失键
                 boolean hasNewKeys = mergeDefaultsFromJar(cfg, fullPath);
                 if (hasNewKeys) {
-                    dirtyConfigs.add(name);
+                    // 立即保存补全后的配置，无需等待 onDisable
+                    try {
+                        cfg.save(file);
+                        logger.info("已自动保存补全后的配置: " + file.getName());
+                    } catch (IOException e) {
+                        logger.error("自动保存配置失败: " + file.getName(), e);
+                        dirtyConfigs.add(name); // 保存失败则标记为 dirty，等待后续保存
+                    }
                 }
 
                 // 使用文件名作为 configKey（保持向后兼容），但记录完整路径用于保存
@@ -400,7 +414,14 @@ public class YamlUtil {
                 // 与 JAR 内默认配置比对，补全缺失键（使用实际路径）
                 boolean hasNewKeys = mergeDefaultsFromJar(cfg, actualPath);
                 if (hasNewKeys) {
-                    dirtyConfigs.add(key);
+                    // 立即保存补全后的配置，无需等待 onDisable
+                    try {
+                        cfg.save(file);
+                        logger.info("已自动保存补全后的配置: " + key + ".yml");
+                    } catch (IOException e) {
+                        logger.error("自动保存配置失败: " + key, e);
+                        dirtyConfigs.add(key); // 保存失败则标记为 dirty，等待后续保存
+                    }
                 }
 
                 configs.put(key, cfg);

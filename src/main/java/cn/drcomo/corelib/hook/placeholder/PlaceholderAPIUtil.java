@@ -63,9 +63,11 @@ public class PlaceholderAPIUtil {
         if (papiEnabled) {
             this.expansion = new PlaceholderExpansion() {
                 @Override public boolean canRegister()       { return true; }
+                @Override public boolean persist()           { return true; } // 保持扩展在 /papi reload 后仍有效
                 @Override public String getIdentifier()      { return PlaceholderAPIUtil.this.identifier; }
                 @Override public String getAuthor()          { return authors; }
                 @Override public String getVersion()         { return version; }
+                @Override public String getRequiredPlugin()  { return plugin.getName(); } // 绑定到宿主插件
 
                 @Override
                 public String onPlaceholderRequest(Player player, String params) {
@@ -79,8 +81,13 @@ public class PlaceholderAPIUtil {
                 }
             };
 
-            // 注册扩展
-            this.expansion.register();
+            // 注册扩展并检查结果
+            boolean registered = this.expansion.register();
+            if (registered) {
+                plugin.getLogger().info("[PlaceholderAPI] 扩展 '" + this.identifier + "' 注册成功");
+            } else {
+                plugin.getLogger().warning("[PlaceholderAPI] 扩展 '" + this.identifier + "' 注册失败！请检查是否存在标识符冲突");
+            }
         } else {
             this.expansion = null;
         }
